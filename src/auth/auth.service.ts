@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Socket } from 'socket.io';
-import { UsersService } from 'src/users/users.service';;
+import { UsersService } from 'src/users/users.service';
 
 interface User {
   name: string;
