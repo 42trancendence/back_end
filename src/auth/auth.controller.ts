@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Post,
   UseGuards,
   UsePipes,
@@ -24,18 +25,25 @@ export class AuthController {
     private authService: AuthService,
   ) {}
 
+  private readonly authLogger = new Logger(AuthController.name);
+
   @Get('/login')
   @ApiOperation({
     summary: '유저 로그인 API',
-    description: '42api를 이용하여 로그인 한다.',
+    description: '42api 로그인 화면으로 이동시켜준다.',
   })
   @UseGuards(FortyTwoGuard)
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   OAuthLogin() {}
 
   @Get('/login/callback')
+  @ApiOperation({
+    summary: '유저 로그인 callback API',
+    description: '42api를 이용하여 로그인성공시 콜백 API.',
+  })
   @UseGuards(FortyTwoGuard)
   async callbackLogin(@getUser() authUser: AuthUserDto): Promise<string> {
+    this.authLogger.verbose('[GET] /login/callback');
     const user = await this.usersService.getUserByEmail(authUser.email);
 
     if (!user) {
@@ -55,6 +63,7 @@ export class AuthController {
   @Post('/login')
   @UsePipes(ValidationPipe)
   async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
+    this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
     const { email, password } = userLoginDto;
     return await this.authService.login(email, password);
   }
