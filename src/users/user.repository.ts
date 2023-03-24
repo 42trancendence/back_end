@@ -28,7 +28,6 @@ export class UserRepository extends Repository<UserEntity> {
 
   async saveUser(
     id: string,
-    email: string,
     name: string,
     signupVerifyToken: string,
     image: string,
@@ -37,12 +36,16 @@ export class UserRepository extends Repository<UserEntity> {
 
     user.id = id;
     user.name = name;
-    user.email = email;
     user.avatarImageUrl = image === undefined ? 'default.img' : image;
     user.registrationDate = new Date();
     user.signupVerifyToken = signupVerifyToken;
     user.isVerified = false;
     await this.save(user);
     return user;
+  }
+
+  async saveRefreshToken(token: string, user: UserEntity): Promise<void> {
+    user.refreshToken = token;
+    this.save(user);
   }
 }

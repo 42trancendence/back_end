@@ -11,18 +11,17 @@ import { UserEntity } from './entities/user.entity';
 export class UsersService {
   constructor(private userRepository: UserRepository) {}
 
-  async createUser(createUserDto: CreateUserDto) {
-    const { id, email, name, image } = createUserDto;
+  async createUser(id: string, name: string, avatar: string) {
+    // const { id, email, name, image } = createUserDto;
     await this.checkUserExists(id);
 
     const signupVerifyToken = uuid.v1();
 
     return await this.userRepository.saveUser(
       id,
-      email,
       name,
       signupVerifyToken,
-      image,
+      avatar,
     );
     // await this.sendMemberJoinEmail(email, signupVerifyToken);
   }

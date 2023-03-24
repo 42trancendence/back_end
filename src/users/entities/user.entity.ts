@@ -11,8 +11,11 @@ export class UserEntity {
   @Column({ length: 30 })
   name: string;
 
-  @Column({ length: 60 })
+  @Column({ length: 60, nullable: true })
   email: string;
+
+  @Column({ nullable: true })
+  refreshToken: string;
 
   @Column({ length: 60 })
   signupVerifyToken: string;
