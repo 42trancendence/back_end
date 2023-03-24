@@ -16,7 +16,7 @@ import { UserInfo } from './UserInfo';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
-import { getUser } from 'src/auth/get-user.decorator';
+import { getUserId } from 'src/auth/get-user.decorator';
 import { UserEntity } from './entities/user.entity';
 
 @Controller('users')
@@ -24,17 +24,17 @@ import { UserEntity } from './entities/user.entity';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  @Post()
-  @ApiOperation({ summary: '유저 생성 API', description: '유저를 생성한다.' })
-  @Header('Access-Control-Allow-Origin', '*')
-  @ApiBody({
-    type: CreateUserDto,
-  })
-  @UsePipes(ValidationPipe)
-  async createUser(@Body() createUserDto: CreateUserDto): Promise<void> {
-    return this.usersService.createUser(createUserDto);
-  }
-
+  // @Post()
+  // @ApiOperation({ summary: '유저 생성 API', description: '유저를 생성한다.' })
+  // @Header('Access-Control-Allow-Origin', '*')
+  // @ApiBody({
+  //   type: CreateUserDto,
+  // })
+  // @UsePipes(ValidationPipe)
+  // async createUser(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
+  //   return this.usersService.createUser(createUserDto);
+  // }
+  //
   // @Post('/email-verify')
   // @ApiOperation({
   //   summary: '유저 email 인증 API',
@@ -88,7 +88,7 @@ export class UsersController {
   async updateUserInfo(
     @Param('id') userId: string,
     @Body() updateUserDto: UpdateUserDto,
-    @getUser() userInfo: UserEntity,
+    @getUserId() userInfo: UserEntity,
   ): Promise<UserInfo> {
     return this.usersService.updateUserInfo(userId, updateUserDto, userInfo);
   }

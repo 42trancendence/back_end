@@ -1,21 +1,25 @@
 import {
-  Body,
   Controller,
   Get,
   Logger,
-  Post,
+  Res,
   UseGuards,
+  Post,
   UsePipes,
+  Body,
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { UserLoginDto } from 'src/users/dto/user-login.dto';
+import { Response } from 'express';
 import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
-import { AuthUserDto } from './dto/auth-user.dto';
+import { FtUserDto } from './dto/ft-user.dto';
 import { FortyTwoGuard } from './forty-two.guard';
-import { getUser } from './get-user.decorator';
+import { getUserId } from './get-user.decorator';
+import { getFtUser } from './get-ft-user.decorator';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { UserRepository } from 'src/users/user.repository';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -23,9 +27,35 @@ export class AuthController {
   constructor(
     private usersService: UsersService,
     private authService: AuthService,
+    private userRepository: UserRepository,
   ) {}
 
   private readonly authLogger = new Logger(AuthController.name);
+
+  @Post('/signup')
+  @UseGuards(AuthGuard())
+  @ApiOperation({
+    summary: '유저 회원가입 API',
+    description: '유저 회원가입 API',
+  })
+  @UsePipes(ValidationPipe)
+  async signUp(
+    @Body() createUserDto: CreateUserDto,
+    @getUserId() userId: string,
+    @Res() res: Response,
+  ) {
+    this.authLogger.verbose(`[POST] /signup body: ${createUserDto}`);
+    const user = await this.usersService.createUser(
+      userId,
+      createUserDto.name,
+      createUserDto.avatar,
+    );
+    const refreshToken = await this.authService.createRefreshToken(userId);
+    res.cookie('refreshToken', refreshToken);
+    this.userRepository.saveRefreshToken(refreshToken, user);
+    return res.redirect('http://localhost:4000/2fa-auth');
+    // return this.authService.createJwt()
+  }
 
   @Get('/login')
   @ApiOperation({
@@ -42,29 +72,29 @@ export class AuthController {
     description: '42api를 이용하여 로그인성공시 콜백 API.',
   })
   @UseGuards(FortyTwoGuard)
-  async callbackLogin(@getUser() authUser: AuthUserDto): Promise<string> {
+  async callbackLogin(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
-    const user = await this.usersService.getUserByEmail(authUser.email);
-
+    // log for user info by 42 api
+    this.authLogger.debug(ftUser);
+    const user = await this.usersService.getUserById(ftUser.id);
+    const accessToken = await this.authService.createAccessToken(ftUser.id);
+    res.header('Authorization', `Bearer ${accessToken}`);
+    console.log(accessToken);
     if (!user) {
-      const createUser = new CreateUserDto();
-      createUser.email = authUser.email;
-      createUser.name = authUser.name;
-      createUser.password = '';
-      createUser.image = authUser.image;
-      await this.usersService.createUser(createUser);
+      return res.redirect('http://localhost:4000/signup');
     }
-    return this.authService.createJwt({
-      name: authUser.name,
-      email: authUser.email,
-    });
+    // TODO: create refresh token
+    const refreshToken = await this.authService.createRefreshToken(ftUser.id);
+    res.cookie('refreshToken', refreshToken);
+    this.userRepository.saveRefreshToken(refreshToken, user);
+    return res.redirect('http://localhost:4000/lobby');
   }
 
-  @Post('/login')
-  @UsePipes(ValidationPipe)
-  async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
-    this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
-    const { email, password } = userLoginDto;
-    return await this.authService.login(email, password);
-  }
+  // @Post('/login')
+  // @UsePipes(ValidationPipe)
+  // async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
+  //   this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
+  //   const { email, password } = userLoginDto;
+  //   return await this.authService.login(email, password);
+  // }
 }
