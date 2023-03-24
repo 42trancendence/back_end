@@ -14,7 +14,9 @@ import { UserLoginDto } from 'src/users/dto/user-login.dto';
 import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
 import { AuthUserDto } from './dto/auth-user.dto';
+import {FtUserDto} from './dto/ft-user.dto';
 import { FortyTwoGuard } from './forty-two.guard';
+import {getFtUser} from './get-ft-user.decorator';
 import { getUser } from './get-user.decorator';
 
 @ApiTags('Auth API')
@@ -42,21 +44,18 @@ export class AuthController {
     description: '42api를 이용하여 로그인성공시 콜백 API.',
   })
   @UseGuards(FortyTwoGuard)
-  async callbackLogin(@getUser() authUser: AuthUserDto): Promise<string> {
+  async callbackLogin(@getFtUser() ftUser: FtUserDto): Promise<string> {
     this.authLogger.verbose('[GET] /login/callback');
-    const user = await this.usersService.getUserByEmail(authUser.email);
+    // log for user info by 42 api
+    this.authLogger.debug(ftUser);
 
+    const user = await this.usersService.getUserById(ftUser.id);
     if (!user) {
-      const createUser = new CreateUserDto();
-      createUser.email = authUser.email;
-      createUser.name = authUser.name;
-      createUser.password = '';
-      createUser.image = authUser.image;
-      await this.usersService.createUser(createUser);
+      return '';
     }
     return this.authService.createJwt({
-      name: authUser.name,
-      email: authUser.email,
+      name: user.name,
+      email: user.email,
     });
   }
 
