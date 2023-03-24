@@ -44,10 +44,11 @@ export class AuthController {
   @UseGuards(FortyTwoGuard)
   async callbackLogin(@getUser() authUser: AuthUserDto): Promise<string> {
     this.authLogger.verbose('[GET] /login/callback');
-    const user = await this.usersService.getUserByEmail(authUser.email);
+    const user = await this.usersService.getUserById(authUser.id);
 
     if (!user) {
       const createUser = new CreateUserDto();
+      createUser.id = authUser.id;
       createUser.email = authUser.email;
       createUser.name = authUser.name;
       createUser.password = '';
@@ -60,11 +61,11 @@ export class AuthController {
     });
   }
 
-  @Post('/login')
-  @UsePipes(ValidationPipe)
-  async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
-    this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
-    const { email, password } = userLoginDto;
-    return await this.authService.login(email, password);
-  }
+  // @Post('/login')
+  // @UsePipes(ValidationPipe)
+  // async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
+  //   this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
+  //   const { email, password } = userLoginDto;
+  //   return await this.authService.login(email, password);
+  // }
 }

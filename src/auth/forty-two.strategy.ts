@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-oauth2';
@@ -8,6 +8,7 @@ import { AuthUserDto } from './dto/auth-user.dto';
 
 @Injectable()
 export class FortyTwoStrategy extends PassportStrategy(Strategy, 'ft') {
+  private readonly logger = new Logger(FortyTwoStrategy.name);
   constructor(
     @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {
@@ -29,6 +30,8 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy, 'ft') {
     });
     const authUser = new AuthUserDto();
 
+    this.logger.log(`${req.data.id}`);
+    authUser.id = req.data.id;
     authUser.image = req.data.image.link;
     authUser.email = req.data.email;
     authUser.name = req.data.login;

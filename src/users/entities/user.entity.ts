@@ -15,9 +15,6 @@ export class UserEntity {
   email: string;
 
   @Column({ length: 60 })
-  password: string;
-
-  @Column({ length: 60 })
   signupVerifyToken: string;
 
   @Column({ name: 'avatar_image_url' })

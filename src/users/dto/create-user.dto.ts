@@ -9,6 +9,10 @@ import {
 } from 'class-validator';
 
 export class CreateUserDto {
+  @IsString()
+  @ApiProperty({ description: '유저 id' })
+  id: string;
+
   @Transform((params) => params.value.trim())
   @IsString()
   @MinLength(2)
