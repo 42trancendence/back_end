@@ -1,23 +1,12 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Logger,
-  Post,
-  UseGuards,
-  UsePipes,
-  ValidationPipe,
-} from '@nestjs/common';
+import { Controller, Get, Logger, Res, UseGuards, Post, UsePipes, Body, ValidationPipe } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { UserLoginDto } from 'src/users/dto/user-login.dto';
+import { Response } from 'express';
 import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
-import { AuthUserDto } from './dto/auth-user.dto';
-import {FtUserDto} from './dto/ft-user.dto';
+import { FtUserDto } from './dto/ft-user.dto';
 import { FortyTwoGuard } from './forty-two.guard';
-import {getFtUser} from './get-ft-user.decorator';
-import { getUser } from './get-user.decorator';
+import { getFtUser } from './get-ft-user.decorator';
+import { CreateUserDto } from 'src/users/dto/create-user.dto';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -59,19 +48,22 @@ export class AuthController {
     description: '42api를 이용하여 로그인성공시 콜백 API.',
   })
   @UseGuards(FortyTwoGuard)
-  async callbackLogin(@getFtUser() ftUser: FtUserDto): Promise<string> {
+  async callbackLogin(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
     // log for user info by 42 api
     this.authLogger.debug(ftUser);
-    const user = await this.usersService.getUserById(ftUser.id);
+    const user = await this.usersService.getUserById(
+      ftUser.id
+    );
     if (!user) {
-      // for create user in frontend
-      return '';
+      return res.redirect('http://localhost:4000/signup');
     }
-    return this.authService.createJwt({
+    const token = this.authService.createJwt({
       name: user.name,
       id: user.id,
     });
+    res.setHeader('Authorization', `Bearer ` + token);
+    return res.redirect('http://localhost:4000/lobby');
   }
 
   // @Post('/login')
