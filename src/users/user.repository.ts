@@ -1,8 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from './entities/user.entity';
-import * as bcrypt from 'bcryptjs';
-import * as ulid from 'ulid';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -29,21 +27,17 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async saveUser(
+    id: string,
     email: string,
     name: string,
-    password: string,
     signupVerifyToken: string,
     image: string,
   ): Promise<void> {
     const user = new UserEntity();
 
-    const salt = await bcrypt.genSalt(1);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    user.id = ulid.ulid();
+    user.id = id;
     user.name = name;
     user.email = email;
-    user.password = hashedPassword;
     user.avatarImageUrl = image === undefined ? 'default.img' : image;
     user.registrationDate = new Date();
     user.signupVerifyToken = signupVerifyToken;

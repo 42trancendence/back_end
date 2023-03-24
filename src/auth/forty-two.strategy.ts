@@ -7,7 +7,11 @@ import { AuthUserDto } from './dto/auth-user.dto';
 
 @Injectable()
 export class FortyTwoStrategy extends PassportStrategy(Strategy, 'ft') {
+<<<<<<< HEAD
   private readonly ftStrategyLogger = new Logger(FortyTwoStrategy.name);
+=======
+  private readonly logger = new Logger(FortyTwoStrategy.name);
+>>>>>>> d4cd91ad96c4ae2410f87294fc56a289b3c86415
   constructor(
     @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {

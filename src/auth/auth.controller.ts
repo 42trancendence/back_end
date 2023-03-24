@@ -48,7 +48,6 @@ export class AuthController {
     this.authLogger.verbose('[GET] /login/callback');
     // log for user info by 42 api
     this.authLogger.debug(ftUser);
-
     const user = await this.usersService.getUserById(ftUser.id);
     if (!user) {
       return '';
@@ -59,11 +58,11 @@ export class AuthController {
     });
   }
 
-  @Post('/login')
-  @UsePipes(ValidationPipe)
-  async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
-    this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
-    const { email, password } = userLoginDto;
-    return await this.authService.login(email, password);
-  }
+  // @Post('/login')
+  // @UsePipes(ValidationPipe)
+  // async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
+  //   this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
+  //   const { email, password } = userLoginDto;
+  //   return await this.authService.login(email, password);
+  // }
 }
