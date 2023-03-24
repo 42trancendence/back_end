@@ -9,7 +9,7 @@ import { UsersService } from 'src/users/users.service';;
 
 interface User {
   name: string;
-  email: string;
+  id: string;
 }
 
 @Injectable()

@@ -32,7 +32,7 @@ export class UserRepository extends Repository<UserEntity> {
     name: string,
     signupVerifyToken: string,
     image: string,
-  ): Promise<void> {
+  ): Promise<UserEntity> {
     const user = new UserEntity();
 
     user.id = id;
@@ -43,6 +43,6 @@ export class UserRepository extends Repository<UserEntity> {
     user.signupVerifyToken = signupVerifyToken;
     user.isVerified = false;
     await this.save(user);
-    return;
+    return user;
   }
 }

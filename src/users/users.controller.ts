@@ -31,7 +31,7 @@ export class UsersController {
     type: CreateUserDto,
   })
   @UsePipes(ValidationPipe)
-  async createUser(@Body() createUserDto: CreateUserDto): Promise<void> {
+  async createUser(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
     return this.usersService.createUser(createUserDto);
   }
 

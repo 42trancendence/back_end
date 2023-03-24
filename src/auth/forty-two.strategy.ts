@@ -24,8 +24,6 @@ export class FortyTwoStrategy extends PassportStrategy(Strategy, 'ft') {
     refreshToken: string,
     profile: any,
   ): Promise<AuthUserDto> {
-    console.log(accessToken);
-    console.log(refreshToken);
     return profile;
   }
 }

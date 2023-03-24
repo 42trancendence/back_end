@@ -17,7 +17,7 @@ export class UsersService {
 
     const signupVerifyToken = uuid.v1();
 
-    await this.userRepository.saveUser(
+    return await this.userRepository.saveUser(
       id,
       email,
       name,

@@ -29,6 +29,21 @@ export class AuthController {
 
   private readonly authLogger = new Logger(AuthController.name);
 
+  @Post('/signup')
+  @ApiOperation({
+    summary: '유저 회원가입 API',
+    description: '유저 회원가입 API',
+  })
+  @UsePipes(ValidationPipe)
+  async signUp(@Body() createUserDto: CreateUserDto): Promise<string> {
+    this.authLogger.verbose(`[POST] /signup body: ${createUserDto}`);
+    const user = await this.usersService.createUser(createUserDto);
+    return this.authService.createJwt({
+      name: user.name,
+      id: user.id,
+    });
+  }
+
   @Get('/login')
   @ApiOperation({
     summary: '유저 로그인 API',
@@ -50,11 +65,12 @@ export class AuthController {
     this.authLogger.debug(ftUser);
     const user = await this.usersService.getUserById(ftUser.id);
     if (!user) {
+      // for create user in frontend
       return '';
     }
     return this.authService.createJwt({
       name: user.name,
-      email: user.email,
+      id: user.id,
     });
   }
 
