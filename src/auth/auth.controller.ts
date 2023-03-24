@@ -14,11 +14,11 @@ import { Response } from 'express';
 import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
 import { FtUserDto } from './dto/ft-user.dto';
-import { FortyTwoGuard } from './forty-two.guard';
-import { getUserId } from './get-user.decorator';
-import { getFtUser } from './get-ft-user.decorator';
+import { FortyTwoGuard } from './guard/forty-two.guard';
+import { getUserId } from './decorator/get-user-id.decorator';
+import { getFtUser } from './decorator/get-ft-user.decorator';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { UserRepository } from 'src/users/user.repository';
+import { UserRepository } from 'src/users/repository/user.repository';
 import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Auth API')
@@ -89,12 +89,4 @@ export class AuthController {
     this.userRepository.saveRefreshToken(refreshToken, user);
     return res.redirect('http://localhost:4000/lobby');
   }
-
-  // @Post('/login')
-  // @UsePipes(ValidationPipe)
-  // async login(@Body() userLoginDto: UserLoginDto): Promise<string> {
-  //   this.authLogger.verbose(`[POST] /login body: ${userLoginDto}`);
-  //   const { email, password } = userLoginDto;
-  //   return await this.authService.login(email, password);
-  // }
 }

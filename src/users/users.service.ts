@@ -3,8 +3,7 @@ import * as uuid from 'uuid';
 import { UserInfo } from './UserInfo';
 import { NotFoundError } from 'rxjs';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserRepository } from './user.repository';
-import { CreateUserDto } from './dto/create-user.dto';
+import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 
 @Injectable()

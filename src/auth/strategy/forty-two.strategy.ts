@@ -3,7 +3,7 @@ import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy } from 'passport-42';
 import authConfig from 'src/config/authConfig';
-import { AuthUserDto } from './dto/auth-user.dto';
+import { AuthUserDto } from '../dto/auth-user.dto';
 
 @Injectable()
 export class FortyTwoStrategy extends PassportStrategy(Strategy, 'ft') {

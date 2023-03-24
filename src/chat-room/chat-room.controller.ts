@@ -11,7 +11,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { getUserId } from 'src/auth/get-user.decorator';
+import { getUserId } from 'src/auth/decorator/get-user-id.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
