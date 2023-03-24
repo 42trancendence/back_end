@@ -15,7 +15,7 @@ import { UserEntity } from 'src/users/entities/user.entity';
 export const typeORMConfig: TypeOrmModuleOptions = {
   type: 'postgres',
   // ip hardcoding for cluster mac
-  host: '127.0.0.1',
+  host: process.env.DATABASE_HOST,
   port: +process.env.DATABASE_PORT,
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
