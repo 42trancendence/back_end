@@ -52,11 +52,7 @@ export class AuthController {
       createUserDto.name,
       createUserDto.avatar,
     );
-    const refreshToken = await this.authService.createRefreshToken(userId);
-    res.cookie('refreshToken', refreshToken);
-    this.userRepository.saveRefreshToken(refreshToken, user);
-    return res.redirect('http://localhost:4000/2fa-auth');
-    // return this.authService.createJwt()
+    return this.authService.login(user, res);
   }
 
   @Get('/login')
@@ -77,19 +73,14 @@ export class AuthController {
   async callbackLogin(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
     this.authLogger.debug(ftUser);
-    // TODO: The code below needs to be moved to the authService.
+
     const user = await this.usersService.getUserById(ftUser.id);
-    const accessToken = await this.authService.createAccessToken(ftUser.id);
-    res.header('Authorization', `Bearer ${accessToken}`);
+    this.authService.createAccessToken(ftUser.id, res);
     if (!user) {
       this.authLogger.log('유저가 존재하지 않아 회원가입으로 리디렉팅');
       return res.redirect('http://localhost:4000/signup');
     }
-    this.authService.login(user, res);
-    const refreshToken = await this.authService.createRefreshToken(ftUser.id);
-    res.cookie('refreshToken', refreshToken);
-    this.userRepository.saveRefreshToken(refreshToken, user);
-    return res.redirect('http://localhost:4000/lobby');
+    return this.authService.login(user, res);
   }
 
   @Get('/logout')
@@ -106,7 +97,6 @@ export class AuthController {
       this.authLogger.error('유저가 존재하지 않습니다.');
       throw new UnauthorizedException('유저가 존재하지 않습니다.');
     }
-    await this.authService.logout(user, res);
-    return res.redirect('http://localhost:4000/login');
+    return await this.authService.logout(user, res);
   }
 }

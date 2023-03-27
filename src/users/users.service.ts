@@ -11,7 +11,6 @@ export class UsersService {
   constructor(private userRepository: UserRepository) {}
 
   async createUser(id: string, name: string, avatar: string) {
-    // const { id, email, name, image } = createUserDto;
     await this.checkUserExists(id);
 
     const signupVerifyToken = uuid.v1();
@@ -22,69 +21,12 @@ export class UsersService {
       signupVerifyToken,
       avatar,
     );
-    // await this.sendMemberJoinEmail(email, signupVerifyToken);
   }
 
   private async checkUserExists(id: string): Promise<void> {
     const user = await this.userRepository.findUserById(id);
     if (user) throw new Error('이미 동일한 소셜 로그인을 사용중입니다.');
   }
-
-  // private async sendMemberJoinEmail(email: string, signupVerifyToken: string) {
-  //   await this.emailService.sendMemberJoinVerification(
-  //     email,
-  //     signupVerifyToken,
-  //   );
-  // }
-
-  // async verifyEmail(signupVerifyToken: string): Promise<string> {
-  //   const user = await this.userRepository.findUserByToken(signupVerifyToken);
-  //
-  //   if (!user) throw new NotFoundError('유저가 존재하지 않습니다.');
-  //
-  //   user.isVerified = true;
-  //   this.userRepository.save(user);
-  //   return this.authService.login({
-  //     id: user.id,
-  //     name: user.name,
-  //     email: user.email,
-  //   });
-  // }
-  //
-  // async login(email: string, password: string): Promise<string> {
-  //   const user = await this.userRepository.findUserByEmail(email);
-  //
-  //   if (!user) {
-  //     throw new NotFoundException('유저가 존재하지 않습니다.');
-  //   }
-  //
-  //   if (user.isVerified === false) {
-  //     throw new UnauthorizedException('email 인증이 필요합니다.');
-  //   }
-  //
-  //   if (await bcrypt.compare(password, user.password)) {
-  //     return this.authService.login({
-  //       id: user.id,
-  //       name: user.name,
-  //       email: user.email,
-  //     });
-  //   } else {
-  //     throw new UnauthorizedException('비밀번호가 틀렸습니다.');
-  //   }
-  // }
-
-  // async getUserBySocket(socket: Socket): Promise<UserEntity> {
-  //   const payload = this.authService.isVerifiedToken(socket);
-  //   if (!payload) {
-  //     throw new UnauthorizedException('jwt error');
-  //   }
-  //
-  //   const user = this.userRepository.findUserById(payload.id);
-  //   if (!user) {
-  //     throw new NotFoundException('유저를 찾을 수 없습니다.');
-  //   }
-  //   return user;
-  // }
 
   async getUserById(userId: string): Promise<UserEntity> {
     return await this.userRepository.findUserById(userId);

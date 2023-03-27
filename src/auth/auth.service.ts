@@ -14,24 +14,33 @@ export class AuthService {
     private userRepository: UserRepository,
   ) {}
 
-  async createAccessToken(id: string) {
+  async createAccessToken(id: string, res: Response) {
     const payload = { id };
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
 
-    return await this.jwtService.signAsync(payload, { expiresIn: '2h' });
+    res.header('Authorization', `Bearer ${token}`);
   }
-  async createRefreshToken(id: string) {
-    const payload = { id };
-
-    return await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+  async createRefreshToken(user: UserEntity, res: Response) {
+    const payload = { id: user.id };
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+    res.cookie('refreshToken', token);
+    this.userRepository.saveRefreshToken(token, user);
   }
 
   async logout(user: UserEntity, res: Response) {
     res.cookie('refreshToken', '');
     user.refreshToken = '';
-    this.userRepository.save(user);
+    await this.userRepository.save(user);
+    return res.redirect('http://localhost:4000/login');
   }
 
-  async login(user: UserEntity, res: Response) {}
+  async login(user: UserEntity, res: Response) {
+    this.createRefreshToken(user, res);
+    if (user.isVerified) {
+      return res.redirect('http://localhost:4000/lobby');
+    }
+    return res.redirect('http://localhost:4000/2fa_auth');
+  }
 
   isVerifiedToken(socket: Socket) {
     const auth = socket.handshake.headers.authorization;
