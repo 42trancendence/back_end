@@ -11,7 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { getUserId } from 'src/auth/decorator/get-user-id.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
@@ -20,6 +19,7 @@ import { EnterChatRoomDto } from './dto/enter-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { ChatRoomValidationPipe } from './pipes/chat-room-validation.pipe';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
+import { getUser } from 'src/auth/decorator/get-user.decorator';
 
 @Controller('chat-room')
 @UseGuards(AuthGuard())
@@ -29,7 +29,7 @@ export class ChatRoomController {
   @Post()
   async createChatRoom(
     @Body(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
-    @getUserId() user: UserEntity,
+    @getUser() user: UserEntity,
   ): Promise<void> {
     await this.chatRoomService.createChatRoom(createChatRoomDto, user);
   }
@@ -63,7 +63,7 @@ export class ChatRoomController {
   async updateChatRoom(
     @Param('id') roomId: number,
     @Body(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
-    @getUserId() user: UserEntity,
+    @getUser() user: UserEntity,
   ) {
     const chatRoom = await this.chatRoomService.getChatRoomById(roomId);
     if (!chatRoom) {

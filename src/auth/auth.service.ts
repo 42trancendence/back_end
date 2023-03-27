@@ -4,18 +4,17 @@ import { Response } from 'express';
 import { Socket } from 'socket.io';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { UserRepository } from 'src/users/repository/user.repository';
-import { UsersService } from 'src/users/users.service';
+import { FtUserDto } from './dto/ft-user.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
-    private usersService: UsersService,
     private userRepository: UserRepository,
   ) {}
 
-  async createAccessToken(id: string, res: Response) {
-    const payload = { id };
+  async createAccessToken(ftUser: FtUserDto, res: Response) {
+    const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
 
     res.header('Authorization', `Bearer ${token}`);

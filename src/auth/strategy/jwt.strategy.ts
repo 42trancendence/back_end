@@ -1,9 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import authConfig from 'src/config/authConfig';
+import { UserEntity } from 'src/users/entities/user.entity';
 import { UserRepository } from 'src/users/repository/user.repository';
 
 @Injectable()
@@ -21,12 +22,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload) {
     const { id } = payload;
-    return id;
-
-    // const userEntity: UserEntity = await this.userRepository.findUserById(id);
-    // if (!userEntity) {
-    //   throw new UnauthorizedException();
-    // }
-    // return userEntity;
+    const userEntity: UserEntity = await this.userRepository.findUserById(id);
+    if (!userEntity) {
+      throw new NotFoundException('유저가 존재하지 않습니다.');
+    }
+    return userEntity;
   }
 }
