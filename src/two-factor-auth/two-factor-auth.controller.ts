@@ -8,16 +8,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiOperation } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { TwoFactorAuthService } from './two-factor-auth.service';
 import { Response } from 'express';
-import { AuthEmail } from './dto/auth-email.dto';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ApiTags } from '@nestjs/swagger';
 
-
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('2fa'))
 @ApiTags('2fa API')
 @Controller('2fa')
 export class TwoFactorAuthController {
@@ -29,6 +27,10 @@ export class TwoFactorAuthController {
   @ApiOperation({
     summary: '2fa QR코드 생성 API',
     description: '2fa QR코드 생성 API',
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'QR코드 생성 성공',
   })
   async createQRCode(@getUser() user: UserEntity, @Res() res: Response) {
     this.twoFactorLogger.verbose('[POST] /2fa/qrcode');
@@ -43,6 +45,14 @@ export class TwoFactorAuthController {
   @ApiOperation({
     summary: '2fa QR코드 확인 API',
     description: '2fa QR코드 확인 API',
+  })
+  @ApiResponse({
+    status: 401,
+    description: '2fa 인증 실패',
+  })
+  @ApiResponse({
+    status: 201,
+    description: '2fa 인증 성공',
   })
   async turnOn2faQRCode(
     @getUser() user: UserEntity,
@@ -59,20 +69,16 @@ export class TwoFactorAuthController {
   }
 
   @Post('email')
-  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({
     summary: '2fa 이메일 인증 API',
     description: '2fa 이메일 인증 API',
   })
-  async sendEmailAuthCode(
-    @getUser() user: UserEntity,
-  ) {
+  async sendEmailAuthCode(@getUser() user: UserEntity) {
     this.twoFactorLogger.verbose(`[POST] /2fa/email: ${user.email}`);
     return await this.twoFactorAuthService.sendTwoFactorAuthEmail(user);
   }
 
   @Post('email/turn-on')
-  @UseGuards(AuthGuard('jwt'))
   @ApiOperation({
     summary: '2fa 이메일 인증 확인 API',
     description: '2fa 이메일 인증 확인 API',
@@ -84,7 +90,7 @@ export class TwoFactorAuthController {
     this.twoFactorLogger.verbose(`[POST] /2fa/email/turn-on: ${code}`);
     const isCodeValid = await this.twoFactorAuthService.isVerifyEmailCode(
       code,
-      user
+      user,
     );
     if (!isCodeValid) {
       throw new UnauthorizedException('2fa code is not valid');

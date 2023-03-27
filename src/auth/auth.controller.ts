@@ -8,7 +8,7 @@ import {
   Post,
   Body,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { UsersService } from 'src/users/users.service';
 import { AuthService } from './auth.service';
@@ -53,6 +53,14 @@ export class AuthController {
     summary: '유저 로그인 callback API',
     description: '42api를 이용하여 로그인성공시 콜백 API.',
   })
+  @ApiResponse({
+    status: 302,
+    description: '2fa인증을 하지 않았거나 첫 로그인일때 signup으로 리다이렉트',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '로그인 성공시 lobby으로 리다이렉트',
+  })
   @UseGuards(FortyTwoGuard)
   async login(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
@@ -60,6 +68,7 @@ export class AuthController {
 
     const user = await this.usersService.getUserByEmail(ftUser.email);
     await this.authService.createAccessToken(ftUser, res);
+
     if (!user || !user.isVerified) {
       this.authLogger.log('회원가입이 되어있지 않습니다.');
       await this.usersService.createUser(ftUser);

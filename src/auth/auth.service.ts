@@ -36,10 +36,7 @@ export class AuthService {
 
   async login(user: UserEntity, res: Response) {
     await this.createRefreshToken(user, res);
-    if (user.isVerified) {
-      return res.redirect('http://localhost:4000/lobby');
-    }
-    return res.redirect('http://localhost:4000/2fa_auth');
+    return res.redirect(200, 'http://localhost:4000/lobby');
   }
 
   isVerifiedToken(socket: Socket) {
