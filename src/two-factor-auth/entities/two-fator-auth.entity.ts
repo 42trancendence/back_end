@@ -10,4 +10,7 @@ export class TwoFactorEntity {
 
   @Column()
   date: Date;
+
+  @Column()
+  isVerified: boolean;
 }

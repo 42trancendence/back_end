@@ -19,9 +19,7 @@ import { FortyTwoGuard } from './guard/forty-two.guard';
 import { getUserId } from './decorator/get-user-id.decorator';
 import { getFtUser } from './decorator/get-ft-user.decorator';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
-import { UserRepository } from 'src/users/repository/user.repository';
 import { AuthGuard } from '@nestjs/passport';
-import { TwoFactorAuthService } from './2fa.service';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -29,8 +27,6 @@ export class AuthController {
   constructor(
     private usersService: UsersService,
     private authService: AuthService,
-    private userRepository: UserRepository,
-    private twoFactorAuthService: TwoFactorAuthService,
   ) {}
 
   private readonly authLogger = new Logger(AuthController.name);
