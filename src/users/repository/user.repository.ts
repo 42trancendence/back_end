@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import {FtUserDto} from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
 
@@ -20,12 +21,13 @@ export class UserRepository extends Repository<UserEntity> {
     });
   }
 
-  async saveUser(id: string, name: string, image: string): Promise<UserEntity> {
+  async saveUser(ftUser: FtUserDto): Promise<UserEntity> {
     const user = new UserEntity();
 
-    user.id = id;
-    user.name = name;
-    user.avatarImageUrl = image === undefined ? 'default.img' : image;
+    user.id = ftUser.id;
+    user.name = ftUser.name;
+    user.email = ftUser.email;
+    user.avatarImageUrl = ftUser.avatarImageUrl;
     user.registrationDate = new Date();
     user.isVerified = false;
     await this.save(user);
@@ -37,11 +39,8 @@ export class UserRepository extends Repository<UserEntity> {
     this.save(user);
   }
 
-  async saveTwoFactorAuthSecret(
-    user: UserEntity,
-    secret: string,
-  ): Promise<void> {
-    user.twoFactorAuthSecret = secret;
+  async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
+    user.twoFactorAuthCode = secret;
     this.save(user);
   }
 

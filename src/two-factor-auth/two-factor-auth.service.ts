@@ -1,27 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { TwoFactorEntity } from './entities/two-fator-auth.entity';
-import { TwoFactorRepository } from './repository/two-factor-auth.repository';
 import { authenticator } from 'otplib';
 import { toFileStream } from 'qrcode';
 import { Response } from 'express';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class TwoFactorAuthService {
-  constructor(private twoFactorRepository: TwoFactorRepository) {}
-  async getTwoFactorAuthById(twoFactorId: string) {
-    return this.twoFactorRepository.getTwoFactorAuthById(twoFactorId);
-  }
-
-  async generateSecret(twoFactor: TwoFactorEntity) {
+  constructor(private usersService: UsersService) {}
+  async generateQRCodeSecret(user: UserEntity) {
     const secret = authenticator.generateSecret();
 
+    // TODO: change to user's email and second parameter will be changed env variable
     const otpAuthUrl = authenticator.keyuri(
       'tjddnd3116@gmail.com',
       'secret',
       secret,
     );
-
-    await this.twoFactorRepository.setSecret(twoFactor, secret);
+    await this.usersService.setTwoFactorAuthSecret(user, secret);
     return { otpAuthUrl };
   }
 
@@ -29,16 +25,14 @@ export class TwoFactorAuthService {
     return toFileStream(res, otpAuthUrl);
   }
 
-  async isVerifyQRCode(twoFactorAuth: TwoFactorEntity, code: string) {
+  async isVerifyQRCode(user: UserEntity, code: string) {
     return authenticator.verify({
       token: code,
-      secret: twoFactorAuth.code,
+      secret: user.twoFactorAuthCode,
     });
   }
 
-  async turnOnTwoFactorAuth(twoFactorAuth: TwoFactorEntity) {
-    await this.twoFactorRepository.update(twoFactorAuth.id, {
-      isVerified: true,
-    });
+  async turnOnTwoFactorAuth(user: UserEntity) {
+    await this.usersService.turnOnTwoFactorAuth(user);
   }
 }

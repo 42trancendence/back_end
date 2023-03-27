@@ -7,7 +7,6 @@ import { UserRepository } from 'src/users/repository/user.repository';
 import { FortyTwoStrategy } from './strategy/forty-two.strategy';
 import { AuthController } from './auth.controller';
 import { UsersModule } from 'src/users/users.module';
-import { TwoFactorAuthModule } from 'src/two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
@@ -18,10 +17,9 @@ import { TwoFactorAuthModule } from 'src/two-factor-auth/two-factor-auth.module'
       secret: 'secret',
     }),
     UsersModule,
-    TwoFactorAuthModule,
   ],
+  controllers: [AuthController],
   providers: [AuthService, JwtStrategy, UserRepository, FortyTwoStrategy],
   exports: [AuthService, UserRepository, PassportModule, JwtModule],
-  controllers: [AuthController],
 })
 export class AuthModule {}

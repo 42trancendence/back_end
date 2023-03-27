@@ -1,14 +1,15 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { TwoFactorEntity } from './entities/two-fator-auth.entity';
-import { TwoFactorRepository } from './repository/two-factor-auth.repository';
+import { JwtStrategy } from 'src/auth/strategy/jwt.strategy';
+import { UserRepository } from 'src/users/repository/user.repository';
+import { UsersModule } from 'src/users/users.module';
+import { UsersService } from 'src/users/users.service';
 import { TwoFactorAuthController } from './two-factor-auth.controller';
 import { TwoFactorAuthService } from './two-factor-auth.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([TwoFactorEntity])],
+  imports: [UsersModule],
   controllers: [TwoFactorAuthController],
-  providers: [TwoFactorAuthService, TwoFactorRepository],
+  providers: [TwoFactorAuthService, UserRepository, JwtStrategy, UsersService],
   exports: [TwoFactorAuthService],
 })
 export class TwoFactorAuthModule {}
