@@ -9,6 +9,7 @@ import { AuthController } from './auth.controller';
 import { UsersModule } from 'src/users/users.module';
 import { TwoFactorAuthService } from './2fa.service';
 import { TwoFactorAuthController } from './2fa.controller';
+import { TwoFactorAuthModule } from 'src/two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { TwoFactorAuthController } from './2fa.controller';
       secret: 'secret',
     }),
     UsersModule,
+    TwoFactorAuthModule,
   ],
   providers: [
     AuthService,
