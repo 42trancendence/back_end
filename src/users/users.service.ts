@@ -1,5 +1,4 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import * as uuid from 'uuid';
 import { UserInfo } from './UserInfo';
 import { NotFoundError } from 'rxjs';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -10,17 +9,18 @@ import { UserEntity } from './entities/user.entity';
 export class UsersService {
   constructor(private userRepository: UserRepository) {}
 
+  async setTwoFactorAuthSecret(user: UserEntity, secret: string) {
+    this.userRepository.saveTwoFactorAuthSecret(user, secret);
+  }
+
+  async turnOnTwoFactorAuth(user: UserEntity) {
+    this.userRepository.turnOnTwoFactorAuth(user);
+  }
+
   async createUser(id: string, name: string, avatar: string) {
     await this.checkUserExists(id);
 
-    const signupVerifyToken = uuid.v1();
-
-    return await this.userRepository.saveUser(
-      id,
-      name,
-      signupVerifyToken,
-      avatar,
-    );
+    return await this.userRepository.saveUser(id, name, avatar);
   }
 
   private async checkUserExists(id: string): Promise<void> {

@@ -19,12 +19,13 @@ export class AuthService {
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
 
     res.header('Authorization', `Bearer ${token}`);
+    console.log(token);
   }
   async createRefreshToken(user: UserEntity, res: Response) {
     const payload = { id: user.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
     res.cookie('refreshToken', token);
-    this.userRepository.saveRefreshToken(token, user);
+    await this.userRepository.saveRefreshToken(token, user);
   }
 
   async logout(user: UserEntity, res: Response) {
@@ -35,7 +36,7 @@ export class AuthService {
   }
 
   async login(user: UserEntity, res: Response) {
-    this.createRefreshToken(user, res);
+    await this.createRefreshToken(user, res);
     if (user.isVerified) {
       return res.redirect('http://localhost:4000/lobby');
     }

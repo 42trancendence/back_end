@@ -21,6 +21,7 @@ import { getFtUser } from './decorator/get-ft-user.decorator';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UserRepository } from 'src/users/repository/user.repository';
 import { AuthGuard } from '@nestjs/passport';
+import { TwoFactorAuthService } from './2fa.service';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -29,6 +30,7 @@ export class AuthController {
     private usersService: UsersService,
     private authService: AuthService,
     private userRepository: UserRepository,
+    private twoFactorAuthService: TwoFactorAuthService,
   ) {}
 
   private readonly authLogger = new Logger(AuthController.name);
@@ -75,7 +77,7 @@ export class AuthController {
     this.authLogger.debug(ftUser);
 
     const user = await this.usersService.getUserById(ftUser.id);
-    this.authService.createAccessToken(ftUser.id, res);
+    await this.authService.createAccessToken(ftUser.id, res);
     if (!user) {
       this.authLogger.log('유저가 존재하지 않아 회원가입으로 리디렉팅');
       return res.redirect('http://localhost:4000/signup');

@@ -17,8 +17,8 @@ export class UserEntity {
   @Column({ nullable: true })
   refreshToken: string;
 
-  @Column({ length: 60 })
-  signupVerifyToken: string;
+  @Column({ length: 60, nullable: true })
+  twoFactorAuthSecret: string;
 
   @Column({ name: 'avatar_image_url' })
   avatarImageUrl: string;
