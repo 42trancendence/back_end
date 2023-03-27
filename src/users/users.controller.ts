@@ -7,6 +7,7 @@ import {
   ValidationPipe,
   UseGuards,
   Patch,
+	Post,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserInfo } from './UserInfo';
@@ -31,39 +32,16 @@ export class UsersController {
   // async createUser(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
   //   return this.usersService.createUser(createUserDto);
   // }
-  //
-  // @Post('/email-verify')
-  // @ApiOperation({
-  //   summary: '유저 email 인증 API',
-  //   description: '회원가입한 유저의 email 주소로 인증 메일을 발송한다.',
-  // })
-  // @ApiBody({ type: VerifyEmailDto })
-  // async verifyEmail(@Query() dto: VerifyEmailDto): Promise<string> {
-  //   const { signupVerifyToken } = dto;
-  //
-  //   return await this.usersService.verifyEmail(signupVerifyToken);
-  // }
-  //
-  // @Post('/login')
-  // @ApiOperation({
-  //   summary: '유저 로그인 API',
-  //   description: '유저 email, password로 로그인한다.',
-  // })
-  // async login(@Body() dto: UserLoginDto, @Res() res: Response) {
-  //   const { email, password } = dto;
-  //   const token: string = await this.usersService.login(email, password);
-  //   console.log(token);
-  //   res.setHeader('Authorization', token);
-  //   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  //   res.cookie('jwt', token, {
-  //     httpOnly: true,
-  //     maxAge: 24 * 60 * 60 * 1000, // 1 day
-  //   });
-  //   console.log(res);
-  //   return res.send({
-  //     message: 'success',
-  //   });
-  // }
+
+  @UseGuards(AuthGuard('jwt'))
+  @ApiOperation({
+    summary: '유저 회원가입 API',
+    description: '유저 회원가입 API',
+  })
+  @Post()
+  async createUser() {
+    // TODO: 회원가입 API
+  }
 
   @UseGuards(AuthGuard('jwt'))
   @Get(':id')
