@@ -32,11 +32,13 @@ export class UserEntity {
   @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
   wonGames: GameSessionEntity[];
 
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.user)
-  friendships: FriendShipEntity[];
+  @OneToMany(() => FriendShipEntity, (friendship) => friendship.user, {
+    eager: true,
+  })
+  friendships: UserEntity[];
 
   @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
-  friendOf: FriendShipEntity[];
+  friendOf: UserEntity[];
 
   @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
   chatRooms: ChatRoomEntity[];
