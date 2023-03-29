@@ -1,45 +1,42 @@
-import {
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { Response } from 'express';
 import { Socket } from 'socket.io';
-import { UsersService } from 'src/users/users.service';
-import * as bcrypt from 'bcryptjs';
-
-interface User {
-  name: string;
-  email: string;
-}
+import { UserEntity } from 'src/users/entities/user.entity';
+import { UserRepository } from 'src/users/repository/user.repository';
+import { FtUserDto } from './dto/ft-user.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
-    private usersService: UsersService,
+    private userRepository: UserRepository,
   ) {}
 
-  createJwt(user: User) {
-    const payload = { ...user };
+  async createAccessToken(ftUser: FtUserDto, res: Response) {
+    const payload = { id: ftUser.id };
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
 
-    return this.jwtService.sign(payload);
+    res.header('Authorization', `Bearer ${token}`);
+    console.log(token);
+  }
+  async createRefreshToken(user: UserEntity, res: Response) {
+    const payload = { id: user.id };
+    const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+    res.cookie('refreshToken', token);
+    await this.userRepository.saveRefreshToken(token, user);
   }
 
-  async login(email: string, password: string): Promise<string> {
-    const user = await this.usersService.getUserByEmail(email);
-    if (!user) {
-      throw new NotFoundException('유저가 존재하지 않습니다.');
-    }
+  async logout(user: UserEntity, res: Response) {
+    res.cookie('refreshToken', '');
+    user.refreshToken = '';
+    await this.userRepository.save(user);
+    return res.redirect('http://localhost:4000/login');
+  }
 
-    if (await bcrypt.compare(password, user.password)) {
-      return this.createJwt({
-        name: user.name,
-        email: user.email,
-      });
-    } else {
-      throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
-    }
+  async login(user: UserEntity, res: Response) {
+    await this.createRefreshToken(user, res);
+    return res.redirect(200, 'http://localhost:4000/lobby');
   }
 
   isVerifiedToken(socket: Socket) {

@@ -1,11 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, Matches } from 'class-validator';
 
 export class UpdateUserDto {
-  @IsString()
-  @Matches(/^[A-Za-z\d!@#$%^&*()]{8,30}$/)
-  @ApiProperty({ description: '유저 password' })
-  password: string;
-
+  @ApiProperty({ description: '유저 이름' })
+  name: string;
+  @ApiProperty({ description: '유저 프로필 이미지 URL' })
   avatarImageUrl: string;
 }

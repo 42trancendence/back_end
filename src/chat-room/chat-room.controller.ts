@@ -11,7 +11,6 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { getUser } from 'src/auth/get-user.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
@@ -20,6 +19,7 @@ import { EnterChatRoomDto } from './dto/enter-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { ChatRoomValidationPipe } from './pipes/chat-room-validation.pipe';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
+import { getUser } from 'src/auth/decorator/get-user.decorator';
 
 @Controller('chat-room')
 @UseGuards(AuthGuard())

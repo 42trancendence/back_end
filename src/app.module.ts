@@ -9,6 +9,7 @@ import { GameModule } from './game/game.module';
 import { ChatRoomModule } from './chat-room/chat-room.module';
 import authConfig from './config/authConfig';
 import { AuthModule } from './auth/auth.module';
+import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { AuthModule } from './auth/auth.module';
     TypeOrmModule.forRoot(typeORMConfig),
     ChatRoomModule,
     GameModule,
+    TwoFactorAuthModule,
   ],
   controllers: [],
   providers: [],

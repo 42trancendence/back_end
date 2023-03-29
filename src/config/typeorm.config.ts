@@ -1,5 +1,4 @@
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { UserEntity } from 'src/users/entities/user.entity';
 
 // NOTE: TypeORM
 // node.js 에서 실행되고 Typescript로 작성된 객체 관계형 매퍼 라이브러리

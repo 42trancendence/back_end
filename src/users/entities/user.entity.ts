@@ -11,14 +11,14 @@ export class UserEntity {
   @Column({ length: 30 })
   name: string;
 
-  @Column({ length: 60 })
+  @Column({ length: 60, nullable: true })
   email: string;
 
-  @Column({ length: 60 })
-  password: string;
+  @Column({ nullable: true })
+  refreshToken: string;
 
-  @Column({ length: 60 })
-  signupVerifyToken: string;
+  @Column({ length: 60, nullable: true })
+  twoFactorAuthCode: string;
 
   @Column({ name: 'avatar_image_url' })
   avatarImageUrl: string;

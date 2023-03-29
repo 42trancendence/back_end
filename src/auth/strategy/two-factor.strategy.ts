@@ -1,14 +1,19 @@
-import { Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import authConfig from 'src/config/authConfig';
 import { UserEntity } from 'src/users/entities/user.entity';
-import { UserRepository } from 'src/users/user.repository';
+import { UserRepository } from 'src/users/repository/user.repository';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy) {
+export class TwoFactorStrategy extends PassportStrategy(Strategy, '2fa') {
   constructor(
     @InjectRepository(UserRepository) private userRepository: UserRepository,
     @Inject(authConfig.KEY) config: ConfigType<typeof authConfig>,
@@ -22,11 +27,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload) {
     const { id } = payload;
-
-    const userEntity: UserEntity = await this.userRepository.findUserById(id);
-    if (!userEntity) {
-      throw new UnauthorizedException();
+    const user: UserEntity = await this.userRepository.findUserById(id);
+    if (!user) {
+      throw new NotFoundException('유저가 존재하지 않습니다.');
     }
-    return userEntity;
+    if (user.isVerified) {
+      throw new ConflictException('이미 인증된 유저입니다.');
+    }
+    return user;
   }
 }
