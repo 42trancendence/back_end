@@ -7,6 +7,7 @@ import {
   UnauthorizedException,
   Post,
   Body,
+  Req,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -19,6 +20,7 @@ import { AuthGuard } from '@nestjs/passport';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { getUser } from './decorator/get-user.decorator';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
+import { Request } from 'express';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -62,9 +64,15 @@ export class AuthController {
     description: '로그인 성공시 lobby으로 리다이렉트',
   })
   @UseGuards(FortyTwoGuard)
-  async login(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
+  async login(
+    @getFtUser() ftUser: FtUserDto,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
     this.authLogger.verbose('[GET] /login/callback');
     this.authLogger.debug(ftUser);
+
+    console.log(req.session);
 
     const user = await this.usersService.getUserByEmail(ftUser.email);
     await this.authService.createAccessToken(ftUser, res);

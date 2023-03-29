@@ -7,6 +7,7 @@ import {
   ValidationPipe,
   UseGuards,
   Patch,
+  Session,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserInfo } from './UserInfo';
@@ -15,6 +16,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
+import { JwtGuard } from 'src/auth/guard/jwt.grard';
 
 @Controller('users')
 @ApiTags('User API')

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {FtUserDto} from 'src/auth/dto/ft-user.dto';
+import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
 
