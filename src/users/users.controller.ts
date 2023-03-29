@@ -7,6 +7,7 @@ import {
   ValidationPipe,
   UseGuards,
   Patch,
+  Logger,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UserInfo } from './UserInfo';
@@ -19,6 +20,8 @@ import { getUser } from 'src/auth/decorator/get-user.decorator';
 @Controller('users')
 @ApiTags('User API')
 export class UsersController {
+  private readonly userLogger = new Logger(UsersController.name);
+
   constructor(private usersService: UsersService) {}
 
   @UseGuards(AuthGuard('jwt'))
@@ -28,6 +31,8 @@ export class UsersController {
     description: '유저의 정보를 얻는다.',
   })
   async getUserInfo(@Param('id') userId: string): Promise<UserInfo> {
+    this.userLogger.log(`유저 정보 조회: ${userId}`);
+
     return this.usersService.getUserInfo(userId);
   }
 
@@ -42,6 +47,8 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
   ): Promise<UserInfo> {
+    this.userLogger.log(`유저 정보 업데이트: ${user.id}`);
+
     return this.usersService.updateUserInfo(updateUserDto, user);
   }
 }
