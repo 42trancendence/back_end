@@ -94,10 +94,17 @@ export class AuthController {
   async logout(@getUser() user: UserEntity, @Res() res: Response) {
     this.authLogger.verbose('[GET] /logout');
 
-    if (!user) {
-      this.authLogger.error('유저가 존재하지 않습니다.');
-      throw new UnauthorizedException('유저가 존재하지 않습니다.');
-    }
     return await this.authService.logout(user, res);
+  }
+
+  @Get('/refresh')
+  @ApiOperation({
+    summary: '유저 리프레시 토큰 API',
+    description: '리프레시 토큰을 이용하여 새로운 액세스 토큰을 발급받는 API.',
+  })
+  async refreshToken(@getUser() user: UserEntity, @Res() res: Response) {
+    this.authLogger.verbose('[GET] /refresh');
+
+    // return await this.authService.refreshToken(user, res);
   }
 }

@@ -22,8 +22,8 @@ export class TwoFactorAuthService {
 
   constructor(
     private usersService: UsersService,
-    @Inject(emailConfig.KEY) config: ConfigType<typeof emailConfig>
-    ) {
+    @Inject(emailConfig.KEY) config: ConfigType<typeof emailConfig>,
+  ) {
     this.transporter = nodemailer.createTransport({
       service: config.service,
       auth: {
@@ -31,7 +31,7 @@ export class TwoFactorAuthService {
         pass: config.auth.pass,
       },
     });
-    }
+  }
 
   async generateQRCodeSecret(user: UserEntity) {
     const secret = authenticator.generateSecret();
@@ -61,10 +61,10 @@ export class TwoFactorAuthService {
     await this.usersService.turnOnTwoFactorAuth(user);
   }
 
-  async sendTwoFactorAuthEmail(
-    user: UserEntity,
-  ) {
-    const code = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+  async sendTwoFactorAuthEmail(user: UserEntity) {
+    const code = Math.floor(Math.random() * 1000000)
+      .toString()
+      .padStart(6, '0');
 
     const mailOptions: EmailOptions = {
       to: user.email,
@@ -79,10 +79,11 @@ export class TwoFactorAuthService {
 
     await this.usersService.setTwoFactorAuthSecret(user, code);
 
-    return await this.transporter.sendMail(mailOptions);
+    await this.transporter.sendMail(mailOptions);
   }
 
-  async isVerifyEmailCode(code: string, user: UserEntity) : Promise<boolean> {
+  async isVerifyEmailCode(code: string, user: UserEntity): Promise<boolean> {
     return code === user.twoFactorAuthCode;
   }
 }
+

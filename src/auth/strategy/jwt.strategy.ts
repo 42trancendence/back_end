@@ -8,7 +8,7 @@ import { UserEntity } from 'src/users/entities/user.entity';
 import { UserRepository } from 'src/users/repository/user.repository';
 
 @Injectable()
-export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(
     @InjectRepository(UserRepository) private userRepository: UserRepository,
     @Inject(authConfig.KEY) config: ConfigType<typeof authConfig>,
@@ -24,7 +24,6 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     const { id } = payload;
     const user: UserEntity = await this.userRepository.findUserById(id);
     if (!user) {
-      console.log('유저가 존재하지 않습니다.');
       throw new NotFoundException('유저가 존재하지 않습니다.');
     }
     return user;
