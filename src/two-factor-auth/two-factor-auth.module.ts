@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AccessTokenStrategy } from 'src/auth/strategy/jwt.strategy';
+import { AccessTokenStrategy } from 'src/auth/strategy/access-token.strategy';
 import { TwoFactorStrategy } from 'src/auth/strategy/two-factor.strategy';
 import { UserRepository } from 'src/users/repository/user.repository';
 import { UsersModule } from 'src/users/users.module';

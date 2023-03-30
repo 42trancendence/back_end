@@ -8,7 +8,10 @@ import { UserEntity } from 'src/users/entities/user.entity';
 import { UserRepository } from 'src/users/repository/user.repository';
 
 @Injectable()
-export class AccessTokenStrategy extends PassportStrategy(Strategy, 'jwt') {
+export class AccessTokenStrategy extends PassportStrategy(
+  Strategy,
+  'access-jwt',
+) {
   constructor(
     @InjectRepository(UserRepository) private userRepository: UserRepository,
     @Inject(authConfig.KEY) config: ConfigType<typeof authConfig>,

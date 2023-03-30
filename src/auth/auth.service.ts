@@ -23,7 +23,11 @@ export class AuthService {
   async createRefreshToken(user: UserEntity, res: Response) {
     const payload = { id: user.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
-    res.cookie('refreshToken', token);
+    res.cookie('refreshToken', token, {
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+    });
     await this.userRepository.saveRefreshToken(token, user);
   }
 
