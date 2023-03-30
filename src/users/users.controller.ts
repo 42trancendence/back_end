@@ -36,6 +36,20 @@ export class UsersController {
     return { id: user.id, name: user.name, email: user.email };
   }
 
+  @Get('name')
+  @ApiOperation({
+    summary: '이름 중복 확인 API',
+    description: '이름 중복 확인을 한다.',
+  })
+  async checkName(@Query('userName') name: string) {
+    const IsExist = await this.usersService.checkName(name);
+
+    if (IsExist) {
+      throw new NotFoundException('이미 존재하는 이름입니다.');
+    }
+    return { message: '사용 가능한 이름입니다.' };
+  }
+
   @Get('friends')
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({
@@ -92,8 +106,8 @@ export class UsersController {
   @Get('reject/:id')
   @UseGuards(AuthGuard('jwt'))
   @ApiOperation({
-    summary: '친구 요청 수락API',
-    description: '친구요청을 수락한다.',
+    summary: '친구 요청 거절API',
+    description: '친구요청을 거절한다.',
   })
   async rejectFriend(
     @getUser() user: UserEntity,
@@ -149,8 +163,8 @@ export class UsersController {
     await this.usersService.unblockFriend(user, friendId);
   }
 
-  @Post('friend')
   @UseGuards(AuthGuard('jwt'))
+  @Post('friend')
   @ApiOperation({
     summary: '친구 요청 API',
     description: '친구요청을 보낸다.',
@@ -159,8 +173,8 @@ export class UsersController {
     await this.usersService.addFriend(user, friendId);
   }
 
-  @Put('me')
   @UseGuards(AuthGuard('jwt'))
+  @Put('me')
   @UsePipes(ValidationPipe)
   @ApiOperation({
     summary: '유저 정보 업데이트 API',

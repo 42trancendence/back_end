@@ -21,6 +21,12 @@ export class UserRepository extends Repository<UserEntity> {
     });
   }
 
+  async findUserByName(name: string): Promise<UserEntity> {
+    return await this.findOne({
+      where: { name: name },
+    });
+  }
+
   async saveUser(ftUser: FtUserDto): Promise<UserEntity> {
     const user = new UserEntity();
 

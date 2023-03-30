@@ -2,9 +2,9 @@ import {
   Body,
   Controller,
   Logger,
+  NotFoundException,
   Post,
   Res,
-  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -63,7 +63,7 @@ export class TwoFactorAuthController {
       code,
     );
     if (!isCodeValid) {
-      throw new UnauthorizedException('2fa code is not valid');
+      throw new NotFoundException('2fa code is not valid');
     }
     await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
@@ -93,7 +93,7 @@ export class TwoFactorAuthController {
       user,
     );
     if (!isCodeValid) {
-      throw new UnauthorizedException('2fa code is not valid');
+      throw new NotFoundException('2fa code is not valid');
     }
     await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }

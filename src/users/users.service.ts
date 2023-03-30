@@ -18,6 +18,11 @@ export class UsersService {
     this.userRepository.saveTwoFactorAuthCode(user, secret);
   }
 
+  async checkName(name: string): Promise<boolean> {
+    const user = await this.userRepository.findUserByName(name);
+    return user ? true : false;
+  }
+
   async turnOnTwoFactorAuth(user: UserEntity) {
     await this.userRepository.turnOnTwoFactorAuth(user);
   }
