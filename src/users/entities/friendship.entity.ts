@@ -11,6 +11,7 @@ import { UserEntity } from './user.entity';
 export class FriendShipEntity {
   @PrimaryGeneratedColumn()
   id: number;
+
   @ManyToOne(() => UserEntity, (user) => user.friendships, {
     onDelete: 'CASCADE',
   })
@@ -25,4 +26,6 @@ export class FriendShipEntity {
 
   @Column()
   status: string; // or enum: ['pending', 'accepted', 'rejected']
+  @Column({ name: 'isBlock' })
+  isBlock: boolean;
 }

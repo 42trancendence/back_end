@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {FtUserDto} from 'src/auth/dto/ft-user.dto';
+import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
 
@@ -18,6 +18,12 @@ export class UserRepository extends Repository<UserEntity> {
   async findUserById(userId: string): Promise<UserEntity> {
     return await this.findOne({
       where: { id: userId },
+    });
+  }
+
+  async findUserByName(name: string): Promise<UserEntity> {
+    return await this.findOne({
+      where: { name: name },
     });
   }
 
