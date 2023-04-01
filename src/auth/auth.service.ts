@@ -19,11 +19,16 @@ export class AuthService {
 
     res.header('Authorization', `Bearer ${token}`);
     console.log(token);
+    return token;
   }
   async createRefreshToken(user: UserEntity, res: Response) {
     const payload = { id: user.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
-    res.cookie('refreshToken', token);
+    res.cookie('refreshToken', token, {
+      domain: 'localhost',
+      path: '/',
+      httpOnly: true,
+    });
     await this.userRepository.saveRefreshToken(token, user);
   }
 
@@ -34,9 +39,10 @@ export class AuthService {
     return res.redirect('http://localhost:4000/login');
   }
 
-  async login(user: UserEntity, res: Response) {
+  async login(user: UserEntity, res: Response, token: string) {
     await this.createRefreshToken(user, res);
-    return res.redirect(301, 'http://localhost:4000/lobby/overview');
+    const url = 'http://localhost:4000/auth/callback';
+    return res.redirect(301, url + '?token=' + token);
   }
 
   isVerifiedToken(socket: Socket) {
