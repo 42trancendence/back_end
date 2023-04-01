@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Logger,
   NotFoundException,
   Post,
@@ -22,6 +23,15 @@ export class TwoFactorAuthController {
   constructor(private readonly twoFactorAuthService: TwoFactorAuthService) {}
 
   private readonly twoFactorLogger = new Logger(TwoFactorAuthController.name);
+
+  @Get()
+  @ApiOperation({
+    summary: '2fa 인증확인 API',
+    description: '2fa 인증확인 API',
+  })
+  async checkIs2faEnabled() {
+    return true;
+  }
 
   @Post('qrcode')
   @ApiOperation({
