@@ -32,7 +32,6 @@ export class UsersController {
     description: '내 정보를 얻는다.',
   })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserInfoDto> {
-    console.log(user);
     return { id: user.id, name: user.name, email: user.email };
   }
 

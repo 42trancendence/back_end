@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import { Socket } from 'socket.io';
@@ -48,7 +48,15 @@ export class AuthService {
   isVerifiedToken(socket: Socket) {
     const auth = socket.handshake.headers.authorization;
     const token = auth.split(' ')[1];
-    const payload = this.jwtService.verify(token);
-    return payload;
+    return this.jwtService.verify(token);
+  }
+
+  async getUserBySocket(socket: Socket) {
+    const payload = this.isVerifiedToken(socket);
+
+    if (!payload) {
+      throw new UnauthorizedException('Unauthorized jwt');
+    }
+    return await this.userRepository.findUserById(payload.id);
   }
 }
