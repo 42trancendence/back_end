@@ -65,6 +65,11 @@ export class ChatRoomService {
     message.chatRoom = chatRoom;
 
     await this.messageRepository.saveMessage(message);
+    return message;
+  }
+
+  async deleteChatRoom(chatRoom: ChatRoomEntity) {
+    await this.chatRoomRepository.deleteChatRoom(chatRoom);
   }
 
   async updateChatRoom(

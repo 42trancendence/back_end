@@ -36,4 +36,8 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   async getChatRoomByName(chatRoomName: string): Promise<ChatRoomEntity> {
     return await this.findOne({ where: { name: chatRoomName } });
   }
+
+  async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
+    await this.delete(chatRoom);
+  }
 }

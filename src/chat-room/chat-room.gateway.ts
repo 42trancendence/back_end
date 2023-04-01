@@ -14,13 +14,14 @@ import { AuthService } from 'src/auth/auth.service';
 import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
+import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 
 @WebSocketGateway({ namespace: 'chat-room' })
 export class ChatRoomGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server;
-  private readonly WsLogger = new Logger('WsLogger');
+  private readonly ChatRoomLogger = new Logger('ChatRoomLogger');
 
   constructor(
     private chatRoomService: ChatRoomService,
@@ -31,14 +32,33 @@ export class ChatRoomGateway
   async handleMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: string,
-  ): Promise<string> {
-    await this.chatRoomService.saveMessage(
+  ) {
+    if (!client.data.chatRoom || client.data.chatRoom.name === 'lobby') {
+      return;
+    }
+    const message = await this.chatRoomService.saveMessage(
       client.data.user,
       client.data.chatRoom,
       payload,
     );
-    client.to(client.data.chatRoom.name).emit('getMessage', payload);
-    return payload;
+    client.to(client.data.chatRoom.name).emit('getMessage', message);
+  }
+
+  @SubscribeMessage('updateChatRoom')
+  async updateChatRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() updateChatRoomDto: UpdateChatRoomDto,
+  ) {
+    const chatRoom = await this.chatRoomService.getChatRoomByName(
+      updateChatRoomDto.name,
+    );
+    if (chatRoom.owner.id !== client.data.user.id) {
+      throw new WsException('You are not owner of this chat room');
+    }
+    await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
+    client
+      .to('lobby')
+      .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
 
   @SubscribeMessage('deleteChatRoom')
@@ -46,8 +66,12 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('roomName') roomName: string,
   ) {
-    // TODO: check if user is owner of the chat room
-    // await this.chatRoomService.deleteChatRoom(roomName);
+    const chatRoom = await this.chatRoomService.getChatRoomByName(roomName);
+
+    if (chatRoom.owner.id !== client.data.user.id) {
+      throw new WsException('You are not owner of this chat room');
+    }
+    await this.chatRoomService.deleteChatRoom(chatRoom);
     client
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
@@ -58,13 +82,19 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() createChatRoomDto: CreateChatRoomDto,
   ) {
-    this.WsLogger.debug(createChatRoomDto);
-    // TODO : check duplicated chat room name
+    this.ChatRoomLogger.debug(createChatRoomDto);
+
+    const isDuplicated = await this.chatRoomService.getChatRoomByName(
+      createChatRoomDto.name,
+    );
+    if (isDuplicated) {
+      throw new WsException('Chat room name is duplicated');
+    }
     const chatRoom = await this.chatRoomService.createChatRoom(
       createChatRoomDto,
       client.data.user,
     );
-    this.WsLogger.debug(`User ${client.data.user.id} created chat room`);
+    this.ChatRoomLogger.debug(`User ${client.data.user.id} created chat room`);
     client
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
@@ -77,17 +107,18 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('roomName') roomName: string,
   ) {
+    // 이미 접속해 있는 방에 접속하려고 할 때 예외처리
+    if (client.rooms.has(roomName)) {
+      return;
+    }
     const chatRoom = await this.chatRoomService.getChatRoomByName(roomName);
-
     client.data.chatRoom = chatRoom;
     client.join(roomName);
     client
-      .to(roomName)
+      .to(client.data.chatRoom.name)
       .emit('getMessage', 'User ' + client.data.user.id + ' joined to room');
-
-    // TODO: get messages from database
-    const messages = chatRoom.messages;
-    console.log('messages', messages);
+    console.log(chatRoom.messages);
+    return { event: 'showChatRoomMessages', data: chatRoom.messages };
   }
 
   @SubscribeMessage('leaveChatRoom')
@@ -95,6 +126,7 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('roomName') roomName: string,
   ) {
+    this.ChatRoomLogger.log('getChatRoom');
     client
       .to(roomName)
       .emit('getMessage', 'User ' + client.data.user.id + ' left the room');
@@ -103,17 +135,18 @@ export class ChatRoomGateway
 
   @SubscribeMessage('getChatRoom')
   async getChatRoom() {
-    this.WsLogger.log('getChatRoom');
+    this.ChatRoomLogger.log('getChatRoom');
 
-    const event = 'showChatRoomList';
-    const data = await this.chatRoomService.getAllChatRooms();
-    return { event, data };
+    return {
+      event: 'showChatRoomList',
+      data: await this.chatRoomService.getAllChatRooms(),
+    };
   }
 
   async handleConnection(client: Socket) {
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
-      throw new WsException('User not found');
+      client.disconnect();
     }
     const chatRoom = new ChatRoomInfo();
     chatRoom.name = 'lobby';
@@ -121,11 +154,11 @@ export class ChatRoomGateway
     client.leave(client.id);
     client.data.chatRoom = chatRoom;
     client.join(client.data.chatRoom.name);
-    this.WsLogger.log(`User ${user.id} connected, and joined to lobby`);
+    this.ChatRoomLogger.log(`User ${user.id} connected, and joined to lobby`);
   }
 
   async handleDisconnect(client: Socket) {
-    this.WsLogger.log(`User ${client.data.user.id} disconnected`);
+    this.ChatRoomLogger.log(`User ${client.data.user.id} disconnected`);
     // console.log(client);
   }
 }
