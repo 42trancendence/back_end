@@ -26,13 +26,12 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get('me')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '내 정보 API',
     description: '내 정보를 얻는다.',
   })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserInfoDto> {
-    console.log(user);
     return { id: user.id, name: user.name, email: user.email };
   }
 
@@ -51,7 +50,7 @@ export class UsersController {
   }
 
   @Get('friends')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '나의 모든 친구 정보 API',
     description: '나의 모든 친구 정보를 얻는다.',
@@ -71,7 +70,7 @@ export class UsersController {
   }
 
   @Get('friends/:id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '나의 친구 정보 API',
     description: '나의 친구 정보를 얻는다.',
@@ -90,7 +89,7 @@ export class UsersController {
   }
 
   @Get('accept/:id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '친구 요청 수락API',
     description: '친구요청을 수락한다.',
@@ -104,7 +103,7 @@ export class UsersController {
   }
 
   @Get('reject/:id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '친구 요청 거절API',
     description: '친구요청을 거절한다.',
@@ -118,7 +117,7 @@ export class UsersController {
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '유저 정보 API',
     description: '유저의 정보를 얻는다.',
@@ -127,8 +126,8 @@ export class UsersController {
     return this.usersService.getUserInfo(userId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Delete('blocks')
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '유저 차단 API',
     description: '유저를 차단한다.',
@@ -137,8 +136,8 @@ export class UsersController {
     await this.usersService.blockFriend(user, friendId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '친구 삭제 API',
     description: '친구를 삭제한다.',
@@ -149,9 +148,8 @@ export class UsersController {
   ) {
     await this.usersService.deleteFriend(user, friendId);
   }
-
-  @UseGuards(AuthGuard('jwt'))
   @Post('blocks/:id')
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '유저 차단 해제API',
     description: '유저를 차단 해제한다.',
@@ -163,8 +161,8 @@ export class UsersController {
     await this.usersService.unblockFriend(user, friendId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Post('friend')
+  @UseGuards(AuthGuard('access-jwt'))
   @ApiOperation({
     summary: '친구 요청 API',
     description: '친구요청을 보낸다.',
@@ -173,8 +171,8 @@ export class UsersController {
     await this.usersService.addFriend(user, friendId);
   }
 
-  @UseGuards(AuthGuard('jwt'))
   @Put('me')
+  @UseGuards(AuthGuard('access-jwt'))
   @UsePipes(ValidationPipe)
   @ApiOperation({
     summary: '유저 정보 업데이트 API',

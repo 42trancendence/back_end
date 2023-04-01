@@ -21,6 +21,8 @@ import { UserEntity } from 'src/users/entities/user.entity';
 import { getUser } from './decorator/get-user.decorator';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { Request } from 'express';
+import { AccessGuard } from './guard/access-token.guard';
+import { RefreshGuard } from './guard/refresh-token.guard';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -33,7 +35,7 @@ export class AuthController {
   private readonly authLogger = new Logger(AuthController.name);
 
   @Post('signup')
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AccessGuard)
   @ApiOperation({
     summary: '유저 회원가입 API',
     description: '유저 회원가입 API',
@@ -41,14 +43,14 @@ export class AuthController {
   async createUser(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
-    @Res() res: Response,
+    // @Res() res: Response,
   ) {
     this.authLogger.verbose('[POST] /signup');
     if (!user.isVerified) {
       throw new UnauthorizedException('2차 인증이 되지 않았습니다.');
     }
     await this.usersService.updateUserInfo(updateUserDto, user);
-    return this.authService.login(user, res);
+    // return this.authService.login(user, res);
   }
 
   @Get('/login/callback')
@@ -65,33 +67,27 @@ export class AuthController {
     description: '로그인 성공시 lobby으로 리다이렉트',
   })
   @UseGuards(FortyTwoGuard)
-  async login(
-    @getFtUser() ftUser: FtUserDto,
-    @Res() res: Response,
-    @Req() req: Request,
-  ) {
+  async login(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
     this.authLogger.debug(ftUser);
 
-    console.log(req.session);
-
     const user = await this.usersService.getUserByEmail(ftUser.email);
-    await this.authService.createAccessToken(ftUser, res);
+    const token = await this.authService.createAccessToken(ftUser, res);
 
     if (!user || !user.isVerified) {
       this.authLogger.log('회원가입이 되어있지 않습니다.');
       await this.usersService.createUser(ftUser);
-      return res.redirect('http://localhost:4000/signup');
+      // return res.redirect('http://localhost:4000/auth/callback');
     }
-    return this.authService.login(user, res);
+    return this.authService.login(user, res, token);
   }
 
   @Get('/logout')
+  @UseGuards(AccessGuard)
   @ApiOperation({
     summary: '유저 로그아웃 API',
     description: '쿠키와 db의 refresh token 파기 API.',
   })
-  @UseGuards(AuthGuard('jwt'))
   async logout(@getUser() user: UserEntity, @Res() res: Response) {
     this.authLogger.verbose('[GET] /logout');
 
@@ -99,6 +95,7 @@ export class AuthController {
   }
 
   @Get('/refresh')
+  @UseGuards(RefreshGuard)
   @ApiOperation({
     summary: '유저 리프레시 토큰 API',
     description: '리프레시 토큰을 이용하여 새로운 액세스 토큰을 발급받는 API.',
@@ -106,6 +103,8 @@ export class AuthController {
   async refreshToken(@getUser() user: UserEntity, @Res() res: Response) {
     this.authLogger.verbose('[GET] /refresh');
 
-    // return await this.authService.refreshToken(user, res);
+    await this.authService.createAccessToken(user, res);
+    await this.authService.createRefreshToken(user, res);
+    return res.status(200).json({ message: 'success' });
   }
 }
