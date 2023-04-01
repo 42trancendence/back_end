@@ -1,5 +1,5 @@
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-import { GameSessionEntity } from 'src/game/entities/game-session.entity';
+// import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { FriendShipEntity } from './friendship.entity';
 
@@ -29,8 +29,8 @@ export class UserEntity {
   @Column()
   isVerified: boolean;
 
-  @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
-  wonGames: GameSessionEntity[];
+  // @OneToMany(() => GameStatsEntity, (gameSession) => gameSession.id)
+  
 
   @OneToMany(() => FriendShipEntity, (friendship) => friendship.user, {
     eager: true,

@@ -10,6 +10,7 @@ import authConfig from './config/authConfig';
 import { AuthModule } from './auth/auth.module';
 import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 import { GameModule } from './game/game.module';
+import { GameGateway } from './game/game.gateway';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { GameModule } from './game/game.module';
     ChatRoomModule,
     TwoFactorAuthModule,
     GameModule,
+    GameGateway
   ],
   controllers: [],
   providers: [],
