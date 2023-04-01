@@ -18,8 +18,17 @@ export class ChatRoomService {
   async createChatRoom(
     createChatRoomDto: CreateChatRoomDto,
     user: UserEntity,
-  ): Promise<void> {
-    await this.chatRoomRepository.createNewChatRoom(createChatRoomDto, user);
+  ): Promise<ChatRoomInfo> {
+    const chatRoom = await this.chatRoomRepository.createNewChatRoom(
+      createChatRoomDto,
+      user,
+    );
+    const chatRoomInfo = new ChatRoomInfo();
+
+    chatRoomInfo.name = chatRoom.name;
+    chatRoomInfo.owner = chatRoom.owner.name;
+    chatRoomInfo.isPrivate = chatRoom.isPrivate;
+    return chatRoomInfo;
   }
 
   async getAllChatRooms(): Promise<ChatRoomInfo[]> {
@@ -56,6 +65,11 @@ export class ChatRoomService {
     message.chatRoom = chatRoom;
 
     await this.messageRepository.saveMessage(message);
+    return message;
+  }
+
+  async deleteChatRoom(chatRoom: ChatRoomEntity) {
+    await this.chatRoomRepository.deleteChatRoom(chatRoom);
   }
 
   async updateChatRoom(
