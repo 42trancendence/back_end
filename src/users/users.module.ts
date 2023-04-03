@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -8,9 +8,13 @@ import { UserRepository } from './repository/user.repository';
 import { FriendShipRepository } from './repository/friendship.repository';
 import { FriendShipEntity } from './entities/friendship.entity';
 import { UsersGateway } from './gateway/users.gateway';
+import { CacheModule } from '@nestjs/common';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, FriendShipEntity])],
+  imports: [
+    TypeOrmModule.forFeature([UserEntity, FriendShipEntity]),
+    CacheModule.register(),
+  ],
   controllers: [UsersController],
   providers: [
     UsersService,

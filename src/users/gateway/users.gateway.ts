@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { CACHE_MANAGER, forwardRef, Inject, Logger } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -18,6 +18,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly usersLogger = new Logger('UsersGateway');
   constructor(
     private authService: AuthService,
+    @Inject(CACHE_MANAGER)
     private cache: Cache,
     private usersService: UsersService,
   ) {}
@@ -42,30 +43,32 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async getFriends(userId: string) {
     const user = await this.usersService.getUserById(userId);
+    console.log(user);
     return user.friendships;
   }
 
   private async emitStatusToFriends(activeUser: ActiveUser) {
-    const friends = await this.getFriends(activeUser.id);
-    for (const f of friends) {
-      const user = await this.cache.get(f.id);
-
-      if (!user) {
-        continue;
-      }
-      const friend = user as ActiveUser;
-      this.server.to(friend.socketId).emit('friendActive', {
-        id: activeUser.id,
-        status: activeUser.status,
-      });
-
-      if (activeUser.status) {
-        this.server.to(activeUser.socketId).emit('friendActive', {
-          id: friend.id,
-          status: friend.status,
-        });
-      }
-    }
+	const friends = await this.getFriends(activeUser.id);
+    //
+    // for (const f of friends) {
+    //   const user = await this.cache.get(f.id);
+    //
+    //   if (!user) {
+    //     continue;
+    //   }
+    //   const friend = user as ActiveUser;
+    //   this.server.to(friend.socketId).emit('friendActive', {
+    //     id: activeUser.id,
+    //     status: activeUser.status,
+    //   });
+    //
+    //   if (activeUser.status) {
+    //     this.server.to(activeUser.socketId).emit('friendActive', {
+    //       id: friend.id,
+    //       status: friend.status,
+    //     });
+    //   }
+    // }
   }
 
   private async setActiveStatus(client: Socket, status: boolean) {

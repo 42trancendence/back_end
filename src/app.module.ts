@@ -13,8 +13,6 @@ import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 
 @Module({
   imports: [
-    AuthModule,
-    UsersModule,
     ConfigModule.forRoot({
       envFilePath: [`${__dirname}/config/env/.${process.env.NODE_ENV}.env`],
       load: [emailConfig, authConfig],
@@ -22,6 +20,8 @@ import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
       validationSchema,
     }),
     TypeOrmModule.forRoot(typeORMConfig),
+    UsersModule,
+    AuthModule,
     ChatRoomModule,
     GameModule,
     TwoFactorAuthModule,
