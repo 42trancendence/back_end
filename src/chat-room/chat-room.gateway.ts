@@ -111,6 +111,10 @@ export class ChatRoomGateway
     if (client.rooms.has(roomName)) {
       return;
     }
+    // 동시에 여러 방에 접속하려고 할 때 예외처리
+    if (client.rooms.size > 1) {
+      client.leave(client.data.chatRoom.name);
+    }
     const chatRoom = await this.chatRoomService.getChatRoomByName(roomName);
     client.data.chatRoom = chatRoom;
     client.join(roomName);
@@ -159,6 +163,5 @@ export class ChatRoomGateway
 
   async handleDisconnect(client: Socket) {
     this.ChatRoomLogger.log(`User ${client.data.user.id} disconnected`);
-    // console.log(client);
   }
 }

@@ -42,4 +42,5 @@ export class UserEntity {
 
   @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
   chatRooms: ChatRoomEntity[];
+  username: any;
 }
