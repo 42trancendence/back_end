@@ -33,15 +33,15 @@ export class UsersService {
 
   async getFriendList(user: UserEntity) {
     const friendList = await this.friendShipRepository.findWithRelations({
-      where: [{ user: user }],
+      where: [{ user: user }, { friend: user }],
       relations: ['user', 'friend'],
     });
     const friends = friendList.map((friend) => {
-      console.log(friend);
       const isUser = friend.user.id === user.id;
       const friendDetail = isUser ? friend.friend : friend.user;
-      const { name, email } = friendDetail;
+      const { id, name, email } = friendDetail;
       return {
+        id,
         name,
         email,
       };

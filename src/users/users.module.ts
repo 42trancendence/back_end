@@ -13,7 +13,9 @@ import { CacheModule } from '@nestjs/common';
 @Module({
   imports: [
     TypeOrmModule.forFeature([UserEntity, FriendShipEntity]),
-    CacheModule.register(),
+    CacheModule.register({
+      ttl: 60,
+    }),
   ],
   controllers: [UsersController],
   providers: [

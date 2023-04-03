@@ -37,7 +37,9 @@ export class UserEntity {
   })
   friendships: FriendShipEntity[];
 
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
+  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend, {
+    eager: true,
+  })
   friendOf: FriendShipEntity[];
 
   @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
