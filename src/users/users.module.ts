@@ -7,11 +7,18 @@ import { JwtModule } from '@nestjs/jwt';
 import { UserRepository } from './repository/user.repository';
 import { FriendShipRepository } from './repository/friendship.repository';
 import { FriendShipEntity } from './entities/friendship.entity';
+import { UsersGateway } from './gateway/users.gateway';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, FriendShipEntity])],
   controllers: [UsersController],
-  providers: [UsersService, JwtModule, UserRepository, FriendShipRepository],
+  providers: [
+    UsersService,
+    JwtModule,
+    UserRepository,
+    FriendShipRepository,
+    UsersGateway,
+  ],
   exports: [UsersService, UserRepository, FriendShipRepository],
 })
 export class UsersModule {}
