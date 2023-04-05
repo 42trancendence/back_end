@@ -1,13 +1,8 @@
 import {
   Column,
   Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { UserEntity } from 'src/users/entities/user.entity';
-import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
 
 @Entity({ name: 'gameStats' })
 export class GameStatEntity {
@@ -15,17 +10,35 @@ export class GameStatEntity {
     id: number;
 
     @Column()
-    user_id: string;
+    plyerId_1: string;
 
     @Column()
-    total_game: number;
+    plyerImage_1: string
 
     @Column()
-    total_win: number;
+    plyerName_1: string;
 
     @Column()
-    total_lose: number;
+    plyer_1_score: number;
 
     @Column()
-    win_rate: number;
+    plyer_2_id: string;
+
+    @Column()
+    plyerImage_2: string
+
+    @Column()
+    plyerName_2: string;
+
+    @Column()
+    plyer_2_score: number;
+
+    @Column()
+    winnerName: string;
+
+    @Column()
+    loserName: string;
+    
+    @Column({ type: 'timestamp', default: () => 'CURRNET_TIMESTAMP' })
+    date: Date;
 }
