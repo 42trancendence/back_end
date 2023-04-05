@@ -16,6 +16,7 @@ import { GameService } from './game.service';
 import { Game } from './classes/game.class';
 import { WaitQueue } from './classes/waitList.class';
 import { Players } from './classes/players.class';
+import { User } from './classes/user.class'
 
 @WebSocketGateway({ namespace: 'game' })
 export class GameGateway
@@ -31,7 +32,7 @@ export class GameGateway
 
   private game: Game[] = [];
   private waitQueue: WaitQueue;
-  private players: Players;
+  private players: Players = new Players();
 
   async handleConnection(client: Socket) {
     const user = await this.authService.getUserBySocket(client);
@@ -67,15 +68,24 @@ export class GameGateway
       client.disconnect();
       throw new WsException('Unauthorized');
     }
-    const gameUser = {
-      id: user.id,
-      name: user.name,
-      avatarImageUrl: user.avatarImageUrl,
-      status: 'lobby',
-      roomId: '',
+    const gameUser = new User(
+      user.id,
+      user.name,
+      user.email,
+      user.avatarImageUrl,
+      'lobby',
+      '',
+    );
+    // 유저가 이미 로비에 있는지 확인
+    if (this.players.isUserInPlayers(gameUser) == true) {
+      return ;
     }
-    this.players.addUser(user);
-
+    this.players.addUser(gameUser);
+    // TODO: 로비에 있는 유저들에게 자신을 제외하고 입장했다고 알린다.
+    this.server.emit('userConnect', JSON.stringify(gameUser));
+    // server 와 client 에 업데이트 해야 하는가?
+    client.leave('lobby');
+    client.join('lobby');
     
 
     this.WsLogger.log(`User ${user.id} connected, and joined to gameLobby`);

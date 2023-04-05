@@ -1,6 +1,5 @@
 import { User } from "./user.class"
 
-
 export class Players
 {
     private players: Array<User> = new Array();
@@ -23,8 +22,8 @@ export class Players
         return this.players.length;
     }
 
-    public isPlayerinPlayers(player: User): boolean {
-        return this.players.includes(player);
+    public isUserInPlayers(user: User): boolean {
+        return this.players.includes(user);
     }
 
     public isPlayersFull(): boolean {
