@@ -42,6 +42,7 @@ export class UsersController {
   })
   async checkName(@Query('userName') name: string) {
     const IsExist = await this.usersService.checkName(name);
+    console.log(IsExist);
 
     if (IsExist) {
       throw new NotFoundException('이미 존재하는 이름입니다.');
@@ -55,18 +56,8 @@ export class UsersController {
     summary: '나의 모든 친구 정보 API',
     description: '나의 모든 친구 정보를 얻는다.',
   })
-  async getMyFriends(@getUser() user: UserEntity): Promise<UserInfoDto[]> {
-    const friends = user.friendships;
-    const friendList = [];
-
-    for (const friend of friends) {
-      friendList.push({
-        id: friend.id,
-        name: friend.name,
-        email: friend.email,
-      });
-    }
-    return friendList;
+  async getMyFriends(@getUser() user: UserEntity) {
+    return await this.usersService.getFriendList(user);
   }
 
   @Get('friends/:id')
@@ -78,14 +69,8 @@ export class UsersController {
   async getMyFriend(
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
-  ): Promise<UserInfoDto> {
-    const friends = user.friendships;
-
-    for (const friend of friends) {
-      if (friend.id === friendId)
-        return { id: friend.id, name: friend.name, email: friend.email };
-    }
-    throw new NotFoundException('친구가 존재하지 않습니다.');
+  ) {
+    return await this.usersService.getFriends(user, friendId);
   }
 
   @Get('accept/:id')
@@ -98,8 +83,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 수락 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'accept');
   }
 
   @Get('reject/:id')
@@ -112,8 +96,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 거절 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'reject');
   }
 
   @Get(':id')
@@ -124,16 +107,6 @@ export class UsersController {
   })
   async getUserInfo(@Param('id') userId: string): Promise<UserInfoDto> {
     return this.usersService.getUserInfo(userId);
-  }
-
-  @Delete('blocks')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '유저 차단 API',
-    description: '유저를 차단한다.',
-  })
-  async blockUser(@getUser() user: UserEntity, @Body('id') friendId: string) {
-    await this.usersService.blockFriend(user, friendId);
   }
 
   @Delete(':id')
@@ -147,18 +120,6 @@ export class UsersController {
     @Param('id') friendId: string,
   ) {
     await this.usersService.deleteFriend(user, friendId);
-  }
-  @Post('blocks/:id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '유저 차단 해제API',
-    description: '유저를 차단 해제한다.',
-  })
-  async unblockUser(
-    @getUser() user: UserEntity,
-    @Param('id') friendId: string,
-  ) {
-    await this.usersService.unblockFriend(user, friendId);
   }
 
   @Post('friend')
@@ -181,7 +142,7 @@ export class UsersController {
   async updateUserInfo(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UserInfoDto> {
-    return this.usersService.updateUserInfo(updateUserDto, user);
+  ) {
+    await this.usersService.updateUserInfo(updateUserDto, user);
   }
 }

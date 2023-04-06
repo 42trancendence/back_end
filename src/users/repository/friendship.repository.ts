@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, FindManyOptions, Repository } from 'typeorm';
 import { FriendShipEntity } from '../entities/friendship.entity';
 import { UserEntity } from '../entities/user.entity';
 
@@ -30,13 +30,13 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     this.delete(friendShip);
   }
 
-  async blockFriendShip(friendShip: FriendShipEntity) {
-    friendShip.isBlock = true;
-    this.save(friendShip);
+  async findWithRelations(relations: FindManyOptions) {
+    return await this.find(relations);
   }
 
-  async unblockFriendShip(friendShip: FriendShipEntity) {
-    friendShip.isBlock = false;
-    this.save(friendShip);
+  async getFriendList(user: UserEntity) {
+    return await this.find({
+      where: { user },
+    });
   }
 }

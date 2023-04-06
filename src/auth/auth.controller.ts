@@ -43,13 +43,11 @@ export class AuthController {
   async createUser(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
-    // @Res() res: Response,
   ) {
     if (!user.isVerified) {
       throw new UnauthorizedException('2차 인증이 되지 않았습니다.');
     }
     await this.usersService.updateUserInfo(updateUserDto, user);
-    // return this.authService.login(user, res);
   }
 
   @Get('/login/callback')
@@ -76,7 +74,8 @@ export class AuthController {
     if (!user || !user.isVerified) {
       this.authLogger.log('회원가입이 되어있지 않습니다.');
       await this.usersService.createUser(ftUser);
-      // return res.redirect('http://localhost:4000/auth/callback');
+      const url = 'http://localhost:4000/auth/callback';
+      return res.redirect(301, url + '?token=' + token);
     }
     return this.authService.login(user, res, token);
   }

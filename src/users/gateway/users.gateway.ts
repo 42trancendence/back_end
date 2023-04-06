@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { CACHE_MANAGER, forwardRef, Inject, Logger } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -18,6 +18,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly usersLogger = new Logger('UsersGateway');
   constructor(
     private authService: AuthService,
+    @Inject(CACHE_MANAGER)
     private cache: Cache,
     private usersService: UsersService,
   ) {}
@@ -27,11 +28,13 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(client: any) {
+    console.log('disconnect');
     await this.setActiveStatus(client, false);
   }
 
   async handleConnection(client: any) {
     const user = await this.authService.getUserBySocket(client);
+    console.log(user);
     if (!user) {
       this.handleDisconnect(client);
       return;
@@ -42,14 +45,16 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   private async getFriends(userId: string) {
     const user = await this.usersService.getUserById(userId);
-    return user.friendships;
+    return await this.usersService.getFriendList(user);
   }
 
   private async emitStatusToFriends(activeUser: ActiveUser) {
     const friends = await this.getFriends(activeUser.id);
-    for (const f of friends) {
-      const user = await this.cache.get(f.id);
 
+    for (const f of friends) {
+      console.log(f.id);
+      const user = await this.cache.get(f.id);
+      console.log(user);
       if (!user) {
         continue;
       }
@@ -79,7 +84,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       socketId: client.id,
       status,
     };
-    await this.cache.set(user.id, activeUser);
+    await this.cache.set(user.id, activeUser, 60 * 60 * 24);
     await this.emitStatusToFriends(activeUser);
   }
 

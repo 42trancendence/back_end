@@ -31,7 +31,35 @@ export class UsersService {
     return await this.userRepository.saveUser(ftUser);
   }
 
+  async getFriendList(user: UserEntity) {
+    const friendList = await this.friendShipRepository.findWithRelations({
+      where: [{ user: user }, { friend: user }],
+      relations: ['user', 'friend'],
+    });
+    const friends = friendList.map((friend) => {
+      const isUser = friend.user.id === user.id;
+      const friendDetail = isUser ? friend.friend : friend.user;
+      const { id, name, email } = friendDetail;
+      return {
+        id,
+        name,
+        email,
+      };
+    });
+    return friends;
+  }
+
+  async getFriends(user: UserEntity, friendId: string) {
+    return await this.friendShipRepository.findWithRelations({
+      where: [{ user: user }, { friend: friendId }],
+      relations: ['user', 'friend'],
+    });
+  }
+
   async addFriend(user: UserEntity, friendId: string) {
+    if (friendId === user.id) {
+      throw new NotFoundError('자기 자신을 친구로 추가할 수 없습니다.');
+    }
     const friend = await this.getUserById(friendId);
 
     if (!friend) {
@@ -67,18 +95,6 @@ export class UsersService {
     await this.friendShipRepository.deleteFriendShip(friendShip);
   }
 
-  async blockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.blockFriendShip(friendShip);
-  }
-
-  async unblockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.unblockFriendShip(friendShip);
-  }
-
   private async checkUserExists(id: string): Promise<void> {
     const user = await this.userRepository.findUserById(id);
     if (user) throw new Error('이미 동일한 소셜 로그인을 사용중입니다.');
@@ -105,15 +121,18 @@ export class UsersService {
     };
   }
 
-  async updateUserInfo(
-    updateUserDto: UpdateUserDto,
-    user: UserEntity,
-  ): Promise<UserInfo> {
+  async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
     const { name, avatarImageUrl } = updateUserDto;
     user.name = name;
     user.avatarImageUrl = avatarImageUrl;
     await this.userRepository.save(user);
+  }
 
-    return await this.getUserInfo(user.id);
+  async setFriendShipStatus(
+    user: UserEntity,
+    friendId: string,
+    status: string,
+  ) {
+    // await this.userRepository.setFriendShipStatus(user, friendId, status);
   }
 }
