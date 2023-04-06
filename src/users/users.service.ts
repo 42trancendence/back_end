@@ -133,6 +133,11 @@ export class UsersService {
     friendId: string,
     status: string,
   ) {
-    // await this.userRepository.setFriendShipStatus(user, friendId, status);
+    const friend = await this.getUserById(friendId);
+
+    if (!friend) {
+      throw new NotFoundError('친구가 존재하지 않습니다.');
+    }
+    await this.friendShipRepository.setFriendShipStatus(user, friend, status);
   }
 }
