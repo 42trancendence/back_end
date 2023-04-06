@@ -14,9 +14,6 @@ export class UserEntity {
   @Column({ length: 60, nullable: true })
   email: string;
 
-  @Column({ nullable: true })
-  refreshToken: string;
-
   @Column({ length: 60, nullable: true })
   twoFactorAuthCode: string;
 
