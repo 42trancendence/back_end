@@ -10,7 +10,6 @@ import {
   WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-// import { GameService } from './game.service';
 import { AuthService } from 'src/auth/auth.service';
 import { GameService } from './game.service';
 import { Game } from './classes/game.class';
@@ -78,22 +77,32 @@ export class GameGateway
     );
     // 유저가 이미 로비에 있는지 확인
     if (this.players.isUserInPlayers(gameUser) == true) {
-      return ;
+      return;
     }
     this.players.addUser(gameUser);
     // TODO: 로비에 있는 유저들에게 자신을 제외하고 입장했다고 알린다.
-    this.server.emit('userConnect', JSON.stringify(gameUser));
-    // server 와 client 에 업데이트 해야 하는가?
     client.leave('lobby');
     client.join('lobby');
-    
+    // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
+    this.server.to('lobby').emit('userConnect', JSON.stringify(gameUser));
 
     this.WsLogger.log(`User ${user.id} connected, and joined to gameLobby`);
   }
 
   @SubscribeMessage('matching')
-  async joinRoom(@ConnectedSocket() client: Socket) {
+  async matching(@ConnectedSocket() client: Socket) {
+    // client 에 데이터 저장 or User class 에 데이터 저장
+    const user = await this.authService.getUserBySocket(client);
+    if (!user) {
+      client.disconnect();
+      throw new WsException('Unauthorized');
+    }
+    if (this.players.isUserInPlayersById(user.id) == false) {
+      return;
+    }
+    const gameUser = this.players.getUserInPlayersById(user.id);
     // TODO: 큐에 넣어 대기 상태를 만든다.
+    this.waitQueue.addPlayer(gameUser);
   }
 
 }

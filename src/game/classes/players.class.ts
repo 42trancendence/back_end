@@ -22,8 +22,16 @@ export class Players
         return this.players.length;
     }
 
+    public isUserInPlayersById(userId: string): boolean {
+        return this.players.some((p) => p.id === userId);
+    }
+
+    public getUserInPlayersById(userId: string): User {
+        return this.players.find((p) => p.id === userId);
+    }
+
     public isUserInPlayers(user: User): boolean {
-        return this.players.includes(user);
+        return this.players.some((p) => p.id === user.id);
     }
 
     public isPlayersFull(): boolean {

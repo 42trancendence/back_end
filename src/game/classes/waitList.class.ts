@@ -1,20 +1,21 @@
-import { Player } from './player.class';
+import { User } from './user.class';
+import { GameVariable } from './gameVariable.class';
 
 export class WaitQueue {
-//   private queue: Array<Player> = new Array();
-    private queue: Array<Player>;
+    // new Array<User>(); 해야하는가?
+    private queue: Array<User>;
 
     constructor() {}
 
-    public addPlyer(player: Player): void {
-        this.queue.push(player);
+    public addPlayer(user: User): void {
+        this.queue.push(user);
     }
 
-    public removePlyer(player: Player): void {
-        this.queue = this.queue.filter((p) => p !== player);
+    public removePlyer(user: User): void {
+        this.queue = this.queue.filter((p) => p !== user);
     }
 
-    public getQueue(): Array<Player> {
+    public getQueue(): Array<User> {
         return this.queue;
     }
 
@@ -22,16 +23,16 @@ export class WaitQueue {
         return this.queue.length;
     }
 
-    public isPlayerinQueue(player: Player): boolean {
-        return this.queue.includes(player);
+    public isPlayerinQueue(user: User): boolean {
+        return this.queue.includes(user);
     }
 
     public isQueueFull(): boolean {
-        return this.queue.length >= 10;
+        return this.queue.length >= GameVariable.maxQueue;
     }
 
-    public matchPlayers(): Array<Player> {
-        if (this.queue.length < 2) {
+    public matchPlayers(): Array<User> {
+        if (this.queue.length < GameVariable.matchPlyers) {
             return null;
         }
 

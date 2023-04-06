@@ -20,32 +20,4 @@ export class GameController {
 
     private readonly gameLogger = new Logger(GameController.name);
 
-    // @Post('/')
-    // @UseGuards(AuthGuard('jwt'))
-    // @ApiOperation({
-    //     summary: '게임방 생성 API',
-    //     description: '게임방을 생성한다.',
-    // })
-    // async createGameRoom(
-    //     @Body('title') title: string,
-    //     @Body('maxPlayer') maxPlayer: number,
-    //     @getUser() owner: UserEntity,
-    // ) {
-    //     this.gameLogger.verbose('[POST] /game');
-    //     return await this.gameService.createGameRoom(title, maxPlayer, owner);
-    // }
-
-    @Post('/match')
-    @UseGuards(AuthGuard('jwt'))
-    @ApiOperation({
-        summary: '게임매치 참여 API',
-        description: '게임매치를 신청한다.',
-    })
-    async matchGameRoom(
-        @getUser() player: UserEntity,
-    ) {
-        this.gameLogger.verbose('[POST] /game/match');
-        return await this.gameService.matchGameRoom(player);
-    }
-
 }
