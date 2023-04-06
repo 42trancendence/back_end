@@ -89,7 +89,7 @@ export class AuthController {
   async logout(@getUser() user: UserEntity, @Res() res: Response) {
     this.authLogger.verbose('[GET] /logout');
 
-    return await this.authService.logout(user, res);
+    return await this.authService.logout(res);
   }
 
   @Get('/refresh')

@@ -40,11 +40,6 @@ export class UserRepository extends Repository<UserEntity> {
     return user;
   }
 
-  async saveRefreshToken(token: string, user: UserEntity): Promise<void> {
-    user.refreshToken = token;
-    this.save(user);
-  }
-
   async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
     user.twoFactorAuthCode = secret;
     this.save(user);
