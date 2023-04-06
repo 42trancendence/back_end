@@ -30,16 +30,6 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     this.delete(friendShip);
   }
 
-  async blockFriendShip(friendShip: FriendShipEntity) {
-    friendShip.isBlock = true;
-    this.save(friendShip);
-  }
-
-  async unblockFriendShip(friendShip: FriendShipEntity) {
-    friendShip.isBlock = false;
-    this.save(friendShip);
-  }
-
   async findWithRelations(relations: FindManyOptions) {
     return await this.find(relations);
   }

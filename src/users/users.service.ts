@@ -95,18 +95,6 @@ export class UsersService {
     await this.friendShipRepository.deleteFriendShip(friendShip);
   }
 
-  async blockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.blockFriendShip(friendShip);
-  }
-
-  async unblockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.unblockFriendShip(friendShip);
-  }
-
   private async checkUserExists(id: string): Promise<void> {
     const user = await this.userRepository.findUserById(id);
     if (user) throw new Error('이미 동일한 소셜 로그인을 사용중입니다.');
@@ -138,5 +126,13 @@ export class UsersService {
     user.name = name;
     user.avatarImageUrl = avatarImageUrl;
     await this.userRepository.save(user);
+  }
+
+  async setFriendShipStatus(
+    user: UserEntity,
+    friendId: string,
+    status: string,
+  ) {
+    // await this.userRepository.setFriendShipStatus(user, friendId, status);
   }
 }

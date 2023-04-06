@@ -58,18 +58,6 @@ export class UsersController {
   })
   async getMyFriends(@getUser() user: UserEntity) {
     return await this.usersService.getFriendList(user);
-    // return user.friendships;
-    // const friends = user.friendships;
-    // const friendList = [];
-    //
-    // for (const friend of friends) {
-    //   friendList.push({
-    //     id: friend.id,
-    //     // name: friend.name,
-    //     // email: friend.email,
-    //   });
-    // }
-    // return friendList;
   }
 
   @Get('friends/:id')
@@ -95,8 +83,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 수락 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'accept');
   }
 
   @Get('reject/:id')
@@ -109,8 +96,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 거절 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'reject');
   }
 
   @Get(':id')

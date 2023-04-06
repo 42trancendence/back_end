@@ -9,6 +9,7 @@ import { UsersService } from 'src/users/users.service';
 import { Inject } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import emailConfig from 'src/config/emailConfig';
+import * as bcrypt from 'bcrypt';
 
 export interface EmailOptions {
   to: string;
@@ -36,10 +37,9 @@ export class TwoFactorAuthService {
   async generateQRCodeSecret(user: UserEntity) {
     const secret = authenticator.generateSecret();
 
-    // TODO: change to user's email and second parameter will be changed env variable
     const otpAuthUrl = authenticator.keyuri(
-      'tjddnd3116@gmail.com',
-      'secret',
+      user.email,
+      'ft_transcendence',
       secret,
     );
     await this.usersService.setTwoFactorAuthSecret(user, secret);
@@ -75,15 +75,13 @@ export class TwoFactorAuthService {
       `,
     };
 
-    console.log('email: ', user.email);
-
-    await this.usersService.setTwoFactorAuthSecret(user, code);
+    const token = await bcrypt.hash(code, 10);
+    await this.usersService.setTwoFactorAuthSecret(user, token);
 
     await this.transporter.sendMail(mailOptions);
   }
 
   async isVerifyEmailCode(code: string, user: UserEntity): Promise<boolean> {
-    return code === user.twoFactorAuthCode;
+    return await bcrypt.compare(code, user.twoFactorAuthCode);
   }
 }
-
