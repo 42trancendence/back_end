@@ -1,4 +1,4 @@
-export enum gameSate {
+export enum gameState {
     WAIT,
     PLAY,
     OVER,

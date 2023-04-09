@@ -2,7 +2,7 @@ import { User } from "./user.class"
 
 export class Players
 {
-    private players: Array<User> = new Array();
+    private players: Array<User> = [];
 
     constructor() {}
 
@@ -18,23 +18,23 @@ export class Players
         return this.players;
     }
 
-    public getPlayersLength(): number {
+    public getSize(): number {
         return this.players.length;
     }
 
-    public isUserInPlayersById(userId: string): boolean {
-        return this.players.some((p) => p.id === userId);
+    public isUserById(userId: string): boolean {
+        return this.players.some((p) => p.getId() === userId);
     }
 
-    public getUserInPlayersById(userId: string): User {
-        return this.players.find((p) => p.id === userId);
+    public getUserBySocketId(userId: string): User {
+        return this.players.find((p) => p.getSocketId() === userId);
     }
 
-    public isUserInPlayers(user: User): boolean {
-        return this.players.some((p) => p.id === user.id);
+    public getUserById(userId: string): User {
+        return this.players.find((p) => p.getId() === userId);
     }
 
-    public isPlayersFull(): boolean {
+    public isFull(): boolean {
         return this.players.length >= 10;
     }
 

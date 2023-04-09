@@ -1,21 +1,33 @@
 import { Injectable } from '@nestjs/common';
 import { GameRepository } from './repository/game.repository';
 import { Server, Socket } from 'socket.io';
+import { AuthService } from 'src/auth/auth.service';
+import { User } from './classes/user.class';
+import { Game } from './classes/game.class';
+import { GameManager } from './classes/gameManager.class';
+import { Logger } from '@nestjs/common';
+import { Players } from './classes/players.class';
 
 @Injectable()
 export class GameService {
-    constructor(
-        private gameRepository: GameRepository
-    ) {}
+  constructor(
+      private gameRepository: GameRepository,
+      private authService: AuthService,
+  ) {}
+  private readonly WsLogger = new Logger('GameWsLogger');
 
-    getRoomList(client: Socket, server: Server) {
-        const rooms = [];
-        for (const [room, sockets] of server.adapter['rooms']) {
-          // TODO: 로비는 제외해야 한다.
-            const players = Array.from(sockets);
-            // console.log('room', server.)
-            rooms.push({ room: room, players: players });
-        }
-        client.emit('getRoomList', JSON.stringify(rooms));
-    }
+  createGame(server: Server, matchingPlayers: Array<User>, gameManager: GameManager, players: Players) {
+    const roomId = matchingPlayers[0].getName() + matchingPlayers[1].getName();
+    const newGame = new Game(
+      roomId,
+    );
+    // 각자 게임방에 입장 알림
+    server
+      .to(matchingPlayers[0].getId())
+      .to(matchingPlayers[1].getId())
+      .emit('matching', roomId);
+    gameManager.addGame(newGame);
+    // 각 유저의 방 정보 업데이트
+    server.to('lobby').emit('getRoomList', gameManager.getGameList());
+  }
 }

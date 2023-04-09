@@ -1,32 +1,48 @@
-import { ExecFileSyncOptionsWithBufferEncoding } from "child_process";
+import { Socket } from 'socket.io';
 
 export class User {
-    id: string;
-    name: string;
-    email: string;
-    avatarImageUrl: string;
-    roomId: string;
+    id_: string;
+    socketId_: string;
+    name_: string;
+    email_: string;
+    avatarImageUrl_: string;
+    roomId_: string;
 
     constructor(
         id: string,
+        socketId: string,
+        roomId: string,
         name: string,
         email: string,
         avatarImageUrl: string,
-        status: string,
-        roomId: string
     ) {
-        this.id = id;
-        this.name = name;
-        this.email = email;
-        this.avatarImageUrl = avatarImageUrl;
-        this.roomId = roomId;
+        this.id_ = id;
+        this.socketId_ = socketId;
+        this.roomId_ = roomId;
+        this.name_ = name;
+        this.email_ = email;
+        this.avatarImageUrl_ = avatarImageUrl;
     }
 
     public setRoomId(roomId: string): void {
-        this.roomId = roomId;
+        this.roomId_ = roomId;
     }
 
     public getRoomId(): string {
-        return this.roomId
+        return this.roomId_;
     }
+
+    public getName(): string {
+        return this.name_;
+    }
+
+    public getSocketId(): string {
+        return this.socketId_;
+    }
+    
+
+    public getId(): string {
+        return this.id_;
+    }
+
 }

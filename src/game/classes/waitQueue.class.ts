@@ -3,15 +3,15 @@ import { GameVariable } from './gameVariable.class';
 
 export class WaitQueue {
     // new Array<User>(); 해야하는가?
-    private queue: Array<User>;
+    private queue: Array<User> = [];
 
     constructor() {}
 
-    public addPlayer(user: User): void {
+    public addUser(user: User): void {
         this.queue.push(user);
     }
 
-    public removePlyer(user: User): void {
+    public removeUser(user: User): void {
         this.queue = this.queue.filter((p) => p !== user);
     }
 
@@ -27,11 +27,15 @@ export class WaitQueue {
         return this.queue.includes(user);
     }
 
+    public isUserInQueueById(userId: string): boolean {
+        return this.queue.some((p) => p.getId() === userId);
+    }
+
     public isQueueFull(): boolean {
         return this.queue.length >= GameVariable.maxQueue;
     }
 
-    public matchPlayers(): Array<User> {
+    public getMatchPlayers(): Array<User> {
         if (this.queue.length < GameVariable.matchPlyers) {
             return null;
         }
