@@ -1,21 +1,21 @@
-import { User } from './user.class';
-import { GameVariable } from './gameVariable.class';
+import { Player } from './player.class';
+import { GameVariable } from '../constants/gameVariable';
 
 export class WaitQueue {
-    // new Array<User>(); 해야하는가?
-    private queue: Array<User> = [];
+    // new Array<Player>(); 해야하는가?
+    private queue: Array<Player> = [];
 
     constructor() {}
 
-    public addUser(user: User): void {
+    public addUser(user: Player): void {
         this.queue.push(user);
     }
 
-    public removeUser(user: User): void {
+    public removeUser(user: Player): void {
         this.queue = this.queue.filter((p) => p !== user);
     }
 
-    public getQueue(): Array<User> {
+    public getQueue(): Array<Player> {
         return this.queue;
     }
 
@@ -23,7 +23,7 @@ export class WaitQueue {
         return this.queue.length;
     }
 
-    public isPlayerinQueue(user: User): boolean {
+    public isPlayerinQueue(user: Player): boolean {
         return this.queue.includes(user);
     }
 
@@ -35,7 +35,7 @@ export class WaitQueue {
         return this.queue.length >= GameVariable.maxQueue;
     }
 
-    public getMatchPlayers(): Array<User> {
+    public getMatchPlayers(): Array<Player> {
         if (this.queue.length < GameVariable.matchPlyers) {
             return null;
         }

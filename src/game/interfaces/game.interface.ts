@@ -1,8 +1,8 @@
 
-export enum gameSate {
-    WAIT,
-    PLAY,
-    OVER,
+export class gameStatus {
+    wait = 'WAIT';
+    play = 'PLAY';
+    end = 'END';
 }
 
 export class GameVariable {

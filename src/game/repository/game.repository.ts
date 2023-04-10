@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { DataSource, Repository } from "typeorm";
 import { GameStatEntity } from "../entities/gameStat.entity";
-import { GameStatDto } from "../dto/gameRoom.dto";
+import { Game } from "../classes/game.class";
 
 @Injectable()
 export class GameRepository extends Repository<GameStatEntity> {
@@ -9,8 +9,8 @@ export class GameRepository extends Repository<GameStatEntity> {
         super(GameStatEntity, datasource.createEntityManager());
     }
 
-    async updateGameStat(gameStat: GameStatDto) {
-        this.save(gameStat);
-        return gameStat;
+    async saveGameState(gameState: Game) {
+        // this.save(gameState);
+        // return gameState;
     }
 }

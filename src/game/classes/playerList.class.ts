@@ -1,20 +1,20 @@
-import { User } from "./user.class"
+import { Player } from "./player.class"
 
-export class Players
+export class PlayerList
 {
-    private players: Array<User> = [];
+    private players: Array<Player> = [];
 
     constructor() {}
 
-    public addUser(user: User): void {
+    public addUser(user: Player): void {
         this.players.push(user);
     }
 
-    public remove(user: User): void {
+    public remove(user: Player): void {
         this.players = this.players.filter((p) => p !== user);
     }
 
-    public getPlayers(): Array<User> {
+    public getPlayers(): Array<Player> {
         return this.players;
     }
 
@@ -22,15 +22,11 @@ export class Players
         return this.players.length;
     }
 
-    public isUserById(userId: string): boolean {
+    public isPlayerByUserId(userId: string): boolean {
         return this.players.some((p) => p.getId() === userId);
     }
 
-    public getUserBySocketId(userId: string): User {
-        return this.players.find((p) => p.getSocketId() === userId);
-    }
-
-    public getUserById(userId: string): User {
+    public getPlayerByUserId(userId: string): Player {
         return this.players.find((p) => p.getId() === userId);
     }
 
@@ -38,7 +34,7 @@ export class Players
         return this.players.length >= 10;
     }
 
-    public matchPlayers(): Array<User> {
+    public matchPlayers(): Array<Player> {
         if (this.players.length < 2) {
             return null;
         }

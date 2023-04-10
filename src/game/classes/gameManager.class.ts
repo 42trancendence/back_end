@@ -37,7 +37,7 @@ export class GameManager {
         return this.gameArray.length >= 10;
     }
 
-    public getMatchGame(): Game {
+    public shiftMatchGame(): Game {
         if (this.gameArray.length < 1) {
             return null;
         }

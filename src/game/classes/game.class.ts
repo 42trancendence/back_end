@@ -1,17 +1,17 @@
 
 import { Ball } from './ball.class';
-import { GameVariable, gameState } from './gameVariable.class';
-import { User } from './user.class';
+import { GameStatus } from '../constants/gameVariable';
+import { Player } from './player.class';
 import { Server } from 'socket.io';
+import { SelectQueryBuilder } from 'typeorm';
 
 export class Game
 {
     private id_: string;
-    private gameState_: gameState = gameState.WAIT;
-    private players_: Array<User> = [];
-    private watchers_: Array<User> = [];
+    private gameStatus_: string = GameStatus.Wait;
+    private players_: Array<Player> = [];
+    private watchers_: Array<Player> = [];
     private ball_: Ball = new Ball();
-    private score_ = [0, 0];
 
     constructor(
         private id: string
@@ -19,25 +19,19 @@ export class Game
         this.id_ = id;
     }
 
-    public sendGame(server: Server): void {
-        this.players_.forEach((p) => {
-            server.to(p.getSocketId()).emit('game', this);
-        });
+    public sendGame(server: Server, roomId: string): void {
+        server.to(roomId).emit('gaming', this);
     }
 
-    public addUser(user: User): void {
+    public addUser(user: Player): void {
         this.players_.push(user);
     }
 
-    public getId(): string {
-        return this.id_;
-    }
-
-    public getPlayers(): Array<User> {
+    public getPlayers(): Array<Player> {
         return this.players_;
     }
 
-    public getWatchers(): Array<User> {
+    public getWatchers(): Array<Player> {
         return this.watchers_;
     }
 
@@ -45,16 +39,12 @@ export class Game
         return this.id_;
     }
 
-    public setGameState(gameState: gameState) {
-        this.gameState_ = gameState;
+    public setGameStatus(gameStatus: string): void {
+        this.gameStatus_ = gameStatus;
     }
 
-    public getGameState(): gameState {
-        return this.gameState_;
-    }
-
-    public startGame(): void {
-        this.gameState_ = gameState.PLAY;
+    public getGameStatus(): string {
+        return this.gameStatus_;
     }
 
 }
