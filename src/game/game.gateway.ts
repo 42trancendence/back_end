@@ -48,6 +48,7 @@ export class GameGateway
   }
 
   async handleConnection(client: Socket) {
+    console.log('test!!!!!!!!!!!!!!!!!!!!client connected', client.id)
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
