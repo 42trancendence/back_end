@@ -1,10 +1,4 @@
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { UserEntity } from './user.entity';
 
 @Entity({ name: 'friendships' })
@@ -26,7 +20,4 @@ export class FriendShipEntity {
 
   @Column()
   status: string; // or enum: ['pending', 'accepted', 'rejected']
-
-  @Column({ name: 'isBlock' })
-  isBlock: boolean;
 }
