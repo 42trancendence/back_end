@@ -16,6 +16,7 @@ export class AuthService {
   async createAccessToken(ftUser: FtUserDto, res: Response) {
     const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
+    res.header('Authorization', 'Bearer ' + token);
     res.cookie('accessToken', token, {
       domain: '	localhost',
       path: '/',

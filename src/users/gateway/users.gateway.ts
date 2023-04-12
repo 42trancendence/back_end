@@ -12,7 +12,14 @@ import { Cache } from 'cache-manager';
 import { ActiveUser } from '../UserInfo';
 import { UsersService } from '../users.service';
 
-@WebSocketGateway({ namespace: 'users' })
+@WebSocketGateway({
+  namespace: 'users',
+  cors: {
+    origin: 'http://localhost:4000',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+})
 export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
   private readonly usersLogger = new Logger('UsersGateway');
@@ -28,19 +35,20 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(client: any) {
-    console.log('disconnect');
+    this.usersLogger.log('disconnect');
     await this.setActiveStatus(client, false);
   }
 
   async handleConnection(client: any) {
     const user = await this.authService.getUserBySocket(client);
-    console.log(user);
     if (!user) {
       this.handleDisconnect(client);
       return;
     }
     client.data.user = user;
     await this.setActiveStatus(client, true);
+    this.usersLogger.log(client.id);
+    this.usersLogger.log('connect');
   }
 
   private async getFriends(userId: string) {
@@ -90,6 +98,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: boolean) {
+    this.usersLogger.log('updateActiveStatus');
     if (!client.data?.user) {
       return;
     }

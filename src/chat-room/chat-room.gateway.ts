@@ -15,6 +15,7 @@ import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
+import { ChatRoomValidationPipe } from './pipes/chat-room-validation.pipe';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -44,13 +45,13 @@ export class ChatRoomGateway
       client.data.chatRoom,
       payload,
     );
-    client.to(client.data.chatRoom.name).emit('getMessage', message);
+    client.broadcast.to(client.data.chatRoom.name).emit('getMessage', message);
   }
 
   @SubscribeMessage('updateChatRoom')
   async updateChatRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() updateChatRoomDto: UpdateChatRoomDto,
+    @MessageBody(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
   ) {
     const chatRoom = await this.chatRoomService.getChatRoomByName(
       updateChatRoomDto.name,
@@ -83,7 +84,7 @@ export class ChatRoomGateway
   @SubscribeMessage('createChatRoom')
   async createChatRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() createChatRoomDto: CreateChatRoomDto,
+    @MessageBody(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
   ) {
     this.ChatRoomLogger.debug(createChatRoomDto);
 
@@ -91,7 +92,8 @@ export class ChatRoomGateway
       createChatRoomDto.name,
     );
     if (isDuplicated) {
-      throw new WsException('Chat room name is duplicated');
+      this.ChatRoomLogger.debug('이미 존재하는 chat-room 이름 입니다.');
+      throw new WsException('이미 존재하는 chat-room 이름 입니다.');
     }
     const chatRoom = await this.chatRoomService.createChatRoom(
       createChatRoomDto,
@@ -152,7 +154,6 @@ export class ChatRoomGateway
 
   @SubscribeMessage('test')
   async test(@ConnectedSocket() client: Socket) {
-    console.log(client.data.user);
     return {
       event: 'welcome',
       data: await this.chatRoomService.getAllChatRooms(),
@@ -160,7 +161,7 @@ export class ChatRoomGateway
   }
 
   async handleConnection(client: Socket) {
-    console.log('handleConnection');
+    this.ChatRoomLogger.log('chat-room handleConnection');
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
