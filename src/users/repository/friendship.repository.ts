@@ -39,4 +39,15 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
       where: { user },
     });
   }
+
+  async setFriendShipStatus(
+    user: UserEntity,
+    friend: UserEntity,
+    status: string,
+  ) {
+    const friendShip = await this.getFriendShip(user, friend);
+    friendShip.status = status;
+    this.save(friendShip);
+    return friendShip;
+  }
 }

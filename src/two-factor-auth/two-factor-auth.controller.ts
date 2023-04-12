@@ -73,6 +73,8 @@ export class TwoFactorAuthController {
     @getUser() user: UserEntity,
     @Body('code') code: string,
   ) {
+    this.twoFactorLogger.verbose(`[POST] /2fa/qrcode/turn-on: ${user.email}`);
+
     const isCodeValid = await this.twoFactorAuthService.isVerifyQRCode(
       user,
       code,
@@ -90,6 +92,7 @@ export class TwoFactorAuthController {
   })
   async sendEmailAuthCode(@getUser() user: UserEntity) {
     this.twoFactorLogger.verbose(`[POST] /2fa/email: ${user.email}`);
+
     return await this.twoFactorAuthService.sendTwoFactorAuthEmail(user);
   }
 

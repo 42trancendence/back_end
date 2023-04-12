@@ -16,7 +16,10 @@ import { ChatRoomService } from './chat-room.service';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 
-@WebSocketGateway({ namespace: 'chat-room' })
+@WebSocketGateway({
+  namespace: 'chat-room',
+  cors: { origin: 'http://localhost:4000', credentials: true },
+})
 export class ChatRoomGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
@@ -147,7 +150,17 @@ export class ChatRoomGateway
     };
   }
 
+  @SubscribeMessage('test')
+  async test(@ConnectedSocket() client: Socket) {
+    console.log(client.data.user);
+    return {
+      event: 'welcome',
+      data: await this.chatRoomService.getAllChatRooms(),
+    };
+  }
+
   async handleConnection(client: Socket) {
+    console.log('handleConnection');
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();

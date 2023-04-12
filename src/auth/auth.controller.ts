@@ -7,7 +7,6 @@ import {
   UnauthorizedException,
   Post,
   Body,
-  Req,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -16,11 +15,9 @@ import { AuthService } from './auth.service';
 import { FtUserDto } from './dto/ft-user.dto';
 import { FortyTwoGuard } from './guard/forty-two.guard';
 import { getFtUser } from './decorator/get-ft-user.decorator';
-import { AuthGuard } from '@nestjs/passport';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { getUser } from './decorator/get-user.decorator';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
-import { Request } from 'express';
 import { AccessGuard } from './guard/access-token.guard';
 import { RefreshGuard } from './guard/refresh-token.guard';
 
@@ -57,7 +54,8 @@ export class AuthController {
   })
   @ApiResponse({
     status: 302,
-    description: '2fa인증을 하지 않았거나 첫 로그인일때 signup으로 리다이렉트',
+    description:
+      '2fa인증을 하지 않았거나 첫 로그인일때 auth/callback 으로 리다이렉트',
   })
   @ApiResponse({
     status: 200,
