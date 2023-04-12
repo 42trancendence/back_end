@@ -15,7 +15,6 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     friendShip.user = user;
     friendShip.friend = friend;
     friendShip.status = 'pending';
-    friendShip.isBlock = false;
     this.save(friendShip);
     return friendShip;
   }
