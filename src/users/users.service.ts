@@ -6,6 +6,7 @@ import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { FriendShipRepository } from './repository/friendship.repository';
+import { Status } from './enum/status.enum';
 
 @Injectable()
 export class UsersService {
@@ -21,6 +22,10 @@ export class UsersService {
   async checkName(name: string): Promise<boolean> {
     const user = await this.userRepository.findUserByName(name);
     return user ? true : false;
+  }
+
+  async updateUserStatus(user: UserEntity, status: Status) {
+    await this.userRepository.saveUserStatus(user, status);
   }
 
   async turnOnTwoFactorAuth(user: UserEntity) {
