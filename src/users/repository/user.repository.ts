@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
+import {Status} from '../enum/status.enum';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -47,6 +48,11 @@ export class UserRepository extends Repository<UserEntity> {
 
   async turnOnTwoFactorAuth(user: UserEntity): Promise<void> {
     user.isVerified = true;
+    this.save(user);
+  }
+
+  async saveUserStatus(user: UserEntity, status: Status): Promise<void> {
+    user.status = status;
     this.save(user);
   }
 }

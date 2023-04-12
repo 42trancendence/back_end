@@ -1,6 +1,7 @@
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
 import { GameSessionEntity } from 'src/game/entities/game-session.entity';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from './friendship.entity';
 
 @Entity('User')
@@ -25,6 +26,9 @@ export class UserEntity {
 
   @Column()
   isVerified: boolean;
+
+  @Column({ default: Status.OFFLINE })
+  status: Status;
 
   @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
   wonGames: GameSessionEntity[];
