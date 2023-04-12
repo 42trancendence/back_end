@@ -28,13 +28,30 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private usersService: UsersService,
   ) {}
 
-  async handleDisconnect(client: any) {
-    this.usersLogger.log('disconnect');
+  async handleDisconnect(client: Socket) {
+    this.usersLogger.debug('disconnect');
+    const user = await this.authService.getUserBySocket(client);
+    let socketCnt = 0;
+    if (!user) {
+      this.handleDisconnect(client);
+      return;
+    }
+
+    const allSockets = await this.server.fetchSockets();
+    for (const socket of allSockets) {
+      if (socket.data?.user?.id === user.id) {
+        socketCnt++;
+      }
+      if (socketCnt > 1) {
+        return;
+      }
+    }
     await this.setActiveStatus(client, Status.OFFLINE);
   }
 
-  async handleConnection(client: any) {
-    this.usersLogger.log('connect');
+  async handleConnection(client: Socket) {
+    this.usersLogger.debug('connect');
+
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       this.handleDisconnect(client);
@@ -44,13 +61,8 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.setActiveStatus(client, Status.ONLINE);
   }
 
-  private async getFriends(userId: string) {
-    const user = await this.usersService.getUserById(userId);
-    return await this.usersService.getFriendList(user);
-  }
-
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
-    const friends = await this.getFriends(activeUser.id);
+    const friends = await this.usersService.getFriendList(activeUser);
     const friendList = new Array<UserEntity>();
 
     for (const f of friends) {
@@ -81,7 +93,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
-    this.usersLogger.log('updateActiveStatus');
+    this.usersLogger.debug('updateActiveStatus');
     if (!client.data?.user) {
       return;
     }
