@@ -7,6 +7,8 @@ import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { ChatRoomGateway } from './chat-room.gateway';
 import { MessageRepository } from './repository/message.repository';
 import { AuthModule } from 'src/auth/auth.module';
+import { AccessTokenStrategy } from 'src/auth/strategy/access-token.strategy';
+import { RefreshTokenStrategy } from 'src/auth/strategy/refresh-token.strategy';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ChatRoomEntity]), AuthModule],
