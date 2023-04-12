@@ -16,9 +16,6 @@ export class ChatRoomEntity {
   @Column()
   name: string;
 
-  @Column()
-  description: string;
-
   @Column({ name: 'is_private' })
   isPrivate: boolean;
 

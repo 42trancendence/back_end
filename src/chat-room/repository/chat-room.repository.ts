@@ -17,7 +17,6 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     const newChatRoom = new ChatRoomEntity();
 
     newChatRoom.name = createChatRoomDto.name;
-    newChatRoom.description = createChatRoomDto.description;
     newChatRoom.isPrivate = createChatRoomDto.isPrivate;
     newChatRoom.owner = user;
     newChatRoom.password = createChatRoomDto.password;

@@ -58,6 +58,7 @@ export class UsersController {
     if (IsExist) {
       throw new NotFoundException('이미 존재하는 이름입니다.');
     }
+    return { message: '사용 가능한 이름입니다.' };
   }
 
   @Get('friends')

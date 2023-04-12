@@ -77,7 +77,6 @@ export class ChatRoomService {
     updateChatRoomDto: UpdateChatRoomDto,
   ) {
     chatRoom.name = updateChatRoomDto.name;
-    chatRoom.description = updateChatRoomDto.description;
     chatRoom.isPrivate = updateChatRoomDto.isPrivate;
     chatRoom.password = updateChatRoomDto.password;
 

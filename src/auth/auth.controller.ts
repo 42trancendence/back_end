@@ -53,7 +53,7 @@ export class AuthController {
     description: '42api를 이용하여 로그인성공시 콜백 API.',
   })
   @ApiResponse({
-    status: 302,
+    status: 301,
     description:
       '2fa인증을 하지 않았거나 첫 로그인일때 auth/callback 으로 리다이렉트',
   })
