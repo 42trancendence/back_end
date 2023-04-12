@@ -26,6 +26,8 @@ import {
   ApiNotFoundResponse,
   ApiParam,
   ApiBody,
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
 } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
@@ -68,7 +70,7 @@ export class UsersController {
     return await this.usersService.getFriendList(user);
   }
 
-  @Get('accept/:id')
+  @Get('accept')
   @ApiOperation({ summary: '친구 요청 수락' })
   @ApiQuery({ name: 'id', description: '친구 요청을 수락할 유저의 id' })
   async acceptFriend(
@@ -78,8 +80,9 @@ export class UsersController {
     await this.usersService.setFriendShipStatus(user, friendId, 'accept');
   }
 
-  @Get('reject/:id')
+  @Get('reject')
   @ApiOperation({ summary: '친구 요청 거절' })
+  @ApiQuery({ name: 'id', description: '친구 요청을 거절할 유저의 id' })
   async rejectFriend(
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
@@ -89,13 +92,14 @@ export class UsersController {
 
   @Get(':id')
   @ApiOperation({ summary: '유저 정보 조회' })
-  @ApiParam({ name: 'id', description: '유저 고유 ID' })
+  @ApiParam({ name: 'id', description: '조회할 유저 ID' })
   @ApiOkResponse({ description: '성공', type: UserInfoDto })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
   async getUserInfo(@Param('id') userId: string): Promise<UserInfoDto> {
     return this.usersService.getUserInfo(userId);
   }
 
-  @Delete(':id')
+  @Delete('friend/:id')
   @ApiOperation({ summary: '친구 삭제' })
   async deleteFriend(
     @getUser() user: UserEntity,
@@ -106,14 +110,24 @@ export class UsersController {
 
   @Post('friend')
   @ApiOperation({ summary: '친구 요청' })
+  @ApiCreatedResponse({ description: '성공' })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
+  @ApiBadRequestResponse({ description: '이미 친구요청을 보냈습니다.' })
+  @ApiBadRequestResponse({
+    description: '자기 자신을 친구로 추가할 수 없습니다.',
+  })
   async addFriend(@getUser() user: UserEntity, @Body('id') friendId: string) {
     await this.usersService.addFriend(user, friendId);
+    return { message: '성공' };
   }
 
   @Put('me')
   @UsePipes(ValidationPipe)
   @ApiOperation({ summary: '유저 정보 수정' })
   @ApiBody({ type: UpdateUserDto })
+  @ApiBadRequestResponse({
+    description: '잘못된 유저이름 또는 아바타 이미지입니다.',
+  })
   async updateUserInfo(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,

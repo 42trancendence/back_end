@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserInfo } from './UserInfo';
 import { NotFoundError } from 'rxjs';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -58,7 +58,7 @@ export class UsersService {
 
   async addFriend(user: UserEntity, friendId: string) {
     if (friendId === user.id) {
-      throw new NotFoundError('자기 자신을 친구로 추가할 수 없습니다.');
+      throw new BadRequestException('자기 자신을 친구로 추가할 수 없습니다.');
     }
     const friend = await this.getUserById(friendId);
 
@@ -71,7 +71,7 @@ export class UsersService {
       friend,
     );
     if (friendShip) {
-      throw new NotFoundError('이미 친구요청을 보냈습니다.');
+      throw new BadRequestException('이미 친구요청을 보냈습니다.');
     }
     await this.friendShipRepository.createFriendShip(user, friend);
   }
@@ -107,7 +107,6 @@ export class UsersService {
     return await this.userRepository.findUserByEmail(email);
   }
 
-  //TODO: entity에서 해결할 수 있는 부분인지 확인
   async getUserInfo(userId: string): Promise<UserInfo> {
     const user = await this.userRepository.findUserById(userId);
     if (!user) {
