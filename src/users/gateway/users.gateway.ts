@@ -31,18 +31,13 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(client: Socket) {
     this.usersLogger.debug('disconnect');
     const user = await this.authService.getUserBySocket(client);
-    let socketCnt = 0;
     if (!user) {
-      this.handleDisconnect(client);
       return;
     }
 
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       if (socket.data?.user?.id === user.id) {
-        socketCnt++;
-      }
-      if (socketCnt > 1) {
         return;
       }
     }
@@ -64,7 +59,6 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
     const friends = await this.usersService.getFriendList(activeUser);
     const friendList = new Array<UserEntity>();
-    console.log(friends);
 
     for (const f of friends) {
       const user = await this.usersService.getUserById(f.id);
@@ -79,7 +73,6 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
         }
       }
     }
-    this.usersLogger.debug('friendList', friendList);
     this.server.to(client.id).emit('friendList', friendList);
   }
 
