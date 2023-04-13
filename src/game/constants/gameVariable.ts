@@ -11,12 +11,12 @@ export class GameVariable {
   public static readonly maxWatchers = 5;
   public static readonly maxScore = 5;
 
-  public static readonly cavasWidth = 800;
-  public static readonly cavasHeight = 600;
+  public static readonly canvasWidth = 800;
+  public static readonly canvasHeight = 600;
   public static readonly paddleWidth = 10;
   public static readonly paddleHeight = 100;
   public static readonly leftPaddleX = 0;
-  public static readonly rightPaddleX = GameVariable.cavasWidth - GameVariable.paddleWidth;
+  public static readonly rightPaddleX = GameVariable.canvasWidth - GameVariable.paddleWidth;
   public static readonly paddleSpeed = 10;
   public static readonly boundedPaddleHeight = 20;
 

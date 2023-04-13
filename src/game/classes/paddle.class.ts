@@ -7,7 +7,7 @@ export class Paddle {
 
   constructor(x: number) {
     this.x_ = x;
-    this.y_ = GameVariable.cavasHeight / 2 - GameVariable.paddleHeight / 2;
+    this.y_ = GameVariable.canvasHeight / 2 - GameVariable.paddleHeight / 2;
     this.speed_ = 0;
   }
 
@@ -20,9 +20,9 @@ export class Paddle {
       this.speed_ = 0;
       this.y_ = GameVariable.paddleHeight - 5;
     }
-    else if (this.y_ + GameVariable.paddleHeight > GameVariable.cavasHeight - GameVariable.boundedPaddleHeight) {
+    else if (this.y_ + GameVariable.paddleHeight > GameVariable.canvasHeight - GameVariable.boundedPaddleHeight) {
       this.speed_ = 0;
-      this.y_ = GameVariable.cavasHeight - GameVariable.paddleHeight - GameVariable.boundedPaddleHeight + 5;
+      this.y_ = GameVariable.canvasHeight - GameVariable.paddleHeight - GameVariable.boundedPaddleHeight + 5;
     }
   }
 
@@ -44,5 +44,13 @@ export class Paddle {
     else {
       this.speed_ = 0;
     }
+  }
+
+  public getX(): number {
+    return this.x_;
+  }
+
+  public getY(): number {
+    return this.y_;
   }
 }

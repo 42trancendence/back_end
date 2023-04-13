@@ -47,4 +47,8 @@ export class Player {
         return this.id_;
     }
 
+    public getPaddle(): Paddle {
+        return this.paddle_;
+    }
+
 }

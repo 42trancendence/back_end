@@ -19,7 +19,14 @@ import { GameManager } from './classes/gameManager.class';
 import { SET_INTERVAL_TIME } from './constants/game.constant';
 import { GameStatus } from './constants/gameVariable';
 
-@WebSocketGateway({ namespace: 'game' })
+@WebSocketGateway({ 
+  namespace: 'game',
+  cors: {
+    origin: 'http://localhost:4000/lobby/game',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  }
+})
 export class GameGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {

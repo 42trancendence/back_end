@@ -5,12 +5,9 @@ import * as session from 'express-session';
 import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const app = await NestFactory.create(AppModule);
   setupSwagger(app);
-  app.enableCors({
-    origin: 'http://localhost:4000',
-    credentials: true,
-  });
+  app.enableCors();
   app.use(
     session({
       secret: 'secret',
