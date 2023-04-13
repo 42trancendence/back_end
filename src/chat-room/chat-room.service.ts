@@ -7,6 +7,8 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
+import { Socket } from 'socket.io';
+import {WsException} from '@nestjs/websockets';
 
 @Injectable()
 export class ChatRoomService {

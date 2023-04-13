@@ -52,13 +52,15 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleConnection(client: Socket) {
     this.usersLogger.debug('connect');
 
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
-      this.handleDisconnect(client);
-      return;
-    }
-    client.data.user = user;
-    await this.setActiveStatus(client, Status.ONLINE);
+    try {
+      const user = await this.authService.getUserBySocket(client);
+      if (!user) {
+        this.handleDisconnect(client);
+        return;
+      }
+      client.data.user = user;
+      await this.setActiveStatus(client, Status.ONLINE);
+    } catch (e) {}
   }
 
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
