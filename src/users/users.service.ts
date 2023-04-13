@@ -41,6 +41,7 @@ export class UsersService {
       where: [{ user: user }, { friend: user }],
       relations: ['user', 'friend'],
     });
+
     const friends = friendList.map((friend) => {
       const isUser = friend.user.id === user.id;
       const friendDetail = isUser ? friend.friend : friend.user;
