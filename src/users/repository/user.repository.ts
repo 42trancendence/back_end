@@ -43,16 +43,16 @@ export class UserRepository extends Repository<UserEntity> {
 
   async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
     user.twoFactorAuthCode = secret;
-    this.save(user);
+    await this.save(user);
   }
 
   async turnOnTwoFactorAuth(user: UserEntity): Promise<void> {
     user.isVerified = true;
-    this.save(user);
+    await this.save(user);
   }
 
   async saveUserStatus(user: UserEntity, status: Status): Promise<void> {
     user.status = status;
-    this.save(user);
+    await this.save(user);
   }
 }
