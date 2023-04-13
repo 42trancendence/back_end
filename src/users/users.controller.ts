@@ -61,35 +61,35 @@ export class UsersController {
     return { message: '사용 가능한 이름입니다.' };
   }
 
-  @Get('friends')
-  @ApiOperation({ summary: '나의 모든 친구 정보 조회' })
-  @ApiOkResponse({
-    description: '나의 모든 친구 정보를 얻는다',
-    type: [UserInfoDto],
-  })
-  async getMyFriends(@getUser() user: UserEntity) {
-    return await this.usersService.getFriendList(user);
-  }
+  // @Get('friends')
+  // @ApiOperation({ summary: '나의 모든 친구 정보 조회' })
+  // @ApiOkResponse({
+  //   description: '나의 모든 친구 정보를 얻는다',
+  //   type: [UserInfoDto],
+  // })
+  // async getMyFriends(@getUser() user: UserEntity) {
+  //   return await this.usersService.getFriendList(user);
+  // }
 
-  @Get('accept')
-  @ApiOperation({ summary: '친구 요청 수락' })
-  @ApiQuery({ name: 'id', description: '친구 요청을 수락할 유저의 id' })
-  async acceptFriend(
-    @getUser() user: UserEntity,
-    @Query('id') friendId: string,
-  ) {
-    await this.usersService.setFriendShipStatus(user, friendId, 'accept');
-  }
-
-  @Get('reject')
-  @ApiOperation({ summary: '친구 요청 거절' })
-  @ApiQuery({ name: 'id', description: '친구 요청을 거절할 유저의 id' })
-  async rejectFriend(
-    @getUser() user: UserEntity,
-    @Query('id') friendId: string,
-  ) {
-    await this.usersService.setFriendShipStatus(user, friendId, 'reject');
-  }
+  // @Get('accept')
+  // @ApiOperation({ summary: '친구 요청 수락' })
+  // @ApiQuery({ name: 'id', description: '친구 요청을 수락할 유저의 id' })
+  // async acceptFriend(
+  //   @getUser() user: UserEntity,
+  //   @Query('id') friendId: string,
+  // ) {
+  //   await this.usersService.setFriendShipStatus(user, friendId, 'accept');
+  // }
+  //
+  // @Get('reject')
+  // @ApiOperation({ summary: '친구 요청 거절' })
+  // @ApiQuery({ name: 'id', description: '친구 요청을 거절할 유저의 id' })
+  // async rejectFriend(
+  //   @getUser() user: UserEntity,
+  //   @Query('id') friendId: string,
+  // ) {
+  //   await this.usersService.setFriendShipStatus(user, friendId, 'reject');
+  // }
 
   @Get(':id')
   @ApiOperation({ summary: '유저 정보 조회' })
@@ -97,7 +97,13 @@ export class UsersController {
   @ApiOkResponse({ description: '성공', type: UserInfoDto })
   @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
   async getUserInfo(@Param('id') userId: string): Promise<UserInfoDto> {
-    return this.usersService.getUserInfo(userId);
+    return await this.usersService.getUserInfo(userId);
+  }
+
+  @Get('/')
+  @ApiOperation({ summary: '모든 유저 정보 조회' })
+  async getAllUserInfo(@getUser() user: UserEntity): Promise<UserInfoDto[]> {
+    return await this.usersService.getAllUserInfo(user);
   }
 
   @Delete('friend/:id')
@@ -109,18 +115,18 @@ export class UsersController {
     await this.usersService.deleteFriend(user, friendId);
   }
 
-  @Post('friend')
-  @ApiOperation({ summary: '친구 요청' })
-  @ApiCreatedResponse({ description: '성공' })
-  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
-  @ApiBadRequestResponse({ description: '이미 친구요청을 보냈습니다.' })
-  @ApiBadRequestResponse({
-    description: '자기 자신을 친구로 추가할 수 없습니다.',
-  })
-  async addFriend(@getUser() user: UserEntity, @Body('id') friendId: string) {
-    await this.usersService.addFriend(user, friendId);
-    return { message: '성공' };
-  }
+  // @Post('friend')
+  // @ApiOperation({ summary: '친구 요청' })
+  // @ApiCreatedResponse({ description: '성공' })
+  // @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
+  // @ApiBadRequestResponse({ description: '이미 친구요청을 보냈습니다.' })
+  // @ApiBadRequestResponse({
+  //   description: '자기 자신을 친구로 추가할 수 없습니다.',
+  // })
+  // async addFriend(@getUser() user: UserEntity, @Body('id') friendId: string) {
+  //   await this.usersService.addFriend(user, friendId);
+  //   return { message: '성공' };
+  // }
 
   @Put('me')
   @UsePipes(ValidationPipe)
