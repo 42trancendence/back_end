@@ -54,11 +54,13 @@ export class AuthService {
   }
 
   async getUserBySocket(socket: Socket) {
-    const payload = this.isVerifiedToken(socket);
+    try {
+      const payload = this.isVerifiedToken(socket);
 
-    if (!payload) {
-      throw new UnauthorizedException('Unauthorized jwt');
-    }
-    return await this.userRepository.findUserById(payload.id);
+      if (!payload) {
+        throw new UnauthorizedException('Unauthorized jwt');
+      }
+      return await this.userRepository.findUserById(payload.id);
+    } catch (e) {}
   }
 }

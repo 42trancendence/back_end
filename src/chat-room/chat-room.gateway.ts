@@ -159,10 +159,7 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody('roomName') roomName: string,
   ) {
-    this.ChatRoomLogger.log('getChatRoom');
-    client
-      .to(roomName)
-      .emit('getMessage', 'User ' + client.data.user.id + ' left the room');
+    this.ChatRoomLogger.debug('getChatRoom');
     client.leave(roomName);
   }
 
