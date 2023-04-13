@@ -95,39 +95,63 @@ export class ChatRoomGateway
       this.ChatRoomLogger.debug('이미 존재하는 chat-room 이름 입니다.');
       throw new WsException('이미 존재하는 chat-room 이름 입니다.');
     }
-    const chatRoom = await this.chatRoomService.createChatRoom(
+    await this.chatRoomService.createChatRoom(
       createChatRoomDto,
       client.data.user,
     );
     this.ChatRoomLogger.debug(`User ${client.data.user.id} created chat room`);
-    client
+    await this.clientJoinChatRoom(
+      client,
+      createChatRoomDto.name,
+      createChatRoomDto.password,
+    );
+    this.server
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+  }
+
+  async getChatRoomUsers(roomName: string) {
+    const allSockets = await this.server.in(roomName).fetchSockets();
+    const chatRoomUsers = new Set<string>();
+    for (const socket of allSockets) {
+      socket.data.user && chatRoomUsers.add(socket.data.user.name);
+    }
+    const serializedSet = [...chatRoomUsers.keys()];
+    return serializedSet;
+  }
+
+  async clientJoinChatRoom(
+    client: Socket,
+    chatRoomName: string,
+    password: string,
+  ) {
+    const chatRoom = await this.chatRoomService.getChatRoomByName(chatRoomName);
+    if (chatRoom.isPrivate && chatRoom.password !== password) {
+      throw new WsException('Wrong password');
+    }
+    client.leave('lobby');
     client.data.chatRoom = chatRoom;
-    client.join(chatRoom.name);
+    client.join(chatRoomName);
+    client
+      .to(chatRoomName)
+      .emit('getChatRoomUsers', await this.getChatRoomUsers(chatRoomName));
+    client.to(chatRoomName).emit('getChatRoomMessages', chatRoom.messages);
+    this.ChatRoomLogger.debug(chatRoom.messages);
   }
 
   @SubscribeMessage('enterChatRoom')
   async enterChatRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody('roomName') roomName: string,
+    @MessageBody('password') password: string,
   ) {
-    // 이미 접속해 있는 방에 접속하려고 할 때 예외처리
     if (client.rooms.has(roomName)) {
       return;
     }
-    // 동시에 여러 방에 접속하려고 할 때 예외처리
     if (client.rooms.size > 1) {
       client.leave(client.data.chatRoom.name);
     }
-    const chatRoom = await this.chatRoomService.getChatRoomByName(roomName);
-    client.data.chatRoom = chatRoom;
-    client.join(roomName);
-    client
-      .to(client.data.chatRoom.name)
-      .emit('getMessage', 'User ' + client.data.user.id + ' joined to room');
-    console.log(chatRoom.messages);
-    return { event: 'showChatRoomMessages', data: chatRoom.messages };
+    await this.clientJoinChatRoom(client, roomName, password);
   }
 
   @SubscribeMessage('leaveChatRoom')
@@ -142,26 +166,8 @@ export class ChatRoomGateway
     client.leave(roomName);
   }
 
-  @SubscribeMessage('getChatRoom')
-  async getChatRoom() {
-    this.ChatRoomLogger.log('getChatRoom');
-
-    return {
-      event: 'showChatRoomList',
-      data: await this.chatRoomService.getAllChatRooms(),
-    };
-  }
-
-  @SubscribeMessage('test')
-  async test(@ConnectedSocket() client: Socket) {
-    return {
-      event: 'welcome',
-      data: await this.chatRoomService.getAllChatRooms(),
-    };
-  }
-
   async handleConnection(client: Socket) {
-    this.ChatRoomLogger.log('chat-room handleConnection');
+    this.ChatRoomLogger.debug('chat-room handleConnection');
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
@@ -173,6 +179,10 @@ export class ChatRoomGateway
     client.data.chatRoom = chatRoom;
     client.join(client.data.chatRoom.name);
     this.ChatRoomLogger.log(`User ${user.id} connected, and joined to lobby`);
+    client.emit(
+      'showChatRoomList',
+      await this.chatRoomService.getAllChatRooms(),
+    );
   }
 
   async handleDisconnect(client: Socket) {
