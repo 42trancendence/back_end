@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, FindManyOptions, Repository } from 'typeorm';
 import { FriendShipEntity } from '../entities/friendship.entity';
 import { UserEntity } from '../entities/user.entity';
+import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 
 @Injectable()
 export class FriendShipRepository extends Repository<FriendShipEntity> {
@@ -14,7 +15,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
 
     friendShip.user = user;
     friendShip.friend = friend;
-    friendShip.status = 'pending';
+    friendShip.status = FriendShipStatus.PENDING;
     this.save(friendShip);
     return friendShip;
   }
@@ -27,6 +28,11 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
 
   async deleteFriendShip(friendShip: FriendShipEntity) {
     this.delete(friendShip);
+  }
+
+  async removeFriendShip(user: UserEntity, friend: UserEntity) {
+    const friendShip = await this.getFriendShip(friend, user);
+    await this.delete(friendShip);
   }
 
   async findWithRelations(relations: FindManyOptions) {
@@ -44,7 +50,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     friend: UserEntity,
     status: string,
   ) {
-    const friendShip = await this.getFriendShip(user, friend);
+    const friendShip = await this.getFriendShip(friend, user);
     friendShip.status = status;
     this.save(friendShip);
     return friendShip;

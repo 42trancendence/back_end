@@ -1,5 +1,6 @@
 import { Logger } from '@nestjs/common';
 import {
+	MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
@@ -11,6 +12,7 @@ import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from '../users.service';
 import { Status } from '../enum/status.enum';
 import { UserEntity } from '../entities/user.entity';
+import {FriendShipStatus} from '../enum/friendShipStatus.enum';
 
 @WebSocketGateway({
   namespace: 'users',
@@ -57,7 +59,10 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
-    const friends = await this.usersService.getFriendList(activeUser);
+    const friends = await this.usersService.getFriendList(
+      activeUser,
+      FriendShipStatus.ACCEPTED,
+    );
     const friendList = new Array<UserEntity>();
 
     for (const f of friends) {
@@ -93,5 +98,66 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     await this.setActiveStatus(client, status);
+  }
+
+  @SubscribeMessage('addFriend')
+  async addFriend(
+    client: Socket,
+    @MessageBody('friendName') friendName: string,
+  ) {
+    if (!client.data?.user) {
+      return;
+    }
+    await this.usersService.addFriend(client.data.user, friendName);
+    const allSockets = await this.server.fetchSockets();
+    for (const socket of allSockets) {
+      if (socket.data?.user?.name === friendName) {
+        this.server.to(socket.id).emit('friendRequest', client.data.user);
+      }
+    }
+  }
+
+  @SubscribeMessage('acceptFriendRequest')
+  async acceptFriendRequest(
+    client: Socket,
+    @MessageBody('friendName') friendName: string,
+  ) {
+    if (!client.data?.user) {
+      return;
+    }
+    const friends = await this.usersService.getFriendList(
+      client.data.user,
+      FriendShipStatus.PENDING,
+    );
+    for (const f of friends) {
+      if (f.name === friendName) {
+        await this.usersService.acceptFriendRequest(client.data.user, f.id);
+        const allSockets = await this.server.fetchSockets();
+        for (const socket of allSockets) {
+          if (socket.data?.user?.name === friendName) {
+            this.server.to(socket.id).emit('friendAccepted', client.data.user);
+          }
+        }
+      }
+    }
+  }
+
+  @SubscribeMessage('rejectFriendRequest')
+  async rejectFriendRequest(
+    client: Socket,
+    @MessageBody('friendName') friendName: string,
+  ) {
+    if (!client.data?.user) {
+      return;
+    }
+    const friends = await this.usersService.getFriendList(
+      client.data.user,
+      FriendShipStatus.PENDING,
+    );
+    for (const f of friends) {
+      if (f.name === friendName) {
+        await this.usersService.rejectFriendRequest(client.data.user, f.id);
+      }
+    }
   }
 }
