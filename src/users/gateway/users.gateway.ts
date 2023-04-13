@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import {
-	MessageBody,
+  ConnectedSocket,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
   SubscribeMessage,
@@ -12,7 +13,7 @@ import { AuthService } from 'src/auth/auth.service';
 import { UsersService } from '../users.service';
 import { Status } from '../enum/status.enum';
 import { UserEntity } from '../entities/user.entity';
-import {FriendShipStatus} from '../enum/friendShipStatus.enum';
+import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 
 @WebSocketGateway({
   namespace: 'users',
@@ -102,9 +103,11 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('addFriend')
   async addFriend(
-    client: Socket,
+    @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
+    this.usersLogger.debug('addFriend');
+
     if (!client.data?.user) {
       return;
     }
@@ -119,9 +122,11 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('acceptFriendRequest')
   async acceptFriendRequest(
-    client: Socket,
+    @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
+    this.usersLogger.debug('acceptFriendRequest');
+
     if (!client.data?.user) {
       return;
     }

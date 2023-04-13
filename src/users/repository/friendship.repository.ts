@@ -48,7 +48,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   async setFriendShipStatus(
     user: UserEntity,
     friend: UserEntity,
-    status: string,
+    status: FriendShipStatus,
   ) {
     const friendShip = await this.getFriendShip(friend, user);
     friendShip.status = status;
