@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { UserInfo } from './UserInfo';
 import { NotFoundError } from 'rxjs';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -8,7 +12,7 @@ import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { FriendShipRepository } from './repository/friendship.repository';
 import { Status } from './enum/status.enum';
 import { FriendShipStatus } from './enum/friendShipStatus.enum';
-import {UserInfoDto} from './dto/user-info.dto';
+import { UserInfoDto } from './dto/user-info.dto';
 
 @Injectable()
 export class UsersService {
@@ -39,10 +43,15 @@ export class UsersService {
   }
 
   async getFriendList(user: UserEntity, friendShipStatus: FriendShipStatus) {
+    console.log('status', friendShipStatus);
     const friendList = await this.friendShipRepository.findWithRelations({
-      where: [{ user: user }, { friend: user }, { status: friendShipStatus }],
+      where: [
+        { user: user, status: friendShipStatus },
+        { friend: user, status: friendShipStatus },
+      ],
       relations: ['user', 'friend'],
     });
+    console.log('friendList', friendList);
 
     const friends = friendList.map((friend) => {
       const isUser = friend.user.id === user.id;
@@ -163,7 +172,7 @@ export class UsersService {
   async setFriendShipStatus(
     user: UserEntity,
     friendId: string,
-    status: string,
+    status: FriendShipStatus,
   ) {
     const friend = await this.getUserById(friendId);
 

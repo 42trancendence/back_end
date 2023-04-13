@@ -1,4 +1,5 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { UserEntity } from './user.entity';
 
 @Entity({ name: 'friendships' })
@@ -19,5 +20,5 @@ export class FriendShipEntity {
   friend: UserEntity;
 
   @Column()
-  status: string; // or enum: ['pending', 'accepted', 'rejected']
+  status: FriendShipStatus; // or enum: ['pending', 'accepted', 'rejected']
 }
