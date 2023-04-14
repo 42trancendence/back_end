@@ -61,7 +61,7 @@ export class FriendService {
     );
   }
 
-  async rejectFriendRequest(user: UserEntity, friend: UserEntity) {
+  async removeFriendShip(user: UserEntity, friend: UserEntity) {
     await this.friendShipRepository.removeFriendShip(user, friend);
   }
 
