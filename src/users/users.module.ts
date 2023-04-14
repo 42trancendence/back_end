@@ -3,7 +3,6 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
-import { JwtModule } from '@nestjs/jwt';
 import { UserRepository } from './repository/user.repository';
 import { FriendShipRepository } from './repository/friendship.repository';
 import { FriendShipEntity } from './entities/friendship.entity';
@@ -16,7 +15,6 @@ import { FriendService } from './friend.service';
   providers: [
     FriendService,
     UsersService,
-    JwtModule,
     UserRepository,
     FriendShipRepository,
     UsersGateway,
