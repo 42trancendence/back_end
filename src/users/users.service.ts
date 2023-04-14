@@ -155,8 +155,7 @@ export class UsersService {
     await this.userRepository.save(user);
   }
 
-  async acceptFriendRequest(user: UserEntity, friendId: string) {
-    const friend = await this.getUserById(friendId);
+  async acceptFriendRequest(user: UserEntity, friend: UserEntity) {
     await this.friendShipRepository.setFriendShipStatus(
       user,
       friend,
@@ -164,8 +163,7 @@ export class UsersService {
     );
   }
 
-  async rejectFriendRequest(user: UserEntity, friendId: string) {
-    const friend = await this.getUserById(friendId);
+  async rejectFriendRequest(user: UserEntity, friend: UserEntity) {
     await this.friendShipRepository.removeFriendShip(user, friend);
   }
 
@@ -176,9 +174,23 @@ export class UsersService {
   ) {
     const friend = await this.getUserById(friendId);
 
-    if (!friend) {
-      throw new NotFoundError('친구가 존재하지 않습니다.');
-    }
     await this.friendShipRepository.setFriendShipStatus(user, friend, status);
+  }
+
+  async getFriendRequestList(user: UserEntity) {
+    const friendList = await this.friendShipRepository.findWithRelations({
+      where: [{ friend: user, status: FriendShipStatus.PENDING }],
+      relations: ['user', 'friend'],
+    });
+
+    const friends = friendList.map((friend) => {
+      const { id, name, email } = friend.user;
+      return {
+        id,
+        name,
+        email,
+      };
+    });
+    return friends;
   }
 }
