@@ -17,7 +17,7 @@ import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { FriendService } from '../friend.service';
 
 @WebSocketGateway({
-  namespace: 'friend',
+  namespace: 'users',
   cors: {
     origin: 'http://localhost:4000',
     methods: ['GET', 'POST'],
@@ -34,15 +34,14 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleDisconnect(client: Socket) {
-    this.friendWsLogger.debug('disconnect');
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
+    if (!client.data?.user) {
       return;
     }
+    this.friendWsLogger.debug(`disconnect ${client.data.user.name}`);
 
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
-      if (socket.data?.user?.id === user.id) {
+      if (socket.data?.user?.id === client.data.user.id) {
         return;
       }
     }
@@ -50,10 +49,11 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    this.friendWsLogger.debug('connect');
-
     const user = await this.authService.getUserBySocket(client);
+
+    this.friendWsLogger.debug(`connect ${user?.name}`);
     if (!user) {
+      this.friendWsLogger.debug('user not found');
       this.handleDisconnect(client);
       return;
     }
@@ -90,7 +90,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
   }
 
-  private async setActiveStatus(client: Socket, status: Status) {
+  async setActiveStatus(client: Socket, status: Status) {
     const user = client.data?.user;
 
     if (!user) {
@@ -103,6 +103,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
     this.friendWsLogger.debug('updateActiveStatus');
+
     if (!client.data?.user) {
       return;
     }

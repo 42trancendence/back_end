@@ -57,7 +57,8 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async saveUserStatus(user: UserEntity, status: Status): Promise<void> {
-    await this.update(user.id, { status: status });
+    user.status = status;
+    await this.save(user);
   }
 
   async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {

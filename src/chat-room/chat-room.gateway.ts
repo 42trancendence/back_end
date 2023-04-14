@@ -175,7 +175,7 @@ export class ChatRoomGateway
     client.leave(client.id);
     client.data.chatRoom = chatRoom;
     client.join(client.data.chatRoom.name);
-    this.ChatRoomLogger.log(`User ${user.id} connected, and joined to lobby`);
+    // this.ChatRoomLogger.log(`User ${user.id} connected, and joined to lobby`);
     client.emit(
       'showChatRoomList',
       await this.chatRoomService.getAllChatRooms(),

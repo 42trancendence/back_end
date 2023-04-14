@@ -34,13 +34,6 @@ export class FriendService {
     return friends;
   }
 
-  async getFriends(user: UserEntity, friendId: string) {
-    return await this.friendShipRepository.findWithRelations({
-      where: [{ user: user }, { friend: friendId }],
-      relations: ['user', 'friend'],
-    });
-  }
-
   async addFriend(user: UserEntity, friendName: string) {
     if (friendName === user.name) {
       throw new BadRequestException('자기 자신을 친구로 추가할 수 없습니다.');
