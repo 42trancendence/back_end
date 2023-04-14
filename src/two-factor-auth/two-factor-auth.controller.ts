@@ -6,6 +6,7 @@ import {
   NotFoundException,
   Post,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
@@ -42,6 +43,10 @@ export class TwoFactorAuthController {
     status: 201,
     description: 'QR코드 생성 성공',
   })
+  @ApiResponse({
+    status: 401,
+    description: '유저 권한없음',
+  })
   async createQRCode(@getUser() user: UserEntity, @Res() res: Response) {
     this.twoFactorLogger.verbose('[POST] /2fa/qrcode');
 
@@ -68,12 +73,14 @@ export class TwoFactorAuthController {
     @getUser() user: UserEntity,
     @Body('code') code: string,
   ) {
+    this.twoFactorLogger.verbose(`[POST] /2fa/qrcode/turn-on: ${user.email}`);
+
     const isCodeValid = await this.twoFactorAuthService.isVerifyQRCode(
       user,
       code,
     );
     if (!isCodeValid) {
-      throw new NotFoundException('2fa code is not valid');
+      throw new UnauthorizedException('2fa code is not valid');
     }
     await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
@@ -85,6 +92,7 @@ export class TwoFactorAuthController {
   })
   async sendEmailAuthCode(@getUser() user: UserEntity) {
     this.twoFactorLogger.verbose(`[POST] /2fa/email: ${user.email}`);
+
     return await this.twoFactorAuthService.sendTwoFactorAuthEmail(user);
   }
 

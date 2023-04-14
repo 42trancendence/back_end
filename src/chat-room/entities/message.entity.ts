@@ -13,7 +13,7 @@ export class MessageEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id)
+  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
   @JoinColumn({ name: 'user_id' })
   user: UserEntity;
 

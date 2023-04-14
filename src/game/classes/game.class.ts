@@ -14,9 +14,11 @@ export class Game
     private ball_: Ball = new Ball();
 
     constructor(
-        private id: string
+        private id: string,
+        private players: Array<Player>
     ) {
         this.id_ = id;
+        this.players_ = players;
     }
 
     public sendGame(server: Server, roomId: string): void {

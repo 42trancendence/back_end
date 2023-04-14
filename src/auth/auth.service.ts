@@ -16,8 +16,12 @@ export class AuthService {
   async createAccessToken(ftUser: FtUserDto, res: Response) {
     const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
-
-    res.header('Authorization', `Bearer ${token}`);
+    res.header('Authorization', 'Bearer ' + token);
+    res.cookie('accessToken', token, {
+      domain: '	localhost',
+      path: '/',
+      httpOnly: true,
+    });
     console.log(token);
     return token;
   }
@@ -29,13 +33,11 @@ export class AuthService {
       path: '/',
       httpOnly: true,
     });
-    await this.userRepository.saveRefreshToken(token, user);
   }
 
-  async logout(user: UserEntity, res: Response) {
+  async logout(res: Response) {
+    res.cookie('accessToken', '');
     res.cookie('refreshToken', '');
-    user.refreshToken = '';
-    await this.userRepository.save(user);
     return res.redirect('http://localhost:4000/login');
   }
 
@@ -52,11 +54,13 @@ export class AuthService {
   }
 
   async getUserBySocket(socket: Socket) {
-    const payload = this.isVerifiedToken(socket);
+    try {
+      const payload = this.isVerifiedToken(socket);
 
-    if (!payload) {
-      throw new UnauthorizedException('Unauthorized jwt');
-    }
-    return await this.userRepository.findUserById(payload.id);
+      if (!payload) {
+        throw new UnauthorizedException('Unauthorized jwt');
+      }
+      return await this.userRepository.findUserById(payload.id);
+    } catch (e) {}
   }
 }

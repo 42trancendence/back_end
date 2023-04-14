@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserInfo } from './UserInfo';
 import { NotFoundError } from 'rxjs';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -6,6 +6,7 @@ import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { FriendShipRepository } from './repository/friendship.repository';
+import { Status } from './enum/status.enum';
 
 @Injectable()
 export class UsersService {
@@ -23,6 +24,10 @@ export class UsersService {
     return user ? true : false;
   }
 
+  async updateUserStatus(user: UserEntity, status: Status) {
+    await this.userRepository.saveUserStatus(user, status);
+  }
+
   async turnOnTwoFactorAuth(user: UserEntity) {
     await this.userRepository.turnOnTwoFactorAuth(user);
   }
@@ -31,7 +36,36 @@ export class UsersService {
     return await this.userRepository.saveUser(ftUser);
   }
 
+  async getFriendList(user: UserEntity) {
+    const friendList = await this.friendShipRepository.findWithRelations({
+      where: [{ user: user }, { friend: user }],
+      relations: ['user', 'friend'],
+    });
+
+    const friends = friendList.map((friend) => {
+      const isUser = friend.user.id === user.id;
+      const friendDetail = isUser ? friend.friend : friend.user;
+      const { id, name, email } = friendDetail;
+      return {
+        id,
+        name,
+        email,
+      };
+    });
+    return friends;
+  }
+
+  async getFriends(user: UserEntity, friendId: string) {
+    return await this.friendShipRepository.findWithRelations({
+      where: [{ user: user }, { friend: friendId }],
+      relations: ['user', 'friend'],
+    });
+  }
+
   async addFriend(user: UserEntity, friendId: string) {
+    if (friendId === user.id) {
+      throw new BadRequestException('자기 자신을 친구로 추가할 수 없습니다.');
+    }
     const friend = await this.getUserById(friendId);
 
     if (!friend) {
@@ -43,7 +77,7 @@ export class UsersService {
       friend,
     );
     if (friendShip) {
-      throw new NotFoundError('이미 친구요청을 보냈습니다.');
+      throw new BadRequestException('이미 친구요청을 보냈습니다.');
     }
     await this.friendShipRepository.createFriendShip(user, friend);
   }
@@ -67,18 +101,6 @@ export class UsersService {
     await this.friendShipRepository.deleteFriendShip(friendShip);
   }
 
-  async blockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.blockFriendShip(friendShip);
-  }
-
-  async unblockFriend(user: UserEntity, friendId: string) {
-    const friendShip = await this.getFriendById(user, friendId);
-
-    await this.friendShipRepository.unblockFriendShip(friendShip);
-  }
-
   private async checkUserExists(id: string): Promise<void> {
     const user = await this.userRepository.findUserById(id);
     if (user) throw new Error('이미 동일한 소셜 로그인을 사용중입니다.');
@@ -91,7 +113,6 @@ export class UsersService {
     return await this.userRepository.findUserByEmail(email);
   }
 
-  //TODO: entity에서 해결할 수 있는 부분인지 확인
   async getUserInfo(userId: string): Promise<UserInfo> {
     const user = await this.userRepository.findUserById(userId);
     if (!user) {
@@ -105,15 +126,23 @@ export class UsersService {
     };
   }
 
-  async updateUserInfo(
-    updateUserDto: UpdateUserDto,
-    user: UserEntity,
-  ): Promise<UserInfo> {
+  async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
     const { name, avatarImageUrl } = updateUserDto;
     user.name = name;
     user.avatarImageUrl = avatarImageUrl;
     await this.userRepository.save(user);
+  }
 
-    return await this.getUserInfo(user.id);
+  async setFriendShipStatus(
+    user: UserEntity,
+    friendId: string,
+    status: string,
+  ) {
+    const friend = await this.getUserById(friendId);
+
+    if (!friend) {
+      throw new NotFoundError('친구가 존재하지 않습니다.');
+    }
+    await this.friendShipRepository.setFriendShipStatus(user, friend, status);
   }
 }

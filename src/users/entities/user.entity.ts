@@ -1,6 +1,7 @@
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-// import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from './friendship.entity';
 
 @Entity('User')
@@ -14,9 +15,6 @@ export class UserEntity {
   @Column({ length: 60, nullable: true })
   email: string;
 
-  @Column({ nullable: true })
-  refreshToken: string;
-
   @Column({ length: 60, nullable: true })
   twoFactorAuthCode: string;
 
@@ -29,17 +27,26 @@ export class UserEntity {
   @Column()
   isVerified: boolean;
 
-  // @OneToMany(() => GameStatsEntity, (gameSession) => gameSession.id)
+  @OneToMany(() => GameStatsEntity, (game) => game.id)
+  gameStats: GameStatsEntity[];
   
+  @Column({ default: Status.OFFLINE })
+  status: Status;
+
+  // @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
+  // wonGames: GameSessionEntity[];
 
   @OneToMany(() => FriendShipEntity, (friendship) => friendship.user, {
     eager: true,
   })
-  friendships: UserEntity[];
+  friendships: FriendShipEntity[];
 
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
-  friendOf: UserEntity[];
+  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend, {
+    eager: true,
+  })
+  friendOf: FriendShipEntity[];
 
   @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
   chatRooms: ChatRoomEntity[];
+  username: any;
 }

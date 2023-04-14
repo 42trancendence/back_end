@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { GameStatEntity } from './entities/gameStat.entity';
+import { GameStatsEntity } from './entities/gameStats.entity';
 import { GameController } from './game.controller';
 import { GameGateway } from './game.gateway';
 import { GameService } from './game.service';
@@ -9,7 +9,7 @@ import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([GameStatEntity]),
+    TypeOrmModule.forFeature([GameStatsEntity]),
     AuthModule,
   ],
   controllers: [GameController],

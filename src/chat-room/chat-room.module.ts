@@ -6,21 +6,14 @@ import { ChatRoomService } from './chat-room.service';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { ChatRoomGateway } from './chat-room.gateway';
 import { MessageRepository } from './repository/message.repository';
-import { UsersService } from 'src/users/users.service';
-import { UsersModule } from 'src/users/users.module';
-import { EmailModule } from 'src/email/email.module';
 import { AuthModule } from 'src/auth/auth.module';
+import { AccessTokenStrategy } from 'src/auth/strategy/access-token.strategy';
+import { RefreshTokenStrategy } from 'src/auth/strategy/refresh-token.strategy';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ChatRoomEntity]),
-    UsersModule,
-    EmailModule,
-    AuthModule,
-  ],
+  imports: [TypeOrmModule.forFeature([ChatRoomEntity]), AuthModule],
   controllers: [ChatRoomController],
   providers: [
-    UsersService,
     ChatRoomService,
     ChatRoomRepository,
     MessageRepository,

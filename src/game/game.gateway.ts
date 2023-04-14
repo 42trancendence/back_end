@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, NotFoundException } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway, 
@@ -16,8 +16,8 @@ import { WaitQueue } from './classes/waitQueue.class';
 import { PlayerList } from './classes/playerList.class';
 import { Player } from './classes/player.class'
 import { GameManager } from './classes/gameManager.class';
-import { SET_INTERVAL_TIME } from './constants/game.constant';
-import { GameStatus } from './constants/gameVariable';
+import { MAX_QUEUE_SIZE, SET_INTERVAL_TIME } from './constants/game.constant';
+import { GameStatus, GameVariable } from './constants/gameVariable';
 
 @WebSocketGateway({ 
   namespace: 'game',
@@ -43,31 +43,38 @@ export class GameGateway
   private playerList: PlayerList = new PlayerList();
 
   afterInit() {
-    this.WsLogger.log('Game Websocket Initialized');
-    setInterval(()=> {
-      if (this.waitQueue.getQueueLength() >= 2) {
-        const matchingPlayers: Array<Player> = this.waitQueue.getMatchPlayers();
-        // 매칭된 유저들로 새로운 게임방 생성
-        this.gameService.createGame(this.server, matchingPlayers, this.gameManager, this.playerList);
-        this.WsLogger.log(`Game ${matchingPlayers[0].getName() + matchingPlayers[1].getName()} created`);
-      }
+    this.WsLogger.log('afterInit');
+    
+    setInterval(async ()=> {
+      await this.gameService.createGame(this.server);
     }, SET_INTERVAL_TIME)
   }
 
   async handleConnection(client: Socket) {
-    console.log('test!!!!!!!!!!!!!!!!!!!!client connected', client.id)
+    this.WsLogger.debug(`Client connected: ${client.id}`);
+    
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
       throw new WsException('Unauthorized');
     }
-    const player = this.playerList.getPlayerByUserId(user.id);
-    if (player) {
-      this.WsLogger.log(`User ${user.id}: ${user.name} is already in lobby`);
-      client.join(player.getRoomId());
+
+    if (client.data?.user) {
+      this.WsLogger.log(`User ${client.data.user.id}: ${client.data.user.name} is already in lobby`);
       return;
     }
-    this.WsLogger.log(`User ${user.id} connected, and joined to gameLobby`);
+    client.data.user = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarImageUrl: user.avatarImageUrl,
+    }
+
+    client.leave(client.id);
+    client.join('lobby');
+    // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
+    this.server.to('lobby').emit(`connectUser: ${client.data.user.id}`);
+    this.WsLogger.log(`User ${user.name} connected, and joined to gameLobby`);
   }
 
   async handleDisconnect(client: Socket) {
@@ -88,109 +95,124 @@ export class GameGateway
     );
   }
     
-  @SubscribeMessage('connectUser')
-  async connectUser(@ConnectedSocket() client: Socket) {
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
+  // @SubscribeMessage('connectUser')
+  // async connectUser(@ConnectedSocket() client: Socket) {
+    // const user = await this.authService.getUserBySocket(client);
+    // if (!user) {
+    //   client.disconnect();
+    //   throw new WsException('Unauthorized');
+    // }
+    // // 유저가 이미 로비에 있는지 확인(아이디 하나로 테스트 하기 위해 임시 주석처리)
+    // // if (this.playerList.isUserInPlayersById(user.id) == true) {
+    // //   this.WsLogger.log(`User ${user.id}: ${user.name} is already in lobby`);
+    // //   return;
+    // // }
+    // const player = new Player(
+    //   user.id,
+    //   'lobby',
+    //   user.name,
+    //   user.email,
+    //   user.avatarImageUrl,
+    //   true // 테스트용
+    // );
+    // this.playerList.addUser(player);
+    // client.leave('lobby');
+    // client.join('lobby');
+    // // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
+    // this.server.to('lobby').emit('connectUser', player.getName());
+
+    // this.WsLogger.log(`User ${user.id}: ${user.name} connected, and joined to gameLobby`);
+  // }
+
+  @SubscribeMessage('postGameList')
+  async postGameList(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user){
       client.disconnect();
+      client.emit('getGameList', 'disconnected');
       throw new WsException('Unauthorized');
     }
-    // 유저가 이미 로비에 있는지 확인(아이디 하나로 테스트 하기 위해 임시 주석처리)
-    // if (this.playerList.isUserInPlayersById(user.id) == true) {
-    //   this.WsLogger.log(`User ${user.id}: ${user.name} is already in lobby`);
-    //   return;
-    // }
-    const player = new Player(
-      user.id,
-      'lobby',
-      user.name,
-      user.email,
-      user.avatarImageUrl,
-      true // 테스트용
-    );
-    this.playerList.addUser(player);
-    client.leave('lobby');
-    client.join('lobby');
-    // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
-    this.server.to('lobby').emit('connectUser', player.getName());
-
-    this.WsLogger.log(`User ${user.id}: ${user.name} connected, and joined to gameLobby`);
+    const gameList = await this.gameService.getGameList();
+    client.emit('getGameList', gameList);
+    this.WsLogger.log(`User ${client.data.user.name}: get gameList`);
   }
 
-  @SubscribeMessage('matching')
-  async matching(@ConnectedSocket() client: Socket) {
-    // client 에 데이터 저장 or User class 에 데이터 저장
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
+  @SubscribeMessage('postMatching')
+  async postMatching(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user){
       client.disconnect();
+      client.emit('getMatching', 'disconnected');
       throw new WsException('Unauthorized');
     }
-    if (this.playerList.isPlayerByUserId(user.id) == false) {
-      this.WsLogger.log(`User ${user.id}: ${user.name} is not in lobby`);
+
+    const allSockets = await this.server.in('matching').fetchSockets();
+    if (allSockets.length >= MAX_QUEUE_SIZE) {
+      client.emit('getMatching', 'full');
       return;
     }
-    const player = this.playerList.getPlayerByUserId(user.id);
-    // 매칭 대기열 최대인원 확인
-    if (this.waitQueue.isQueueFull() == true) {
-      this.server.to(client.id).emit('matching', 'full');
-      this.WsLogger.log(`User ${player.getId()}: ${player.getName()} is full`);
-      return;
-    }
-    // 테스트 주석처리!!!!!!! // 이미 매칭 대기열에 있는지 or 게임방에 참여 했는지 확인
-    // if (player.getRoomId() !== 'lobby' || this.waitQueue.isUserInQueueById(player.getId()) == true) {
-    //   this.server.to(client.id).emit('matching', 'already');
-    //   this.WsLogger.log(`User ${player.getId()}: ${player.getName()} is already`);
-    //   return;
-    // }
-    this.waitQueue.addUser(player);
-    this.server.to(client.id).emit('matching', 'matching');
-    this.WsLogger.log(`User ${player.getId()}: ${player.getName()} is matching`);
+
+    client.leave('lobby');
+    client.join('matching');
+    client.emit('getMatching', 'matching');
   }
 
   @SubscribeMessage('cancelMatching')
   async leaveWait(@ConnectedSocket() client: Socket) {
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
+    if (!client.data?.user) {
       client.disconnect();
+      client.emit('getMatching', 'disconnected');
       throw new WsException('Unauthorized');
     }
-    const player = this.playerList.getPlayerByUserId(user.id);
-    if (!player) {
-      this.WsLogger.log(`User ${user.id}: ${user.name} is not in lobby`);
-      return;
-    }
-    this.waitQueue.removeUser(player);
-    this.WsLogger.log(`User [${player.getId()}: ${player.getName()}] is leave wait`);
+
+    client.leave('matching');
+    client.join('lobby');
+    const playerName = client.data.user.name;
+    this.WsLogger.log(`${playerName} is leave wait`);
   }
 
+
+  // 매칭되면 매칭된 유저에게 메시지 보내야 한다. (socket.id 사용하면 안된다.)
   @SubscribeMessage('joinGame')
   async joinGame(@ConnectedSocket() client: Socket, @MessageBody() roomId: string) {
-    const game = this.gameManager.getGameByRoomId(roomId);
-    if (!game) {
-      this.WsLogger.log(`Game ${roomId} is not exist`);
-      return;
-    }
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
-      client.disconnect();
-      throw new WsException('Unauthorized');
-    }
-    const player = this.playerList.getPlayerByUserId(user.id);
-    if (!player) {
-      this.WsLogger.log(`User ${client.id} is not in playerList`);
-      return;
-    }
-    player.setRoomId(roomId);
-    game.addUser(player);
-    // socket에 roomId 저장
+    // TODO
+    // 1. 룸 아이디로 DB에서 게임 정보를 가져온다.
+    // const gameRoom = await this.gameService.getGameRoomByRoomId(roomId);
+    const gameRoom = {
+      id: '1',
+      roomId: '1',
+      player1: {
+        id: '1',
+        name: '1',
+        email: '1',
+        avatarImageUrl: '1',
+        isReady: GameStatus.Wait,
+      },
+      player2: {
+        id: '2',
+        name: '2',
+        email: '2',
+        avatarImageUrl: '2',
+        isReady: GameStatus.Wait,
+      },
+    };
+    // if (!gameRoom) {
+    //   this.WsLogger.log(`GameRoom ${roomId} is not exist`);
+    //   return;
+    // }
+    // 2. 게임 정보를 기반으로 게임에 참여한다.
     client.leave('lobby');
-    this.WsLogger.log(`User ${client.id} left lobby`);
     client.join(roomId);
+    // 3. 게임에 참여한 유저에게 게임 정보를 보낸다.
+    client.emit('getGameRoomInfo', gameRoom);
     this.WsLogger.log(`User ${client.id} joined game ${roomId}`);
   }
 
   @SubscribeMessage('leaveGame')
   async leaveGame(@ConnectedSocket() client: Socket) {
+    // TODO
+    // 1. 유저가 게임에 참여하고 있는지 확인한다.
+    // 2. 게임에 참여하고 있다면 게임을 종료한다.
+    // 3. 유저가 로비에 있는지 확인한다.
+
     const user = this.playerList.getPlayerByUserId(client.id);
     const roomId = user.getRoomId();
     if (this.gameManager.isGameByRoomId(roomId) == false) {
@@ -223,6 +245,10 @@ export class GameGateway
 
   @SubscribeMessage('gaming')
   async gaming(@ConnectedSocket() client: Socket, @MessageBody() roomId: string) {
+    // TODO
+    // 1. 게임에 필요한 볼, 패들, 스코어 가져오기
+    // 2. 게임 상태에 따라 게임 진행
+    // 3. 게임 종료 후 DB에 저장
     const game = this.gameManager.getGameByRoomId(roomId);
     if (!game) {
       this.WsLogger.log(`Game ${roomId} is not exist`);
@@ -235,13 +261,13 @@ export class GameGateway
       if (game.getPlayers[0].getScore() >= 10 || game.getPlayers[1].getScore() >= 10) {
         game.setGameStatus(GameStatus.End);
         // TODO: 게임 종료 후 DB에 저장
-        this.gameService.saveGameState(game);
+        // this.gameService.updateGameState(game);
       }
     }
     else if (game.getGameStatus() == GameStatus.End) {
       game.setGameStatus(GameStatus.Wait);
     }
 
-    this.server.to(roomId).emit('gaming', game);
+    client.emit('gaming', game);
   }
 }

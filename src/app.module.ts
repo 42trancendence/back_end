@@ -13,8 +13,6 @@ import { GameModule } from './game/game.module';
 
 @Module({
   imports: [
-    AuthModule,
-    UsersModule,
     ConfigModule.forRoot({
       envFilePath: [`${__dirname}/config/env/.${process.env.NODE_ENV}.env`],
       load: [emailConfig, authConfig],
@@ -22,6 +20,8 @@ import { GameModule } from './game/game.module';
       validationSchema,
     }),
     TypeOrmModule.forRoot(typeORMConfig),
+    UsersModule,
+    AuthModule,
     ChatRoomModule,
     TwoFactorAuthModule,
     GameModule

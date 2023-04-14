@@ -17,7 +17,6 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     const newChatRoom = new ChatRoomEntity();
 
     newChatRoom.name = createChatRoomDto.name;
-    newChatRoom.description = createChatRoomDto.description;
     newChatRoom.isPrivate = createChatRoomDto.isPrivate;
     newChatRoom.owner = user;
     newChatRoom.password = createChatRoomDto.password;
@@ -35,5 +34,9 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
 
   async getChatRoomByName(chatRoomName: string): Promise<ChatRoomEntity> {
     return await this.findOne({ where: { name: chatRoomName } });
+  }
+
+  async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
+    await this.delete(chatRoom);
   }
 }

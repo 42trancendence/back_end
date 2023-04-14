@@ -16,30 +16,42 @@ import { UsersService } from './users.service';
 import { UserInfoDto } from './dto/user-info.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+  ApiQuery,
+  ApiNotFoundResponse,
+  ApiParam,
+  ApiBody,
+  ApiBadRequestResponse,
+  ApiCreatedResponse,
+} from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 
 @Controller('users')
+@UseGuards(AuthGuard('access-jwt'))
 @ApiTags('User API')
+@ApiBearerAuth('access-token')
+@ApiUnauthorizedResponse({ description: 'Invalid access token' })
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get('me')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '내 정보 API',
-    description: '내 정보를 얻는다.',
-  })
+  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiOkResponse({ description: '성공', type: UserInfoDto })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserInfoDto> {
     return { id: user.id, name: user.name, email: user.email };
   }
 
   @Get('name')
-  @ApiOperation({
-    summary: '이름 중복 확인 API',
-    description: '이름 중복 확인을 한다.',
-  })
+  @ApiOperation({ summary: '이름 중복 확인' })
+  @ApiQuery({ name: 'userName', description: '중복 확인할 이름' })
+  @ApiOkResponse({ description: '성공' })
+  @ApiNotFoundResponse({ description: '이미 존재하는 이름입니다.' })
   async checkName(@Query('userName') name: string) {
     const IsExist = await this.usersService.checkName(name);
 
@@ -50,138 +62,77 @@ export class UsersController {
   }
 
   @Get('friends')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '나의 모든 친구 정보 API',
-    description: '나의 모든 친구 정보를 얻는다.',
+  @ApiOperation({ summary: '나의 모든 친구 정보 조회' })
+  @ApiOkResponse({
+    description: '나의 모든 친구 정보를 얻는다',
+    type: [UserInfoDto],
   })
-  async getMyFriends(@getUser() user: UserEntity): Promise<UserInfoDto[]> {
-    const friends = user.friendships;
-    const friendList = [];
-
-    for (const friend of friends) {
-      friendList.push({
-        id: friend.id,
-        name: friend.name,
-        email: friend.email,
-      });
-    }
-    return friendList;
+  async getMyFriends(@getUser() user: UserEntity) {
+    return await this.usersService.getFriendList(user);
   }
 
-  @Get('friends/:id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '나의 친구 정보 API',
-    description: '나의 친구 정보를 얻는다.',
-  })
-  async getMyFriend(
-    @getUser() user: UserEntity,
-    @Query('id') friendId: string,
-  ): Promise<UserInfoDto> {
-    const friends = user.friendships;
-
-    for (const friend of friends) {
-      if (friend.id === friendId)
-        return { id: friend.id, name: friend.name, email: friend.email };
-    }
-    throw new NotFoundException('친구가 존재하지 않습니다.');
-  }
-
-  @Get('accept/:id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '친구 요청 수락API',
-    description: '친구요청을 수락한다.',
-  })
+  @Get('accept')
+  @ApiOperation({ summary: '친구 요청 수락' })
+  @ApiQuery({ name: 'id', description: '친구 요청을 수락할 유저의 id' })
   async acceptFriend(
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 수락 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'accept');
   }
 
-  @Get('reject/:id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '친구 요청 거절API',
-    description: '친구요청을 거절한다.',
-  })
+  @Get('reject')
+  @ApiOperation({ summary: '친구 요청 거절' })
+  @ApiQuery({ name: 'id', description: '친구 요청을 거절할 유저의 id' })
   async rejectFriend(
     @getUser() user: UserEntity,
     @Query('id') friendId: string,
   ) {
-    // TODO: 친구 요청 거절 API
-    // await this.usersService.acceptFriend(user, friendId);
+    await this.usersService.setFriendShipStatus(user, friendId, 'reject');
   }
 
   @Get(':id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '유저 정보 API',
-    description: '유저의 정보를 얻는다.',
-  })
+  @ApiOperation({ summary: '유저 정보 조회' })
+  @ApiParam({ name: 'id', description: '조회할 유저 ID' })
+  @ApiOkResponse({ description: '성공', type: UserInfoDto })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
   async getUserInfo(@Param('id') userId: string): Promise<UserInfoDto> {
     return this.usersService.getUserInfo(userId);
   }
 
-  @Delete('blocks')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '유저 차단 API',
-    description: '유저를 차단한다.',
-  })
-  async blockUser(@getUser() user: UserEntity, @Body('id') friendId: string) {
-    await this.usersService.blockFriend(user, friendId);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '친구 삭제 API',
-    description: '친구를 삭제한다.',
-  })
+  @Delete('friend/:id')
+  @ApiOperation({ summary: '친구 삭제' })
   async deleteFriend(
     @getUser() user: UserEntity,
     @Param('id') friendId: string,
   ) {
     await this.usersService.deleteFriend(user, friendId);
   }
-  @Post('blocks/:id')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '유저 차단 해제API',
-    description: '유저를 차단 해제한다.',
-  })
-  async unblockUser(
-    @getUser() user: UserEntity,
-    @Param('id') friendId: string,
-  ) {
-    await this.usersService.unblockFriend(user, friendId);
-  }
 
   @Post('friend')
-  @UseGuards(AuthGuard('access-jwt'))
-  @ApiOperation({
-    summary: '친구 요청 API',
-    description: '친구요청을 보낸다.',
+  @ApiOperation({ summary: '친구 요청' })
+  @ApiCreatedResponse({ description: '성공' })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
+  @ApiBadRequestResponse({ description: '이미 친구요청을 보냈습니다.' })
+  @ApiBadRequestResponse({
+    description: '자기 자신을 친구로 추가할 수 없습니다.',
   })
   async addFriend(@getUser() user: UserEntity, @Body('id') friendId: string) {
     await this.usersService.addFriend(user, friendId);
+    return { message: '성공' };
   }
 
   @Put('me')
-  @UseGuards(AuthGuard('access-jwt'))
   @UsePipes(ValidationPipe)
-  @ApiOperation({
-    summary: '유저 정보 업데이트 API',
-    description: '유저의 정보를 업데이트한다.',
+  @ApiOperation({ summary: '유저 정보 수정' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiBadRequestResponse({
+    description: '잘못된 유저이름 또는 아바타 이미지입니다.',
   })
   async updateUserInfo(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
-  ): Promise<UserInfoDto> {
-    return this.usersService.updateUserInfo(updateUserDto, user);
+  ) {
+    await this.usersService.updateUserInfo(updateUserDto, user);
   }
 }

@@ -8,6 +8,8 @@ import { GameManager } from './classes/gameManager.class';
 import { Logger } from '@nestjs/common';
 import { PlayerList } from './classes/playerList.class';
 import { WsException } from '@nestjs/websockets';
+import { GameStatus } from './constants/gameVariable';
+import { GameStatsEntity } from './entities/gameStats.entity';
 
 @Injectable()
 export class GameService {
@@ -17,23 +19,35 @@ export class GameService {
   ) {}
   private readonly WsLogger = new Logger('GameWsLogger');
 
-  createGame(server: Server, matchingPlayers: Array<Player>, gameManager: GameManager, players: PlayerList) {
-    const roomId = matchingPlayers[0].getName() + matchingPlayers[1].getName();
-    const newGame = new Game(
-      roomId,
-    );
-    // 각자 게임방에 입장 알림
-    server
-      .to(matchingPlayers[0].getId())
-      .to(matchingPlayers[1].getId())
-      .emit('matching', roomId);
-    gameManager.addGame(newGame);
-    // 각 유저의 방 정보 업데이트
-    server.to('lobby').emit('getRoomList', gameManager.getGameList());
+  async createGame(server: Server) {
+    const allSockets = await server.in('matching').fetchSockets();
+    if (allSockets.length >= 2) {
+      const client1 = allSockets.shift();
+      const client2 = allSockets.shift();
+      client1.leave('matching');
+      client1.join('gameRoomId');
+      client1.emit('startGame');
+      client2.leave('matching');
+      client2.join('gameRoomId');
+      client2.emit('startGame');
+
+      const player1 = client1.data.user;
+      const player2 = client2.data.user;
+      const newGame = await this.gameRepository.saveGameState(player1, player2);
+      if (newGame) {
+        client1.emit('matchingSuccess', newGame);
+        client2.emit('matchingSuccess', newGame);
+      }
+    }
   }
 
-  async saveGameState(game: Game) {
-    const gameData = await this.gameRepository.saveGameState(game);
+  async getGameList() {
+    const gameList = await this.gameRepository.getGameList();
+    return gameList;
+  }
+
+  async updateGameState(game: GameStatsEntity) {
+    const gameData = await this.gameRepository.updateGameState(game);
     return gameData;
   }
 

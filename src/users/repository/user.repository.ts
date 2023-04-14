@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
+import {Status} from '../enum/status.enum';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -40,18 +41,18 @@ export class UserRepository extends Repository<UserEntity> {
     return user;
   }
 
-  async saveRefreshToken(token: string, user: UserEntity): Promise<void> {
-    user.refreshToken = token;
-    this.save(user);
-  }
-
   async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
     user.twoFactorAuthCode = secret;
-    this.save(user);
+    await this.save(user);
   }
 
   async turnOnTwoFactorAuth(user: UserEntity): Promise<void> {
     user.isVerified = true;
-    this.save(user);
+    await this.save(user);
+  }
+
+  async saveUserStatus(user: UserEntity, status: Status): Promise<void> {
+    user.status = status;
+    await this.save(user);
   }
 }

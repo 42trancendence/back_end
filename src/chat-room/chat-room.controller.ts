@@ -10,7 +10,6 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomService } from './chat-room.service';
@@ -20,9 +19,10 @@ import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { ChatRoomValidationPipe } from './pipes/chat-room-validation.pipe';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
+import { AccessGuard } from 'src/auth/guard/access-token.guard';
 
 @Controller('chat-room')
-@UseGuards(AuthGuard())
+@UseGuards(AccessGuard)
 export class ChatRoomController {
   constructor(private chatRoomService: ChatRoomService) {}
 

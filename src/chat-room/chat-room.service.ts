@@ -7,6 +7,8 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
+import { Socket } from 'socket.io';
+import {WsException} from '@nestjs/websockets';
 
 @Injectable()
 export class ChatRoomService {
@@ -65,6 +67,11 @@ export class ChatRoomService {
     message.chatRoom = chatRoom;
 
     await this.messageRepository.saveMessage(message);
+    return message;
+  }
+
+  async deleteChatRoom(chatRoom: ChatRoomEntity) {
+    await this.chatRoomRepository.deleteChatRoom(chatRoom);
   }
 
   async updateChatRoom(
@@ -72,7 +79,6 @@ export class ChatRoomService {
     updateChatRoomDto: UpdateChatRoomDto,
   ) {
     chatRoom.name = updateChatRoomDto.name;
-    chatRoom.description = updateChatRoomDto.description;
     chatRoom.isPrivate = updateChatRoomDto.isPrivate;
     chatRoom.password = updateChatRoomDto.password;
 
