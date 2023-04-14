@@ -8,11 +8,13 @@ import { UserRepository } from './repository/user.repository';
 import { FriendShipRepository } from './repository/friendship.repository';
 import { FriendShipEntity } from './entities/friendship.entity';
 import { UsersGateway } from './gateway/users.gateway';
+import { FriendService } from './friend.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([UserEntity, FriendShipEntity])],
   controllers: [UsersController],
   providers: [
+    FriendService,
     UsersService,
     JwtModule,
     UserRepository,

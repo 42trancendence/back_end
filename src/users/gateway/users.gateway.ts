@@ -14,6 +14,7 @@ import { UsersService } from '../users.service';
 import { Status } from '../enum/status.enum';
 import { UserEntity } from '../entities/user.entity';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
+import { FriendService } from '../friend.service';
 
 @WebSocketGateway({
   namespace: 'users',
@@ -29,6 +30,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
+    private friendService: FriendService,
   ) {}
 
   async handleDisconnect(client: Socket) {
@@ -60,7 +62,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
-    const friends = await this.usersService.getFriendList(
+    const friends = await this.friendService.getFriendList(
       activeUser,
       FriendShipStatus.ACCEPTED,
     );
@@ -84,7 +86,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       .to(client.id)
       .emit(
         'friendRequest',
-        await this.usersService.getFriendRequestList(activeUser),
+        await this.friendService.getFriendRequestList(activeUser),
       );
   }
 
@@ -117,7 +119,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!client.data?.user) {
       return;
     }
-    await this.usersService.addFriend(client.data.user, friendName);
+    await this.friendService.addFriend(client.data.user, friendName);
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       if (socket.data?.user?.name === friendName) {
@@ -125,7 +127,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
           .to(socket.id)
           .emit(
             'friendRequest',
-            await this.usersService.getFriendRequestList(socket.data.user),
+            await this.friendService.getFriendRequestList(socket.data.user),
           );
       }
     }
@@ -146,13 +148,13 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!friend) {
       return;
     }
-    const friends = await this.usersService.getFriendList(
+    const friends = await this.friendService.getFriendList(
       client.data.user,
       FriendShipStatus.PENDING,
     );
     for (const f of friends) {
       if (f.name === friend.name) {
-        await this.usersService.acceptFriendRequest(client.data.user, friend);
+        await this.friendService.acceptFriendRequest(client.data.user, friend);
         const allSockets = await this.server.fetchSockets();
         for (const socket of allSockets) {
           if (socket.data?.user?.name === friendName) {
@@ -178,13 +180,13 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const friends = await this.usersService.getFriendList(
+    const friends = await this.friendService.getFriendList(
       client.data.user,
       FriendShipStatus.PENDING,
     );
     for (const f of friends) {
       if (f.name === friend.name) {
-        await this.usersService.rejectFriendRequest(client.data.user, friend);
+        await this.friendService.rejectFriendRequest(client.data.user, friend);
       }
     }
   }
