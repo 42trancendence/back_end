@@ -10,23 +10,23 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { UsersService } from '../users.service';
-import { Status } from '../enum/status.enum';
-import { UserEntity } from '../entities/user.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { Status } from 'src/users/enum/status.enum';
+import { UsersService } from 'src/users/users.service';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { FriendService } from '../friend.service';
 
 @WebSocketGateway({
-  namespace: 'users',
+  namespace: 'friend',
   cors: {
     origin: 'http://localhost:4000',
     methods: ['GET', 'POST'],
     credentials: true,
   },
 })
-export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server;
-  private readonly usersLogger = new Logger('UsersGateway');
+  private readonly friendWsLogger = new Logger('FriendGateway');
   constructor(
     private authService: AuthService,
     private usersService: UsersService,
@@ -34,7 +34,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   async handleDisconnect(client: Socket) {
-    this.usersLogger.debug('disconnect');
+    this.friendWsLogger.debug('disconnect');
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       return;
@@ -50,7 +50,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    this.usersLogger.debug('connect');
+    this.friendWsLogger.debug('connect');
 
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
@@ -102,7 +102,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
-    this.usersLogger.debug('updateActiveStatus');
+    this.friendWsLogger.debug('updateActiveStatus');
     if (!client.data?.user) {
       return;
     }
@@ -114,7 +114,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.usersLogger.debug('addFriend');
+    this.friendWsLogger.debug('addFriend');
 
     if (!client.data?.user) {
       return;
@@ -138,7 +138,7 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.usersLogger.debug('acceptFriendRequest');
+    this.friendWsLogger.debug('acceptFriendRequest');
 
     if (!client.data?.user) {
       return;
