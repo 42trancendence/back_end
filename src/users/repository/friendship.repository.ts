@@ -16,7 +16,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     friendShip.user = user;
     friendShip.friend = friend;
     friendShip.status = FriendShipStatus.PENDING;
-    this.save(friendShip);
+    await this.save(friendShip);
     return friendShip;
   }
 
@@ -27,7 +27,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   }
 
   async deleteFriendShip(friendShip: FriendShipEntity) {
-    this.delete(friendShip);
+    await this.delete(friendShip);
   }
 
   async removeFriendShip(user: UserEntity, friend: UserEntity) {
@@ -52,7 +52,7 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   ) {
     const friendShip = await this.getFriendShip(friend, user);
     friendShip.status = status;
-    this.save(friendShip);
+    await this.save(friendShip);
     return friendShip;
   }
 }

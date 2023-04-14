@@ -80,6 +80,12 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     }
     this.server.to(client.id).emit('friendList', friendList);
+    this.server
+      .to(client.id)
+      .emit(
+        'friendRequest',
+        await this.usersService.getFriendRequestList(activeUser),
+      );
   }
 
   private async setActiveStatus(client: Socket, status: Status) {
@@ -115,7 +121,12 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       if (socket.data?.user?.name === friendName) {
-        this.server.to(socket.id).emit('friendRequest', client.data.user);
+        this.server
+          .to(socket.id)
+          .emit(
+            'friendRequest',
+            await this.usersService.getFriendRequestList(socket.data.user),
+          );
       }
     }
   }
@@ -130,21 +141,27 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!client.data?.user) {
       return;
     }
+    const friend = await this.usersService.getUserByName(friendName);
+
+    if (!friend) {
+      return;
+    }
     const friends = await this.usersService.getFriendList(
       client.data.user,
       FriendShipStatus.PENDING,
     );
     for (const f of friends) {
-      if (f.name === friendName) {
-        await this.usersService.acceptFriendRequest(client.data.user, f.id);
+      if (f.name === friend.name) {
+        await this.usersService.acceptFriendRequest(client.data.user, friend);
         const allSockets = await this.server.fetchSockets();
         for (const socket of allSockets) {
           if (socket.data?.user?.name === friendName) {
-            this.server.to(socket.id).emit('friendAccepted', client.data.user);
+            this.server.to(socket.id).emit('friendActive', client.data.user);
           }
         }
       }
     }
+    this.server.to(client.id).emit('friendActive', friend);
   }
 
   @SubscribeMessage('rejectFriendRequest')
@@ -155,13 +172,19 @@ export class UsersGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!client.data?.user) {
       return;
     }
+
+    const friend = await this.usersService.getUserByName(friendName);
+    if (!friend) {
+      return;
+    }
+
     const friends = await this.usersService.getFriendList(
       client.data.user,
       FriendShipStatus.PENDING,
     );
     for (const f of friends) {
-      if (f.name === friendName) {
-        await this.usersService.rejectFriendRequest(client.data.user, f.id);
+      if (f.name === friend.name) {
+        await this.usersService.rejectFriendRequest(client.data.user, friend);
       }
     }
   }
