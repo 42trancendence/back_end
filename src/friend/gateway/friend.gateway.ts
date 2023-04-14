@@ -16,6 +16,7 @@ import { UsersService } from 'src/users/users.service';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { FriendService } from '../friend.service';
 
+// NOTE: namespace will be changed to '/friend'
 @WebSocketGateway({
   namespace: 'users',
   cors: {
@@ -59,45 +60,6 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     client.data.user = user;
     await this.setActiveStatus(client, Status.ONLINE);
-  }
-
-  private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
-    const friends = await this.friendService.getFriendList(
-      activeUser,
-      FriendShipStatus.ACCEPTED,
-    );
-    const friendList = new Array<UserEntity>();
-
-    for (const f of friends) {
-      const user = await this.usersService.getUserById(f.id);
-      friendList.push(user);
-      if (user.status === Status.OFFLINE) {
-        continue;
-      }
-      const allSockets = await this.server.fetchSockets();
-      for (const socket of allSockets) {
-        if (socket.data?.user?.id === user.id) {
-          this.server.to(socket.id).emit('friendActive', activeUser);
-        }
-      }
-    }
-    this.server.to(client.id).emit('friendList', friendList);
-    this.server
-      .to(client.id)
-      .emit(
-        'friendRequest',
-        await this.friendService.getFriendRequestList(activeUser),
-      );
-  }
-
-  async setActiveStatus(client: Socket, status: Status) {
-    const user = client.data?.user;
-
-    if (!user) {
-      return;
-    }
-    await this.usersService.updateUserStatus(user, status);
-    await this.emitStatusToFriends(client, user);
   }
 
   @SubscribeMessage('updateActiveStatus')
@@ -169,7 +131,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('rejectFriendRequest')
   async rejectFriendRequest(
-    client: Socket,
+    @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
     if (!client.data?.user) {
@@ -187,8 +149,79 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     for (const f of friends) {
       if (f.name === friend.name) {
-        await this.friendService.rejectFriendRequest(client.data.user, friend);
+        await this.friendService.removeFriendShip(client.data.user, friend);
       }
     }
+  }
+
+  @SubscribeMessage('deleteFriend')
+  async deleteFriend(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('friendName') friendName: string,
+  ) {
+    if (!client.data?.user) {
+      return;
+    }
+
+    const friend = await this.usersService.getUserByName(friendName);
+    if (!friend) {
+      return;
+    }
+
+    const friends = await this.friendService.getFriendList(
+      client.data.user,
+      FriendShipStatus.ACCEPTED,
+    );
+    for (const f of friends) {
+      if (f.name === friend.name) {
+        await this.friendService.removeFriendShip(client.data.user, friend);
+        const allSockets = await this.server.fetchSockets();
+        for (const socket of allSockets) {
+          if (socket.data?.user?.name === friendName) {
+            this.server.to(socket.id).emit('friendActive', client.data.user);
+          }
+        }
+      }
+    }
+    this.server.to(client.id).emit('friendActive', friend);
+  }
+
+  private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
+    const friends = await this.friendService.getFriendList(
+      activeUser,
+      FriendShipStatus.ACCEPTED,
+    );
+    const friendList = new Array<UserEntity>();
+
+    for (const f of friends) {
+      const user = await this.usersService.getUserById(f.id);
+      friendList.push(user);
+      if (user.status === Status.OFFLINE) {
+        continue;
+      }
+      const allSockets = await this.server.fetchSockets();
+      for (const socket of allSockets) {
+        if (socket.data?.user?.id === user.id) {
+          this.server.to(socket.id).emit('friendActive', activeUser);
+        }
+      }
+    }
+    this.server.to(client.id).emit('friendList', friendList);
+    this.server
+      .to(client.id)
+      .emit(
+        'friendRequest',
+        await this.friendService.getFriendRequestList(activeUser),
+      );
+  }
+
+  async setActiveStatus(client: Socket, status: Status) {
+    const user = client.data?.user;
+
+    if (!user) {
+      return;
+    }
+    await this.usersService.updateUserStatus(user, status);
+    await this.emitStatusToFriends(client, user);
   }
 }
