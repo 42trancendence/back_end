@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, FindManyOptions, Repository } from 'typeorm';
 import { FriendShipEntity } from '../entities/friendship.entity';
-import { UserEntity } from '../entities/user.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 
 @Injectable()

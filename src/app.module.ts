@@ -10,6 +10,7 @@ import { ChatRoomModule } from './chat-room/chat-room.module';
 import authConfig from './config/authConfig';
 import { AuthModule } from './auth/auth.module';
 import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
+import { FriendModule } from './friend/friend.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
     ChatRoomModule,
     GameModule,
     TwoFactorAuthModule,
+    FriendModule,
   ],
   controllers: [],
   providers: [],

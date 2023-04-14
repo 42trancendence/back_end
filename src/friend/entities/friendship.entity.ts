@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
-import { UserEntity } from './user.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @Entity({ name: 'friendships' })
 export class FriendShipEntity {

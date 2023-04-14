@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { NotFoundError } from 'rxjs';
-import { UserEntity } from './entities/user.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
 import { FriendShipStatus } from './enum/friendShipStatus.enum';
 import { FriendShipRepository } from './repository/friendship.repository';
-import { UsersService } from './users.service';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class FriendService {
