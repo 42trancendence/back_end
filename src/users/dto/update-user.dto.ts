@@ -7,7 +7,7 @@ export class UpdateUserDto {
   @MinLength(4)
   name: string;
 
-  @ApiProperty({ description: '유저 프로필 이미지 URL' })
+  @ApiProperty({ description: '유저 아바타 URL' })
   @IsString()
   @IsNotEmpty()
   avatarImageUrl: string;

@@ -20,5 +20,5 @@ export class FriendShipEntity {
   friend: UserEntity;
 
   @Column()
-  status: FriendShipStatus; // or enum: ['pending', 'accepted', 'rejected']
+  status: FriendShipStatus;
 }
