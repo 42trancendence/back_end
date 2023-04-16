@@ -14,25 +14,28 @@ import { GameStatsEntity } from './entities/gameStats.entity';
 @Injectable()
 export class GameService {
   constructor(
-      private gameRepository: GameRepository,
-      private authService: AuthService,
+    private gameRepository: GameRepository,
+    private authService: AuthService,
   ) {}
   private readonly WsLogger = new Logger('GameWsLogger');
 
-  async createGame(server: Server) {
+  async createGame(server: Server, gameManager: GameManager) {
     const allSockets = await server.in('matching').fetchSockets();
     if (allSockets.length >= 2) {
       const client1 = allSockets.shift();
       const client2 = allSockets.shift();
-      client1.leave('matching');
-      client1.join('gameRoomId');
-      client1.emit('startGame');
-      client2.leave('matching');
-      client2.join('gameRoomId');
-      client2.emit('startGame');
-
       const player1 = client1.data.user;
       const player2 = client2.data.user;
+      const newRoomId = `${player1.name}-${player2.name}`;
+
+      client1.leave('matching');
+      client1.join(newRoomId);
+      client1.emit('startGame');
+      client2.leave('matching');
+      client2.join(newRoomId);
+      client2.emit('startGame');
+
+      gameManager.createGame(`${player1.name}-${player2.name}`);
       const newGame = await this.gameRepository.saveGameState(player1, player2);
       if (newGame) {
         client1.emit('matchingSuccess', newGame);

@@ -1,47 +1,34 @@
 import { Game } from './game.class';
+import { Server } from 'socket.io';
 
 export class GameManager {
-    gameArray: Array<Game> = [];
+  gameMap: Map<string, Game> = new Map<string, Game>();
 
-    constructor() {}
+  sendGame(server: Server) {
+    this.gameMap.forEach((game, roomId) => {
+      console.log('sendGame!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', roomId);
+      server.to(roomId).emit('gaming', game);
+    });
+  }
 
-    public addGame(game: Game): void {
-        this.gameArray.push(game);
-    }
+  createGame(roomId: string) {
+    const game = new Game(roomId);
+    this.gameMap.set(roomId, game);
+  }
 
-    public removeGame(roomId: string): void {
-        this.gameArray = this.gameArray.filter((g) => g.getRoomId() !== roomId);
-    }
+  removeGame(roomId: string) {
+    this.gameMap.delete(roomId);
+  }
 
-    public getGameList(): Array<Game> {
-        return this.gameArray;
-    }
+  getGameByRoomId(roomId: string) {
+    return this.gameMap.get(roomId);
+  }
 
-    public getGameListLength(): number {
-        return this.gameArray.length;
-    }
+  isGameByRoomId(roomId: string) {
+    return this.gameMap.has(roomId);
+  }
 
-    public getGameByRoomId(roomId: string): Game {
-        return this.gameArray.find((g) => g.getRoomId() === roomId);
-    }
-
-    public isGameByRoomId(roomId: string): boolean {
-        return this.gameArray.some((g) => g.getRoomId() === roomId);
-    }
-
-    public isGameInGameList(game: Game): boolean {
-        return this.gameArray.includes(game);
-    }
-
-    public isGameFull(): boolean {
-        return this.gameArray.length >= 10;
-    }
-
-    public shiftMatchGame(): Game {
-        if (this.gameArray.length < 1) {
-            return null;
-        }
-        const game = this.gameArray.shift();
-        return game;
-    }
+  getGameRooms() {
+    return this.gameMap;
+  }
 }

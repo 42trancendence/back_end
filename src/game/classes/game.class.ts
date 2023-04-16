@@ -1,52 +1,39 @@
-
 import { Ball } from './ball.class';
-import { GameStatus } from '../constants/gameVariable';
-import { Player } from './player.class';
+import { GameStatus, GameVariable } from '../constants/gameVariable';
+import { Paddle } from './paddle.class';
 import { Server } from 'socket.io';
-import { SelectQueryBuilder } from 'typeorm';
 
-export class Game
-{
-    private id_: string;
-    private gameStatus_: string = GameStatus.Wait;
-    private players_: Array<Player> = [];
-    private watchers_: Array<Player> = [];
-    private ball_: Ball = new Ball();
+export class Game {
+  private roomId_: string;
+  private gameStatus_: string = GameStatus.Wait;
+  private ball_: Ball = new Ball();
+  private paddles_: Array<Paddle> = [
+    new Paddle(0),
+    new Paddle(GameVariable.canvasWidth - GameVariable.paddleWidth),
+  ];
+  private score_: Array<number> = [0, 0];
 
-    constructor(
-        private id: string,
-        private players: Array<Player>
-    ) {
-        this.id_ = id;
-        this.players_ = players;
-    }
+  constructor(private id: string) {
+    this.roomId_ = id;
+  }
 
-    public sendGame(server: Server, roomId: string): void {
-        server.to(roomId).emit('gaming', this);
-    }
+  public sendGame(server: Server, roomId: string): void {
+    server.to(roomId).emit('gaming', this);
+  }
 
-    public addUser(user: Player): void {
-        this.players_.push(user);
-    }
+  public getRoomId(): string {
+    return this.roomId_;
+  }
 
-    public getPlayers(): Array<Player> {
-        return this.players_;
-    }
+  public setGameStatus(gameStatus: string): void {
+    this.gameStatus_ = gameStatus;
+  }
 
-    public getWatchers(): Array<Player> {
-        return this.watchers_;
-    }
+  public getGameStatus(): string {
+    return this.gameStatus_;
+  }
 
-    public getRoomId(): string {
-        return this.id_;
-    }
-
-    public setGameStatus(gameStatus: string): void {
-        this.gameStatus_ = gameStatus;
-    }
-
-    public getGameStatus(): string {
-        return this.gameStatus_;
-    }
-
+  public getScore(): Array<number> {
+    return this.score_;
+  }
 }
