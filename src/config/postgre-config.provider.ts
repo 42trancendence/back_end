@@ -9,13 +9,14 @@ export class PostgreConfigProvider {
     @Inject(postgreConfig.KEY) private config: ConfigType<typeof postgreConfig>,
   ) {}
   createTypeOrmOptions(): TypeOrmModuleOptions {
+    console.log(this.config);
     return {
       type: 'postgres',
       host: this.config.host,
-      port: +this.config.port,
+      port: this.config.port,
       username: this.config.username,
       password: this.config.password,
-      database: 'transcendence',
+      database: this.config.name,
       entities: [__dirname + '/../**/**/*.entity.{ts,js}'],
       synchronize: this.config.synchronize,
     };
