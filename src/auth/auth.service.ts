@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import { Socket } from 'socket.io';
@@ -12,6 +12,8 @@ export class AuthService {
     private jwtService: JwtService,
     private userRepository: UserRepository,
   ) {}
+
+  private AuthServiceLogger = new Logger('AuthService');
 
   async createAccessToken(ftUser: FtUserDto, res: Response) {
     const payload = { id: ftUser.id };
@@ -61,6 +63,8 @@ export class AuthService {
         throw new UnauthorizedException('Unauthorized jwt');
       }
       return await this.userRepository.findUserById(payload.id);
-    } catch (e) {}
+    } catch (e) {
+      this.AuthServiceLogger.error('Unauthorized jwt');
+    }
   }
 }

@@ -16,9 +16,8 @@ import { UsersService } from 'src/users/users.service';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { FriendService } from '../friend.service';
 
-// NOTE: namespace will be changed to '/friend'
 @WebSocketGateway({
-  namespace: 'users',
+  namespace: 'friend',
   cors: {
     origin: 'http://localhost:4000',
     methods: ['GET', 'POST'],

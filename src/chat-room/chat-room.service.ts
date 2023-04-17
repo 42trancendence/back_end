@@ -7,8 +7,6 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
-import { Socket } from 'socket.io';
-import {WsException} from '@nestjs/websockets';
 
 @Injectable()
 export class ChatRoomService {
@@ -20,34 +18,29 @@ export class ChatRoomService {
   async createChatRoom(
     createChatRoomDto: CreateChatRoomDto,
     user: UserEntity,
-  ): Promise<ChatRoomInfo> {
-    const chatRoom = await this.chatRoomRepository.createNewChatRoom(
-      createChatRoomDto,
-      user,
-    );
-    const chatRoomInfo = new ChatRoomInfo();
-
-    chatRoomInfo.name = chatRoom.name;
-    chatRoomInfo.owner = chatRoom.owner.name;
-    chatRoomInfo.isPrivate = chatRoom.isPrivate;
-    return chatRoomInfo;
+  ): Promise<void> {
+    await this.chatRoomRepository.createNewChatRoom(createChatRoomDto, user);
   }
 
-  async getAllChatRooms(): Promise<ChatRoomInfo[]> {
-    const found = await this.chatRoomRepository.getAllChatRooms();
-    const chatRoomArr: ChatRoomInfo[] = new Array<ChatRoomInfo>();
-    found.forEach((value) => {
-      chatRoomArr.push({
-        name: value.name,
-        owner: value.owner.name,
-        isPrivate: value.isPrivate,
-      });
-    });
-    return chatRoomArr;
+  async isChatRoomOwner(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<boolean> {
+    return chatRoom.owner.id === user.id;
+  }
+
+  async banUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
+
+  async kickUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
+
+  async muteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
+
+  async getAllChatRooms(): Promise<ChatRoomEntity[]> {
+    return await this.chatRoomRepository.getAllChatRooms();
   }
 
   async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {
-    return await this.chatRoomRepository.getChatRoom(chatRoomId);
+    return await this.chatRoomRepository.getChatRoomById(chatRoomId);
   }
 
   async getChatRoomByName(chatRoomName: string): Promise<ChatRoomEntity> {
@@ -79,7 +72,7 @@ export class ChatRoomService {
     updateChatRoomDto: UpdateChatRoomDto,
   ) {
     chatRoom.name = updateChatRoomDto.name;
-    chatRoom.isPrivate = updateChatRoomDto.isPrivate;
+    chatRoom.type = updateChatRoomDto.type;
     chatRoom.password = updateChatRoomDto.password;
 
     await this.chatRoomRepository.save(chatRoom);

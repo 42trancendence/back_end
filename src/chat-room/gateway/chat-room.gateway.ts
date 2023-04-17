@@ -11,11 +11,14 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { ChatRoomInfo } from './chat-room-info';
-import { ChatRoomService } from './chat-room.service';
-import { CreateChatRoomDto } from './dto/create-chat-room.dto';
-import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
-import { ChatRoomValidationPipe } from './pipes/chat-room-validation.pipe';
+import { ChatRoomInfo } from '../chat-room-info';
+import { ChatRoomService } from '../chat-room.service';
+import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
+import { UpdateChatRoomDto } from '../dto/update-chat-room.dto';
+import { ChatRoomType } from '../enum/chat-room-type.enum';
+import { ChatRoomValidationPipe } from '../pipes/chat-room-validation.pipe';
+import * as bcrypt from 'bcrypt';
+import { UsersService } from 'src/users/users.service';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -30,6 +33,7 @@ export class ChatRoomGateway
   constructor(
     private chatRoomService: ChatRoomService,
     private authService: AuthService,
+    private usersService: UsersService,
   ) {}
 
   @SubscribeMessage('sendMessage')
@@ -47,6 +51,48 @@ export class ChatRoomGateway
     );
     client.broadcast.to(client.data.chatRoom.name).emit('getMessage', message);
   }
+
+  @SubscribeMessage('banUser')
+  async banUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('userId') userId: string,
+  ) {
+    if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
+      return;
+    }
+    const isOwner = await this.chatRoomService.isChatRoomOwner(
+      client.data.chatRoom,
+      client.data.user,
+    );
+    if (!isOwner) {
+      throw new WsException('You are not owner of this chat room');
+    }
+    const banUser = this.usersService.getUserById(userId);
+    if (!banUser) {
+      return;
+    }
+    // await this.chatRoomService.banUser(client.data.chatRoom, user);
+  }
+
+  // @SubscribeMessage('kickUser')
+  // async kickUser(
+  // @ConnectedSocket() client: Socket,
+  // @MessageBody('userId') userId: number,
+  // ) {
+  //   if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
+  //     return;
+  //   }
+  // }
+  //
+  // @SubscribeMessage('muteUser')
+  // async muteUser(
+  // @ConnectedSocket() client: Socket,
+  // @MessageBody('userId') userId: number,
+  // ) {
+  //   if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
+  //     return;
+  //   }
+  // }
 
   @SubscribeMessage('updateChatRoom')
   async updateChatRoom(
@@ -126,8 +172,10 @@ export class ChatRoomGateway
     password: string,
   ) {
     const chatRoom = await this.chatRoomService.getChatRoomByName(chatRoomName);
-    if (chatRoom.isPrivate && chatRoom.password !== password) {
-      throw new WsException('Wrong password');
+    if (chatRoom.type === ChatRoomType.PROTECTED) {
+      if (bcrypt.compareSync(password, chatRoom.password) === false) {
+        throw new WsException('Wrong password');
+      }
     }
     client.leave('lobby');
     client.data.chatRoom = chatRoom;
@@ -165,9 +213,10 @@ export class ChatRoomGateway
 
   async handleConnection(client: Socket) {
     this.ChatRoomLogger.debug('chat-room handleConnection');
+
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
-      client.disconnect();
+      this.handleDisconnect();
     }
     const chatRoom = new ChatRoomInfo();
     chatRoom.name = 'lobby';
@@ -175,14 +224,13 @@ export class ChatRoomGateway
     client.leave(client.id);
     client.data.chatRoom = chatRoom;
     client.join(client.data.chatRoom.name);
-    // this.ChatRoomLogger.log(`User ${user.id} connected, and joined to lobby`);
     client.emit(
       'showChatRoomList',
       await this.chatRoomService.getAllChatRooms(),
     );
   }
 
-  async handleDisconnect(client: Socket) {
-    this.ChatRoomLogger.log(`User ${client.data.user.id} disconnected`);
+  async handleDisconnect() {
+    this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 }
