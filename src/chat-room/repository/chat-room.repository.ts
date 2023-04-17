@@ -42,4 +42,34 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
     await this.remove(chatRoom);
   }
+
+  async toggleBanUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+    isBanned: boolean,
+  ): Promise<boolean> {
+    if (isBanned) {
+      const index = chatRoom.bannedUsers.indexOf(user);
+      chatRoom.bannedUsers.splice(index, 1);
+    } else {
+      chatRoom.bannedUsers.push(user);
+    }
+    await this.save(chatRoom);
+    return isBanned;
+  }
+
+  async toggleMuteUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+    isMuted: boolean,
+  ): Promise<boolean> {
+    if (isMuted) {
+      const index = chatRoom.mutedUsers.indexOf(user);
+      chatRoom.mutedUsers.splice(index, 1);
+    } else {
+      chatRoom.bannedUsers.push(user);
+    }
+    await this.save(chatRoom);
+    return isMuted;
+  }
 }

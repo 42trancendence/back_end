@@ -19,6 +19,7 @@ import { ChatRoomType } from '../enum/chat-room-type.enum';
 import { ChatRoomValidationPipe } from '../pipes/chat-room-validation.pipe';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -52,47 +53,105 @@ export class ChatRoomGateway
     client.broadcast.to(client.data.chatRoom.name).emit('getMessage', message);
   }
 
-  @SubscribeMessage('banUser')
+  @SubscribeMessage('toggleBanUser')
   async banUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
   ) {
-    if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
-      return;
-    }
-    const isOwner = await this.chatRoomService.isChatRoomOwner(
-      client.data.chatRoom,
-      client.data.user,
-    );
+    const isOwner = await this.chatRoomService.isChatRoomOwner(client);
     if (!isOwner) {
       throw new WsException('You are not owner of this chat room');
     }
-    const banUser = this.usersService.getUserById(userId);
+    const banUser = await this.usersService.getUserById(userId);
     if (!banUser) {
+      throw new WsException('User not found');
+    }
+    const isBannedUser = await this.chatRoomService.toggleBanUser(
+      client.data.chatRoom,
+      banUser,
+    );
+    if (isBannedUser) {
       return;
     }
-    // await this.chatRoomService.banUser(client.data.chatRoom, user);
+    await this.emitToKickUser(client.data.chatRoom, banUser);
+    this.server
+      .in(client.data.chatRoom.name)
+      .emit(
+        'getChatRoomUsers',
+        await this.getChatRoomUsers(client.data.chatRoom.name),
+      );
   }
 
-  // @SubscribeMessage('kickUser')
-  // async kickUser(
-  // @ConnectedSocket() client: Socket,
-  // @MessageBody('userId') userId: number,
-  // ) {
-  //   if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
-  //     return;
-  //   }
-  // }
-  //
-  // @SubscribeMessage('muteUser')
-  // async muteUser(
-  // @ConnectedSocket() client: Socket,
-  // @MessageBody('userId') userId: number,
-  // ) {
-  //   if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
-  //     return;
-  //   }
-  // }
+  async emitToKickUser(chatRoom: ChatRoomInfo, user: UserEntity) {
+    const sockets = await this.server.in(chatRoom.name).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === user.id) {
+        socket.leave(chatRoom.name);
+        socket.join('lobby');
+        socket.emit('kickUser', chatRoom.name);
+      }
+    }
+  }
+
+  async emitToMuteUser(
+    chatRoom: ChatRoomInfo,
+    user: UserEntity,
+    setMute: string,
+  ) {
+    const sockets = await this.server.in(chatRoom.name).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === user.id) {
+        socket.emit('setMuteUser', setMute);
+      }
+    }
+  }
+
+  @SubscribeMessage('kickUser')
+  async kickUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('userId') userId: string,
+  ) {
+    const isOwner = await this.chatRoomService.isChatRoomOwner(client);
+    if (!isOwner) {
+      throw new WsException('You are not owner of this chat room');
+    }
+    const kickUser = await this.usersService.getUserById(userId);
+    if (!kickUser) {
+      throw new WsException('User not found');
+    }
+    await this.emitToKickUser(client.data.chatRoom, kickUser);
+    this.server
+      .in(client.data.chatRoom.name)
+      .emit(
+        'getChatRoomUsers',
+        await this.getChatRoomUsers(client.data.chatRoom.name),
+      );
+  }
+
+  @SubscribeMessage('toggleMuteUser')
+  async muteUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('userId') userId: string,
+  ) {
+    const isOwner = await this.chatRoomService.isChatRoomOwner(client);
+    if (!isOwner) {
+      throw new WsException('You are not owner of this chat room');
+    }
+
+    const muteUser = await this.usersService.getUserById(userId);
+    if (!muteUser) {
+      throw new WsException('User not found');
+    }
+    const isMuted = await this.chatRoomService.toggleMuteUser(
+      client.data.chatRoom,
+      muteUser,
+    );
+    if (isMuted) {
+      await this.emitToMuteUser(client.data.chatRoom, muteUser, 'off');
+    } else {
+      await this.emitToMuteUser(client.data.chatRoom, muteUser, 'on');
+    }
+  }
 
   @SubscribeMessage('updateChatRoom')
   async updateChatRoom(
@@ -231,6 +290,7 @@ export class ChatRoomGateway
   }
 
   async handleDisconnect() {
+    //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
     this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 }

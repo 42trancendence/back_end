@@ -57,7 +57,4 @@ export class UserEntity {
 
   @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.mutedUsers)
   mutedChatRooms: ChatRoomEntity[];
-
-  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.kickedUsers)
-  kickedChatRooms: ChatRoomEntity[];
 }
