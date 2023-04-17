@@ -37,8 +37,8 @@ export class UsersService {
     return await this.userRepository.findUserByEmail(emailAddress);
   }
 
-  async getAllUserExceptMe(me: UserEntity): Promise<UserEntity[]> {
-    return await this.userRepository.findUserExceptMe(me);
+  async getAllUserExceptMeAndFriend(me: UserEntity): Promise<UserEntity[]> {
+    return await this.userRepository.findUserExceptMeAndFriend(me);
   }
 
   async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {

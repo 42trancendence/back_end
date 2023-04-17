@@ -31,7 +31,12 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   }
 
   async removeFriendShip(user: UserEntity, friend: UserEntity) {
-    const friendShip = await this.getFriendShip(friend, user);
+    const friendShip = await this.findOne({
+      where: [
+        { user: user, friend: friend },
+        { user: friend, friend: user },
+      ],
+    });
     await this.remove(friendShip);
   }
 
