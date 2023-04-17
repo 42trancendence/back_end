@@ -120,12 +120,12 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const allSockets = await this.server.fetchSockets();
         for (const socket of allSockets) {
           if (socket.data?.user?.name === friendName) {
-            this.server.to(socket.id).emit('friendActive', client.data.user);
+            this.server.to(socket.id).emit('friendRenew', client.data.user);
           }
         }
       }
     }
-    this.server.to(client.id).emit('friendActive', friend);
+    this.server.to(client.id).emit('friendRenew', friend);
   }
 
   @SubscribeMessage('rejectFriendRequest')
@@ -177,12 +177,12 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
         const allSockets = await this.server.fetchSockets();
         for (const socket of allSockets) {
           if (socket.data?.user?.name === friendName) {
-            this.server.to(socket.id).emit('friendActive', client.data.user);
+            this.server.to(socket.id).emit('friendRenew', client.data.user);
           }
         }
       }
     }
-    this.server.to(client.id).emit('friendActive', friend);
+    this.server.to(client.id).emit('friendRenew', friend);
   }
 
   private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
