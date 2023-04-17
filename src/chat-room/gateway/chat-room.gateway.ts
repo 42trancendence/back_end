@@ -290,6 +290,7 @@ export class ChatRoomGateway
   }
 
   async handleDisconnect() {
+    //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
     this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 }
