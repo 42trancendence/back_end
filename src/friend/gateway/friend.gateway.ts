@@ -105,8 +105,11 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (!client.data?.user) {
       return;
     }
+    if (!friendName) {
+      this.friendWsLogger.debug('friendName is null');
+      return;
+    }
     const friend = await this.usersService.getUserByName(friendName);
-
     if (!friend) {
       return;
     }

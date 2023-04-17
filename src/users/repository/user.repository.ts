@@ -12,7 +12,7 @@ export class UserRepository extends Repository<UserEntity> {
     super(UserEntity, dataSource.createEntityManager());
   }
 
-  async findUserExceptMe(me: UserEntity): Promise<UserEntity[]> {
+  async findUserExceptMeAndFriend(me: UserEntity): Promise<UserEntity[]> {
     return await this.findBy({
       id: Not(me.id),
     });
