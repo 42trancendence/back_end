@@ -1,18 +1,21 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ChatRoomController } from './chat-room.controller';
 import { ChatRoomRepository } from './repository/chat-room.repository';
 import { ChatRoomService } from './chat-room.service';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
-import { ChatRoomGateway } from './chat-room.gateway';
+import { ChatRoomGateway } from './gateway/chat-room.gateway';
 import { MessageRepository } from './repository/message.repository';
 import { AuthModule } from 'src/auth/auth.module';
-import { AccessTokenStrategy } from 'src/auth/strategy/access-token.strategy';
-import { RefreshTokenStrategy } from 'src/auth/strategy/refresh-token.strategy';
+import { UsersModule } from 'src/users/users.module';
+import { MessageEntity } from './entities/message.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ChatRoomEntity]), AuthModule],
-  controllers: [ChatRoomController],
+  imports: [
+    TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity]),
+    AuthModule,
+    UsersModule,
+  ],
+  controllers: [],
   providers: [
     ChatRoomService,
     ChatRoomRepository,

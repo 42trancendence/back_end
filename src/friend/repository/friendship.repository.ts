@@ -27,12 +27,12 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   }
 
   async deleteFriendShip(friendShip: FriendShipEntity) {
-    await this.delete(friendShip);
+    await this.remove(friendShip);
   }
 
   async removeFriendShip(user: UserEntity, friend: UserEntity) {
     const friendShip = await this.getFriendShip(friend, user);
-    await this.delete(friendShip);
+    await this.remove(friendShip);
   }
 
   async findWithRelations(relations: FindManyOptions) {

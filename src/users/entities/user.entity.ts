@@ -2,7 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
 import { GameSessionEntity } from 'src/game/entities/game-session.entity';
-import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
+import { Column, Entity, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
 import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from 'src/friend/entities/friendship.entity';
 
@@ -51,4 +51,13 @@ export class UserEntity {
 
   @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
   chatRooms: ChatRoomEntity[];
+
+  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.bannedUsers)
+  bannedChatRooms: ChatRoomEntity[];
+
+  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.mutedUsers)
+  mutedChatRooms: ChatRoomEntity[];
+
+  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.kickedUsers)
+  kickedChatRooms: ChatRoomEntity[];
 }

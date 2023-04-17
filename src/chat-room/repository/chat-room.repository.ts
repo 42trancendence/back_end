@@ -3,6 +3,7 @@ import { UserEntity } from 'src/users/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
 import { ChatRoomEntity } from '../entities/chatRoom.entity';
+import { ChatRoomType } from '../enum/chat-room-type.enum';
 
 @Injectable()
 export class ChatRoomRepository extends Repository<ChatRoomEntity> {
@@ -17,7 +18,7 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     const newChatRoom = new ChatRoomEntity();
 
     newChatRoom.name = createChatRoomDto.name;
-    newChatRoom.isPrivate = createChatRoomDto.isPrivate;
+    newChatRoom.type = createChatRoomDto.type;
     newChatRoom.owner = user;
     newChatRoom.password = createChatRoomDto.password;
     await this.save(newChatRoom);
@@ -25,10 +26,12 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
-    return await this.find();
+    return await this.findBy({
+      type: ChatRoomType.PRIVATE,
+    });
   }
 
-  async getChatRoom(chatRoomId: number): Promise<ChatRoomEntity> {
+  async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {
     return await this.findOne({ where: { id: chatRoomId } });
   }
 
@@ -37,6 +40,6 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   }
 
   async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
-    await this.delete(chatRoom);
+    await this.remove(chatRoom);
   }
 }

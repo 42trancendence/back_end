@@ -21,57 +21,64 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { AccessGuard } from 'src/auth/guard/access-token.guard';
 
+//
+//
+// NOTE: not neccessary this Controller any more!!!!
+//  	 because of using socket.io instead of REST API
+//
+//
+
 @Controller('chat-room')
 @UseGuards(AccessGuard)
 export class ChatRoomController {
   constructor(private chatRoomService: ChatRoomService) {}
 
-  @Post()
-  async createChatRoom(
-    @Body(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
-    @getUser() user: UserEntity,
-  ): Promise<void> {
-    await this.chatRoomService.createChatRoom(createChatRoomDto, user);
-  }
-
-  @Post(':id')
-  async enterChatRoom(@Body() enterChatRoomDto: EnterChatRoomDto) {
-    const chatRoom = await this.chatRoomService.getChatRoomById(
-      enterChatRoomDto.id,
-    );
-
-    if (
-      chatRoom.isPrivate === true &&
-      chatRoom.password !== enterChatRoomDto.password
-    ) {
-      throw new ForbiddenException('password가 틀렸습니다.');
-    }
-    return chatRoom;
-  }
-
-  @Get()
-  async getAllChatRooms(): Promise<ChatRoomInfo[]> {
-    return await this.chatRoomService.getAllChatRooms();
-  }
-
-  @Get(':id')
-  async getChatRoom(@Param('id') chatRoomId: number): Promise<ChatRoomEntity> {
-    return await this.chatRoomService.getChatRoomById(chatRoomId);
-  }
-
-  @Patch(':id')
-  async updateChatRoom(
-    @Param('id') roomId: number,
-    @Body(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
-    @getUser() user: UserEntity,
-  ) {
-    const chatRoom = await this.chatRoomService.getChatRoomById(roomId);
-    if (!chatRoom) {
-      throw new NotFoundException('해당 id의 room을 찾을 수 없습니다.');
-    }
-    if (chatRoom.owner.id !== user.id) {
-      throw new UnauthorizedException('권한이 없습니다.');
-    }
-    await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
-  }
+  // @Post()
+  // async createChatRoom(
+  //   @Body(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
+  //   @getUser() user: UserEntity,
+  // ): Promise<void> {
+  //   await this.chatRoomService.createChatRoom(createChatRoomDto, user);
+  // }
+  //
+  // @Post(':id')
+  // async enterChatRoom(@Body() enterChatRoomDto: EnterChatRoomDto) {
+  //   const chatRoom = await this.chatRoomService.getChatRoomById(
+  //     enterChatRoomDto.id,
+  //   );
+  //
+  //   if (
+  //     chatRoom.isPrivate === true &&
+  //     chatRoom.password !== enterChatRoomDto.password
+  //   ) {
+  //     throw new ForbiddenException('password가 틀렸습니다.');
+  //   }
+  //   return chatRoom;
+  // }
+  //
+  // @Get()
+  // async getAllChatRooms(): Promise<ChatRoomInfo[]> {
+  //   return await this.chatRoomService.getAllChatRooms();
+  // }
+  //
+  // @Get(':id')
+  // async getChatRoom(@Param('id') chatRoomId: number): Promise<ChatRoomEntity> {
+  //   return await this.chatRoomService.getChatRoomById(chatRoomId);
+  // }
+  //
+  // @Patch(':id')
+  // async updateChatRoom(
+  //   @Param('id') roomId: number,
+  //   @Body(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
+  //   @getUser() user: UserEntity,
+  // ) {
+  //   const chatRoom = await this.chatRoomService.getChatRoomById(roomId);
+  //   if (!chatRoom) {
+  //     throw new NotFoundException('해당 id의 room을 찾을 수 없습니다.');
+  //   }
+  //   if (chatRoom.owner.id !== user.id) {
+  //     throw new UnauthorizedException('권한이 없습니다.');
+  //   }
+  //   await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
+  // }
 }
