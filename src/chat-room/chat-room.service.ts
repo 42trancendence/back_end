@@ -7,6 +7,7 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
+import {Socket} from 'socket.io';
 
 @Injectable()
 export class ChatRoomService {
@@ -22,18 +23,32 @@ export class ChatRoomService {
     await this.chatRoomRepository.createNewChatRoom(createChatRoomDto, user);
   }
 
-  async isChatRoomOwner(
+  async isChatRoomOwner(client: Socket): Promise<boolean> {
+    if (client.data?.user || client.data?.chatRoom?.name === 'lobby') {
+      return false;
+    }
+    return client.data.chatRoom.owner.id === client.data.user.id;
+  }
+
+  async toggleBanUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<boolean> {
-    return chatRoom.owner.id === user.id;
+    if (chatRoom.bannedUsers.includes(user)) {
+      return await this.chatRoomRepository.toggleBanUser(chatRoom, user, true);
+    }
+    return await this.chatRoomRepository.toggleBanUser(chatRoom, user, false);
   }
 
-  async banUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
-
-  async kickUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
-
-  async muteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {}
+  async toggleMuteUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<boolean> {
+    if (chatRoom.mutedUsers.includes(user)) {
+      return await this.chatRoomRepository.toggleMuteUser(chatRoom, user, true);
+    }
+    return await this.chatRoomRepository.toggleMuteUser(chatRoom, user, false);
+  }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
     return await this.chatRoomRepository.getAllChatRooms();

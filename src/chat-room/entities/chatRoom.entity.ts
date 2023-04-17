@@ -36,10 +36,6 @@ export class ChatRoomEntity {
   bannedUsers: UserEntity[];
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.kickedChatRooms)
-  kickedUsers: UserEntity[];
-
-  @Exclude()
   @ManyToOne(() => UserEntity, (user) => user.mutedChatRooms)
   mutedUsers: UserEntity[];
 }
