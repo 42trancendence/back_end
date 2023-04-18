@@ -74,10 +74,10 @@ export class UsersController {
   }
 
   @Get('/')
-  @ApiOperation({ summary: '나를 제외한 모든 유저 정보 조회' })
+  @ApiOperation({ summary: '나와 나의 친구를 제외한 모든 유저 정보 조회' })
   @ApiOkResponse({ description: '성공', type: Array<UserEntity> })
   async getAllUserInfo(@getUser() user: UserEntity): Promise<UserEntity[]> {
-    return await this.usersService.getAllUserExceptMe(user);
+    return await this.usersService.getAllUserExceptMeAndFriend(user);
   }
 
   // NOTE: PUT METHOD

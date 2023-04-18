@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, FindManyOptions, Repository } from 'typeorm';
+import {
+  DataSource,
+  FindManyOptions,
+  FindOneOptions,
+  Repository,
+} from 'typeorm';
 import { FriendShipEntity } from '../entities/friendship.entity';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { FriendShipStatus } from '../enum/friendShipStatus.enum';
@@ -31,7 +36,12 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   }
 
   async removeFriendShip(user: UserEntity, friend: UserEntity) {
-    const friendShip = await this.getFriendShip(friend, user);
+    const friendShip = await this.findOne({
+      where: [
+        { user: user, friend: friend },
+        { user: friend, friend: user },
+      ],
+    });
     await this.remove(friendShip);
   }
 
@@ -39,10 +49,8 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
     return await this.find(relations);
   }
 
-  async getFriendList(user: UserEntity) {
-    return await this.find({
-      where: { user },
-    });
+  async findOneWithRelations(relations: FindOneOptions) {
+    return await this.findOne(relations);
   }
 
   async setFriendShipStatus(
