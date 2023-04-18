@@ -14,6 +14,9 @@ export class Game {
 
   constructor(private id: string) {
     this.roomId_ = id;
+    const userIds = this.roomId_.split('-');
+    this.paddles_[0].setUserId(userIds[0]);
+    this.paddles_[1].setUserId(userIds[1]);
   }
 
   public updateGame(): void {
@@ -39,5 +42,9 @@ export class Game {
 
   public getScore(): Array<number> {
     return this.score_;
+  }
+
+  public getPaddleByUserId(userId: string): Paddle {
+    return this.paddles_.find((paddle) => paddle.getUserId() == userId);
   }
 }

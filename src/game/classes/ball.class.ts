@@ -21,15 +21,15 @@ export class Ball {
     x: number = GameVariable.canvasWidth / 2,
     y: number = GameVariable.canvasHeight / 2,
     radius: number = GameVariable.ballRadius,
-    dx: number = GameVariable.ballSpeed,
-    dy: number = GameVariable.ballSpeed,
+    velocityX: number = GameVariable.ballSpeed,
+    velocityY: number = GameVariable.ballSpeed,
     speed: number = GameVariable.ballSpeed,
   ) {
     this.x_ = x;
     this.y_ = y;
     this.radius_ = radius;
-    this.velocityX_ = dx;
-    this.velocityY_ = dy;
+    this.velocityX_ = Math.random() * velocityX;
+    this.velocityY_ = Math.random() * velocityY;
     this.speed_ = speed;
   }
 
@@ -40,7 +40,7 @@ export class Ball {
     // TODO
     // 1. 공의 방향을 랜덤으로 설정
     // 2. 공의 속도를 랜덤으로 설정
-    this.velocityX_ = -this.velocityX_;
+    this.velocityX_ = Math.random() * GameVariable.ballSpeed;
   }
 
   public move(paddle: Paddle, score: Array<number>): void {

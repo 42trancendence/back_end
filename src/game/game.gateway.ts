@@ -13,7 +13,11 @@ import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { GameService } from './game.service';
 import { GameManager } from './classes/gameManager.class';
-import { MAX_QUEUE_SIZE, SET_INTERVAL_TIME } from './constants/game.constant';
+import {
+  GAME_FRAME,
+  MAX_QUEUE_SIZE,
+  SET_INTERVAL_TIME,
+} from './constants/game.constant';
 import { GameStatus } from './constants/gameVariable';
 
 @WebSocketGateway({
@@ -44,7 +48,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     setInterval(async () => {
       this.gameManager.sendGame(this.server);
-    }, 2000);
+    }, GAME_FRAME);
   }
 
   async handleConnection(client: Socket) {
@@ -66,6 +70,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         email: user.email,
         avatarImageUrl: user.avatarImageUrl,
       };
+      client.data.roomId = roomId;
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
 
@@ -261,5 +266,25 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     client.emit('setGame', game);
+  }
+
+  @SubscribeMessage('postKey')
+  async getKey(@ConnectedSocket() client: Socket, @MessageBody() key: string) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('postKey', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+    const data = client.data;
+
+    const roomId = data.roomId;
+    const game = this.gameManager.getGameByRoomId(roomId);
+    const paddle = game.getPaddleByUserId(data.user.name);
+
+    if (key === 'up') {
+      paddle.setKeyUp();
+    } else if (key === 'down') {
+      paddle.setKeyDown();
+    }
   }
 }

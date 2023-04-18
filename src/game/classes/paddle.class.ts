@@ -1,8 +1,11 @@
 import { GameVariable } from '../constants/gameVariable';
 
 export class Paddle {
+  private userId: string;
   private x_: number;
   private y_: number;
+  private width_: number = GameVariable.paddleWidth;
+  private height_: number = GameVariable.paddleHeight;
   private speed_: number;
 
   constructor(x: number) {
@@ -12,9 +15,6 @@ export class Paddle {
   }
 
   public movePaddle(): void {
-    if (this.speed_ <= 0) {
-      return;
-    }
     this.y_ += this.speed_;
     if (this.y_ < 0) {
       this.speed_ = 0;
@@ -32,21 +32,17 @@ export class Paddle {
     }
   }
 
-  public keyUP(key: string): void {
-    if (key === 'down') {
-      this.speed_ = 0;
-      this.speed_ -= GameVariable.paddleSpeed;
-    } else {
-      this.speed_ = 0;
+  public setKeyUp(): void {
+    this.y_ -= GameVariable.paddleSpeed;
+    if (this.y_ <= 0) {
+      this.y_ = 0;
     }
   }
 
-  public keyDOWN(key: string): void {
-    if (key === 'down') {
-      this.speed_ = 0;
-      this.speed_ += GameVariable.paddleSpeed;
-    } else {
-      this.speed_ = 0;
+  public setKeyDown(): void {
+    this.y_ += GameVariable.paddleSpeed;
+    if (this.y_ >= GameVariable.canvasHeight - this.height_) {
+      this.y_ = GameVariable.canvasHeight - this.height_;
     }
   }
 
@@ -56,5 +52,13 @@ export class Paddle {
 
   public getY(): number {
     return this.y_;
+  }
+
+  public setUserId(userId: string): void {
+    this.userId = userId;
+  }
+
+  public getUserId(): string {
+    return this.userId;
   }
 }

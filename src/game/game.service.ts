@@ -30,9 +30,11 @@ export class GameService {
 
       client1.leave('matching');
       client1.join(newRoomId);
+      client1.data.roomId = newRoomId;
       client1.emit('startGame');
       client2.leave('matching');
       client2.join(newRoomId);
+      client2.data.roomId = newRoomId;
       client2.emit('startGame');
 
       gameManager.createGame(`${player1.name}-${player2.name}`);
