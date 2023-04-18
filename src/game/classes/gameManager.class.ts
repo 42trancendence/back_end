@@ -2,33 +2,37 @@ import { Game } from './game.class';
 import { Server } from 'socket.io';
 
 export class GameManager {
-  gameMap: Map<string, Game> = new Map<string, Game>();
+  gameList: Array<Game> = new Array<Game>();
 
   sendGame(server: Server) {
-    this.gameMap.forEach((game, roomId) => {
-      console.log('sendGame!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', roomId);
-      server.to(roomId).emit('gaming', game);
+    this.gameList.forEach((game) => {
+      // if (game.getGameStatus() !== 'playing') return;
+      game.updateGame();
+
+      console.log('game.getRoomId()', game.getRoomId());
+
+      server.to(game.getRoomId()).emit('updateGame', this.gameList);
     });
   }
 
   createGame(roomId: string) {
     const game = new Game(roomId);
-    this.gameMap.set(roomId, game);
+    this.gameList.push(game);
   }
 
   removeGame(roomId: string) {
-    this.gameMap.delete(roomId);
+    this.gameList = this.gameList.filter((game) => game.getRoomId() !== roomId);
   }
 
   getGameByRoomId(roomId: string) {
-    return this.gameMap.get(roomId);
+    return this.gameList.find((game) => game.getRoomId() === roomId);
   }
 
   isGameByRoomId(roomId: string) {
-    return this.gameMap.has(roomId);
+    return this.gameList.some((game) => game.getRoomId() === roomId);
   }
 
   getGameRooms() {
-    return this.gameMap;
+    return this.gameList;
   }
 }

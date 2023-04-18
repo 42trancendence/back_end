@@ -68,4 +68,12 @@ export class GameService {
 
     return player;
   }
+
+  async getRoomIdByUserId(userId: string) {
+    const roomId = await this.gameRepository.getRoomIdByUserId(userId);
+    if (roomId) {
+      return roomId.roomId;
+    }
+    return null;
+  }
 }

@@ -1,7 +1,6 @@
 import { Ball } from './ball.class';
 import { GameStatus, GameVariable } from '../constants/gameVariable';
 import { Paddle } from './paddle.class';
-import { Server } from 'socket.io';
 
 export class Game {
   private roomId_: string;
@@ -17,8 +16,13 @@ export class Game {
     this.roomId_ = id;
   }
 
-  public sendGame(server: Server, roomId: string): void {
-    server.to(roomId).emit('gaming', this);
+  public updateGame(): void {
+    // 화면 절반을 기준으로 왼쪽은 0번 paddle, 오른쪽은 1번 paddle
+    const paddle =
+      this.ball_.getX() < GameVariable.canvasWidth / 2
+        ? this.paddles_[0]
+        : this.paddles_[1];
+    this.ball_.move(paddle, this.score_);
   }
 
   public getRoomId(): string {

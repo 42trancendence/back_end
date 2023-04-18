@@ -29,7 +29,7 @@ export class UserEntity {
 
   @OneToMany(() => GameStatsEntity, (game) => game.id)
   gameStats: GameStatsEntity[];
-  
+
   @Column({ default: Status.OFFLINE })
   status: Status;
 

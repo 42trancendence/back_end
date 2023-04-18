@@ -1,16 +1,10 @@
-import { UserEntity } from "src/users/entities/user.entity";
-import { 
-  Entity, 
-  PrimaryGeneratedColumn,
-  Column,
-  ManyToOne,
-} from "typeorm";
-
+import { UserEntity } from 'src/users/entities/user.entity';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
 
 @Entity({ name: 'gameStats' })
 export class GameStatsEntity {
   @PrimaryGeneratedColumn()
-  id: number;
+  id: string;
 
   @Column()
   roomId: string;
@@ -38,5 +32,4 @@ export class GameStatsEntity {
 
   @Column()
   status: string;
-
 }

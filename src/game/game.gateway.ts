@@ -1,4 +1,4 @@
-import { Logger, NotFoundException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -12,12 +12,9 @@ import {
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { GameService } from './game.service';
-import { WaitQueue } from './classes/waitQueue.class';
-import { PlayerList } from './classes/playerList.class';
-import { Player } from './classes/player.class';
 import { GameManager } from './classes/gameManager.class';
 import { MAX_QUEUE_SIZE, SET_INTERVAL_TIME } from './constants/game.constant';
-import { GameStatus, GameVariable } from './constants/gameVariable';
+import { GameStatus } from './constants/gameVariable';
 
 @WebSocketGateway({
   namespace: 'game',
@@ -59,6 +56,19 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new WsException('Unauthorized');
     }
 
+    // 이미 접속한 유저라면
+    const roomId = await this.gameService.getRoomIdByUserId(user.id);
+    if (roomId) {
+      client.join(roomId);
+      client.data.user = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        avatarImageUrl: user.avatarImageUrl,
+      };
+      return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
+    }
+
     if (client.data?.user) {
       this.WsLogger.debug(
         `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
@@ -76,7 +86,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join('lobby');
     // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
     this.server.to('lobby').emit(`connectUser: ${client.data.user.id}`);
-    this.WsLogger.log(`User ${user.name} connected, and joined to gameLobby`);
+    this.WsLogger.log(`User [${user.name}] connected`);
   }
 
   async handleDisconnect(client: Socket) {
@@ -95,7 +105,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
   }
 
-  @SubscribeMessage('postGameList')
+  @SubscribeMessage('getGameList')
   async postGameList(@ConnectedSocket() client: Socket) {
     if (!client.data?.user) {
       client.disconnect();
@@ -103,6 +113,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new WsException('Unauthorized');
     }
     const gameList = await this.gameService.getGameList();
+    if (!gameList) {
+      this.WsLogger.error('gameList is null');
+      return;
+    }
     client.emit('getGameList', gameList);
     this.WsLogger.log(`User ${client.data.user.name}: get gameList`);
   }
@@ -185,9 +199,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 1. 유저가 게임에 참여하고 있는지 확인한다.
     // 2. 게임에 참여하고 있다면 게임을 종료한다.
     // 3. 유저가 로비에 있는지 확인한다.
-
-
-
     // const user = this.playerList.getPlayerByUserId(client.id);
     // const roomId = user.getRoomId();
     // if (this.gameManager.isGameByRoomId(roomId) == false) {
@@ -205,7 +216,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // this.WsLogger.log(`User ${client.id} joined lobby`);
   }
 
-  @SubscribeMessage('settingGame')
+  @SubscribeMessage('startGame')
   async startGame(
     @ConnectedSocket() client: Socket,
     @MessageBody() roomId: string,
@@ -221,7 +232,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.WsLogger.log(`Game ${roomId} started`);
   }
 
-  @SubscribeMessage('gaming')
+  @SubscribeMessage('setGame')
   async gaming(
     @ConnectedSocket() client: Socket,
     @MessageBody() roomId: string,
@@ -241,6 +252,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const score = game.getScore();
       if (score[0] >= 10 || score[1] >= 10) {
         game.setGameStatus(GameStatus.End);
+        this.gameManager.removeGame(roomId);
         // TODO: 게임 종료 후 DB에 저장
         // this.gameService.updateGameState(game);
       }
@@ -248,6 +260,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       game.setGameStatus(GameStatus.Wait);
     }
 
-    client.emit('gaming', game);
+    client.emit('setGame', game);
   }
 }

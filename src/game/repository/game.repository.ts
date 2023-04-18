@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { GameStatsEntity } from '../entities/gameStats.entity';
 import { GameStatus } from '../constants/gameVariable';
-import { Socket } from 'socket.io';
 import { UserEntity } from 'src/users/entities/user.entity';
 
 @Injectable()
@@ -32,5 +31,16 @@ export class GameRepository extends Repository<GameStatsEntity> {
 
   async getGameList() {
     return await this.find();
+  }
+
+  async getRoomIdByUserId(userId: string) {
+    return await this.createQueryBuilder('gameStats')
+      .select('gameStats.roomId')
+      .leftJoin('gameStats.player1', 'player1')
+      .leftJoin('gameStats.player2', 'player2')
+      .where('player1.id = :userId', { userId })
+      .orWhere('player2.id = :userId', { userId })
+      .orderBy('gameStats.createAt', 'DESC') // 최근 날짜부터 정렬
+      .getOne(); // 가장 최근 항목 하나만 반환
   }
 }
