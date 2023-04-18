@@ -65,11 +65,12 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
-    this.friendWsLogger.debug('updateActiveStatus event');
-
     if (!client.data?.user) {
       return;
     }
+    this.friendWsLogger.debug(
+      `[updateActiveStatus event] client: ${client.data.user.name} status: ${status}`,
+    );
     // 유저의 상태를 status로 변경
     await this.setActiveStatus(client, client.data.user, status);
   }
@@ -79,7 +80,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.friendWsLogger.debug('addFriend event');
+    this.friendWsLogger.debug(`[addFriend event] friendName: ${friendName}`);
 
     if (!client.data?.user) {
       this.friendWsLogger.debug('[addFriend] user not found');
@@ -110,10 +111,13 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.friendWsLogger.debug('acceptFriendRequest event');
+    this.friendWsLogger.debug(
+      `[acceptFriendRequest event] friendName: ${friendName}`,
+    );
 
     const user = client.data?.user;
-    if (user) {
+    if (!user) {
+      this.friendWsLogger.debug('[acceptFriendRequest] user not found');
       return;
     }
 
@@ -152,13 +156,17 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
+    this.friendWsLogger.debug(`[deleteFriend event] friendName: ${friendName}`);
+
     const user = client.data?.user;
-    if (user) {
+    if (!user) {
+      this.friendWsLogger.debug('[deleteFriend] user not found');
       return;
     }
 
     const friend = await this.usersService.getUserByName(friendName);
     if (!friend) {
+      this.friendWsLogger.debug('[deleteFriend] friend not found');
       return;
     }
 
@@ -176,7 +184,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
-      if (socket.data?.user === user) {
+      if (socket.data?.user.name === user.name) {
         this.server.to(socket.id).emit(event, data);
       }
     }
