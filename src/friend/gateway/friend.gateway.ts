@@ -13,7 +13,6 @@ import { AuthService } from 'src/auth/auth.service';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Status } from 'src/users/enum/status.enum';
 import { UsersService } from 'src/users/users.service';
-import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 import { FriendService } from '../friend.service';
 
 @WebSocketGateway({
@@ -39,36 +38,40 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     this.friendWsLogger.debug(`disconnect ${client.data.user.name}`);
 
+    // 해당 socket의 유저가 다른 소켓에서 접속되어 있는지 확인
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       if (socket.data?.user?.id === client.data.user.id) {
         return;
       }
     }
-    await this.setActiveStatus(client, Status.OFFLINE);
+    // 다른 소켓에서 접속되어 있지 않다면, 유저의 상태를 OFFLINE으로 변경
+    await this.setActiveStatus(client, client.data.user, Status.OFFLINE);
   }
 
   async handleConnection(client: Socket) {
+    // socket 연결 시, 해당 socket의 유저 인증 후 유저 정보 리턴
     const user = await this.authService.getUserBySocket(client);
-
-    this.friendWsLogger.debug(`connect ${user?.name}`);
     if (!user) {
-      this.friendWsLogger.debug('user not found');
-      this.handleDisconnect(client);
+      this.friendWsLogger.debug('[handleConnection] user not found');
+      client.disconnect();
       return;
     }
+    this.friendWsLogger.debug(`connect ${user?.name}`);
     client.data.user = user;
-    await this.setActiveStatus(client, Status.ONLINE);
+    // 유저의 상태를 ONLINE으로 변경
+    await this.setActiveStatus(client, user, Status.ONLINE);
   }
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
-    this.friendWsLogger.debug('updateActiveStatus');
+    this.friendWsLogger.debug('updateActiveStatus event');
 
     if (!client.data?.user) {
       return;
     }
-    await this.setActiveStatus(client, status);
+    // 유저의 상태를 status로 변경
+    await this.setActiveStatus(client, client.data.user, status);
   }
 
   @SubscribeMessage('addFriend')
@@ -76,58 +79,53 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.friendWsLogger.debug('addFriend');
+    this.friendWsLogger.debug('addFriend event');
 
     if (!client.data?.user) {
+      this.friendWsLogger.debug('[addFriend] user not found');
       return;
     }
-    await this.friendService.addFriend(client.data.user, friendName);
-    const allSockets = await this.server.fetchSockets();
-    for (const socket of allSockets) {
-      if (socket.data?.user?.name === friendName) {
-        this.server
-          .to(socket.id)
-          .emit(
-            'friendRequest',
-            await this.friendService.getFriendRequestList(socket.data.user),
-          );
-      }
+
+    const friend = await this.usersService.getUserByName(friendName);
+    if (!friend) {
+      this.friendWsLogger.debug('[addFriend] friend not found');
+      return;
     }
+
+    // PENDING 상태로 FriendShip 생성 후, 친구에게 친구 요청 이벤트 전송
+    await this.friendService.addFriend(client.data.user, friend);
+    const requestFriendList = await this.friendService.getFriendRequestList(
+      friend,
+    );
+    await this.emitEventToActiveUser(
+      friend,
+      'friendRequest',
+      requestFriendList,
+    );
   }
 
+  // TODO: add dto for friendName and validation pipe
   @SubscribeMessage('acceptFriendRequest')
   async acceptFriendRequest(
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    this.friendWsLogger.debug('acceptFriendRequest');
+    this.friendWsLogger.debug('acceptFriendRequest event');
 
-    if (!client.data?.user) {
+    const user = client.data?.user;
+    if (user) {
       return;
     }
-    if (!friendName) {
-      this.friendWsLogger.debug('friendName is null');
-      return;
-    }
+
     const friend = await this.usersService.getUserByName(friendName);
     if (!friend) {
+      this.friendWsLogger.debug('[acceptFriendRequest] friend not found');
       return;
     }
-    const friends = await this.friendService.getFriendList(
-      client.data.user,
-      FriendShipStatus.PENDING,
-    );
-    for (const f of friends) {
-      if (f.name === friend.name) {
-        await this.friendService.acceptFriendRequest(client.data.user, friend);
-        const allSockets = await this.server.fetchSockets();
-        for (const socket of allSockets) {
-          if (socket.data?.user?.name === friendName) {
-            this.server.to(socket.id).emit('friendRenew', client.data.user);
-          }
-        }
-      }
-    }
+
+    // ACCEPT 상태로 FriendShip 변경 후, 친구와 나에게 친구목록 변경 이벤트 전송
+    await this.friendService.acceptFriendRequest(user, friend);
+    await this.emitEventToActiveUser(friend, 'friendRenew', user);
     this.server.to(client.id).emit('friendRenew', friend);
   }
 
@@ -145,15 +143,8 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const friends = await this.friendService.getFriendList(
-      client.data.user,
-      FriendShipStatus.PENDING,
-    );
-    for (const f of friends) {
-      if (f.name === friend.name) {
-        await this.friendService.removeFriendShip(client.data.user, friend);
-      }
-    }
+    // PENDING 상태인 FriendShip 삭제
+    await this.friendService.removeFriendShip(client.data.user, friend);
   }
 
   @SubscribeMessage('deleteFriend')
@@ -161,7 +152,8 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    if (!client.data?.user) {
+    const user = client.data?.user;
+    if (user) {
       return;
     }
 
@@ -170,60 +162,62 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const friends = await this.friendService.getFriendList(
-      client.data.user,
-      FriendShipStatus.ACCEPTED,
-    );
-    for (const f of friends) {
-      if (f.name === friend.name) {
-        await this.friendService.removeFriendShip(client.data.user, friend);
-        const allSockets = await this.server.fetchSockets();
-        for (const socket of allSockets) {
-          if (socket.data?.user?.name === friendName) {
-            this.server.to(socket.id).emit('friendRenew', client.data.user);
-          }
-        }
-      }
-    }
+    // 친구와 나에게 친구목록 변경 이벤트 전송 후 FriendShip 삭제
+    await this.emitEventToActiveUser(friend, 'friendRenew', user);
     this.server.to(client.id).emit('friendRenew', friend);
+    await this.friendService.removeFriendShip(client.data.user, friend);
   }
 
-  private async emitStatusToFriends(client: Socket, activeUser: UserEntity) {
-    const friends = await this.friendService.getFriendList(
-      activeUser,
-      FriendShipStatus.ACCEPTED,
-    );
-    const friendList = new Array<UserEntity>();
-
-    for (const f of friends) {
-      const user = await this.usersService.getUserById(f.id);
-      friendList.push(user);
-      if (user.status === Status.OFFLINE) {
-        continue;
-      }
-      const allSockets = await this.server.fetchSockets();
-      for (const socket of allSockets) {
-        if (socket.data?.user?.id === user.id) {
-          this.server.to(socket.id).emit('friendActive', activeUser);
-        }
+  private async emitEventToActiveUser(
+    user: UserEntity,
+    event: string,
+    data: any,
+  ) {
+    // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
+    const allSockets = await this.server.fetchSockets();
+    for (const socket of allSockets) {
+      if (socket.data?.user === user) {
+        this.server.to(socket.id).emit(event, data);
       }
     }
-    this.server.to(client.id).emit('friendList', friendList);
+  }
+
+  private async emitEventToAllFriends(
+    user: UserEntity,
+    event: string,
+    data: any,
+  ) {
+    // 친구 목록을 가져와서 접속되어 있는 친구에게 이벤트 전송
+    const friendList = await this.friendService.getFriendList(user);
+    for (const friend of friendList) {
+      if (friend.status === Status.OFFLINE) {
+        continue;
+      }
+      await this.emitEventToActiveUser(friend, event, data);
+    }
+  }
+
+  // 나에게 친구 목록과 친구 요청 목록을 전송
+  private async emitFriendInfoToMe(client: Socket, user: UserEntity) {
+    const friendList = await this.friendService.getFriendList(user);
+    if (friendList.length) {
+      this.server.to(client.id).emit('friendList', friendList);
+    }
     this.server
       .to(client.id)
       .emit(
         'friendRequest',
-        await this.friendService.getFriendRequestList(activeUser),
+        await this.friendService.getFriendRequestList(user),
       );
   }
 
-  async setActiveStatus(client: Socket, status: Status) {
-    const user = client.data?.user;
-
-    if (!user) {
-      return;
-    }
+  async setActiveStatus(client: Socket, user: UserEntity, status: Status) {
     await this.usersService.updateUserStatus(user, status);
-    await this.emitStatusToFriends(client, user);
+
+    await this.emitEventToAllFriends(user, 'friendActive', user);
+
+    if (status === Status.ONLINE) {
+      await this.emitFriendInfoToMe(client, user);
+    }
   }
 }
