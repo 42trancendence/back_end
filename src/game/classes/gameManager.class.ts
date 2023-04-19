@@ -16,12 +16,12 @@ export class GameManager {
     });
   }
 
-  createGame(roomId: string) {
+  createGame(roomId: string): void {
     const game = new Game(roomId);
     this.gameList.set(roomId, game);
   }
 
-  removeGame(roomId: string) {
+  removeGame(roomId: string): void {
     this.gameList.delete(roomId);
   }
 
@@ -29,7 +29,7 @@ export class GameManager {
     return this.gameList.get(roomId);
   }
 
-  isGameByRoomId(roomId: string) {
+  isGameByRoomId(roomId: string): boolean {
     return this.gameList.has(roomId);
   }
 

@@ -198,27 +198,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.WsLogger.log(`User ${client.id} joined game ${roomId}`);
   }
 
-  @SubscribeMessage('leaveGame')
-  async leaveGame(@ConnectedSocket() client: Socket) {
+  @SubscribeMessage('postLeaveGame')
+  async postLeaveGame(@ConnectedSocket() client: Socket) {
     // TODO
     // 1. 유저가 게임에 참여하고 있는지 확인한다.
     // 2. 게임에 참여하고 있다면 게임을 종료한다.
     // 3. 유저가 로비에 있는지 확인한다.
-    // const user = this.playerList.getPlayerByUserId(client.id);
-    // const roomId = user.getRoomId();
-    // if (this.gameManager.isGameByRoomId(roomId) == false) {
-    //   return;
-    // }
-    // this.gameManager.removeGame(roomId);
-    // if (!user) {
-    //   this.WsLogger.log(`[leaveGame] User ${client.id} is not in playerList`);
-    //   return;
-    // }
-    // user.setRoomId('lobby');
-    // client.leave(roomId);
-    // this.WsLogger.log(`User ${client.id} left game ${roomId}`);
-    // client.join('lobby');
-    // this.WsLogger.log(`User ${client.id} joined lobby`);
+
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('postKey', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+    const data = client.data;
+
+    const roomId = data.roomId;
+    if (this.gameManager.isGameByRoomId(roomId) == true) {
+      this.WsLogger.log('Game is not exist');
+      this.gameManager.removeGame(roomId);
+      return;
+    }
+
+    client.leave(roomId);
+    client.join('lobby');
+    this.server.to(roomId).emit('postLeaveGame', roomId);
+    this.WsLogger.log(`User ${client.id} left game ${roomId}`);
   }
 
   @SubscribeMessage('postReady')
@@ -231,12 +235,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const data = client.data;
 
     const roomId = data.roomId;
-    const game = this.gameManager.getGameByRoomId(roomId);
 
     if (this.gameManager.isGameByRoomId(roomId) == false) {
       this.WsLogger.log(`Game ${roomId} is not exist`);
       return;
     }
+    const game = this.gameManager.getGameByRoomId(roomId);
     // TODO
     // 1. 게임에 참여한 유저인지 확인한다.
     if (game.isClientReady(data.user.id)) {
