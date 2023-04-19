@@ -53,7 +53,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.WsLogger.debug(`Client connected: ${client.id}`);
-
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
@@ -95,7 +94,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleDisconnect(client: Socket) {
-    console.log('client disconnected', client.id);
+    this.WsLogger.debug(`client disconnected: : ${client.id}`);
   }
 
   @SubscribeMessage('check')
@@ -111,19 +110,21 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('getGameList')
-  async postGameList(@ConnectedSocket() client: Socket) {
-    if (!client.data?.user) {
-      client.disconnect();
-      client.emit('getGameList', 'disconnected');
-      throw new WsException('Unauthorized');
-    }
+  async getGameList(@ConnectedSocket() client: Socket) {
+    // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
+    // if (!client.data?.user) {
+    //   client.disconnect();
+    //   client.emit('getGameList', 'disconnected');
+    //   throw new WsException('Unauthorized');
+    // }
     const gameList = await this.gameService.getGameList();
     if (!gameList) {
       this.WsLogger.error('gameList is null');
       return;
     }
     client.emit('getGameList', gameList);
-    this.WsLogger.log(`User ${client.data.user.name}: get gameList`);
+    // this.WsLogger.log(`User ${client.data.user.name}: get gameList`);
+    this.WsLogger.log(`User ${client.id}: get gameList`);
   }
 
   @SubscribeMessage('postMatching')
@@ -142,7 +143,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.leave('lobby');
     client.join('matching');
-    client.emit('getMatching', 'matching');
   }
 
   @SubscribeMessage('cancelMatching')
@@ -221,20 +221,36 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // this.WsLogger.log(`User ${client.id} joined lobby`);
   }
 
-  @SubscribeMessage('startGame')
-  async startGame(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() roomId: string,
-  ) {
+  @SubscribeMessage('postReady')
+  async postReady(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('postKey', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+    const data = client.data;
+
+    const roomId = data.roomId;
+    const game = this.gameManager.getGameByRoomId(roomId);
+
     if (this.gameManager.isGameByRoomId(roomId) == false) {
       this.WsLogger.log(`Game ${roomId} is not exist`);
       return;
     }
-    const game = this.gameManager.getGameByRoomId(roomId);
-    // TODO: 게임 시작전 세팅
-
-    this.server.to(roomId).emit('startGame', game);
-    this.WsLogger.log(`Game ${roomId} started`);
+    // TODO
+    // 1. 게임에 참여한 유저인지 확인한다.
+    if (game.isClientReady(data.user.id)) {
+      game.cancelReady(data.user.id);
+      this.WsLogger.log(`User ${data.user.name} cancel ready`);
+    } else {
+      game.setReady(data.user.id);
+      this.WsLogger.log(`User ${data.user.name} is ready`);
+    }
+    if (game.isReady()) {
+      game.setGameStatus(GameStatus.Play);
+      this.server.to(roomId).emit('startGame');
+      this.WsLogger.log(`Game ${roomId} started`);
+    }
   }
 
   @SubscribeMessage('setGame')

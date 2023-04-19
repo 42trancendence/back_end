@@ -1,3 +1,4 @@
+import { GameStatus } from '../constants/gameVariable';
 import { Game } from './game.class';
 import { Server } from 'socket.io';
 
@@ -6,7 +7,7 @@ export class GameManager {
 
   sendGame(server: Server) {
     this.gameList.forEach((game) => {
-      // if (game.getGameStatus() !== 'playing') return;
+      if (game.getGameStatus() !== GameStatus.Play) return;
       game.updateGame();
 
       // console.log('game.getRoomId()', game.getRoomId());

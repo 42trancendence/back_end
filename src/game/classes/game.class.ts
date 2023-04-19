@@ -11,6 +11,7 @@ export class Game {
     new Paddle(GameVariable.canvasWidth - GameVariable.paddleWidth),
   ];
   private score_: Array<number> = [0, 0];
+  private setReady_: Array<string> = [];
 
   constructor(private id: string) {
     this.roomId_ = id;
@@ -46,5 +47,21 @@ export class Game {
 
   public getPaddleByUserId(userId: string): Paddle {
     return this.paddles_.find((paddle) => paddle.getUserId() == userId);
+  }
+
+  public setReady(userId: string): void {
+    this.setReady_.push(userId);
+  }
+
+  public isReady(): boolean {
+    return this.setReady_.length == 2;
+  }
+
+  public cancelReady(userId: string): void {
+    this.setReady_ = this.setReady_.filter((id) => id != userId);
+  }
+
+  public isClientReady(userId: string): boolean {
+    return this.setReady_.includes(userId);
   }
 }

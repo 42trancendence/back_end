@@ -40,8 +40,8 @@ export class GameService {
       gameManager.createGame(`${player1.name}-${player2.name}`);
       const newGame = await this.gameRepository.saveGameState(player1, player2);
       if (newGame) {
-        client1.emit('matchingSuccess', newGame);
-        client2.emit('matchingSuccess', newGame);
+        client1.emit('getMatching', newGame);
+        client2.emit('getMatching', newGame);
       }
     }
   }
