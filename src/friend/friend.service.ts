@@ -29,7 +29,7 @@ export class FriendService {
 
   async getFriendRequestList(user: UserEntity): Promise<UserEntity[]> {
     const requestFriends = await this.friendShipRepository.findWithRelations({
-      where: [{ friend: user, status: FriendShipStatus.PENDING }],
+      where: { friend: user, status: FriendShipStatus.PENDING },
       relations: ['user', 'friend'],
     });
     const requestFriendList = requestFriends.map((friend) => {
@@ -54,7 +54,7 @@ export class FriendService {
       if (friendShip.status === FriendShipStatus.ACCEPTED) {
         throw new BadRequestException('이미 친구입니다.');
       }
-      if (friendShip.user.id === user.id) {
+      if (friendShip.user?.id === user.id) {
         throw new BadRequestException('이미 요청을 보냈습니다.');
       }
       throw new BadRequestException('해당 친구로부터 이미 요청을 받았습니다.');
@@ -72,5 +72,15 @@ export class FriendService {
 
   async removeFriendShip(user: UserEntity, friend: UserEntity) {
     await this.friendShipRepository.removeFriendShip(user, friend);
+  }
+
+  async isAcceptedFriendShip(user: UserEntity, friend: UserEntity) {
+    const friendShip = await this.friendShipRepository.findOneWithRelations({
+      where: { user: friend, friend: user },
+    });
+    if (!friendShip) {
+      return false;
+    }
+    return friendShip.status === FriendShipStatus.ACCEPTED;
   }
 }
