@@ -26,9 +26,14 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
-    return await this.findBy({
-      type: ChatRoomType.PRIVATE,
-    });
+    return await this.findBy([
+      {
+        type: ChatRoomType.PRIVATE,
+      },
+      {
+        type: ChatRoomType.PROTECTED,
+      },
+    ]);
   }
 
   async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {

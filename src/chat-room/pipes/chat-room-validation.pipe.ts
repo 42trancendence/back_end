@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 
 export class ChatRoomValidationPipe implements PipeTransform {
   transform(value: any) {
-    if (value.type !== ChatRoomType) {
+    if (Object.values<string>(ChatRoomType).includes(value.type)) {
       throw new BadRequestException(`${value.type} isn't ChatRoomType`);
     }
     if (value.type === ChatRoomType.PROTECTED) {

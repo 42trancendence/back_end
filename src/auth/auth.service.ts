@@ -33,7 +33,8 @@ export class AuthService {
     res.cookie('refreshToken', token, {
       domain: 'localhost',
       path: '/',
-      httpOnly: true,
+      // NOTE: after change httpOnly to true
+      httpOnly: false,
     });
   }
 
