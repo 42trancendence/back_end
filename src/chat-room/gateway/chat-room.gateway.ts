@@ -42,7 +42,11 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: string,
   ) {
-    if (!client.data.chatRoom || client.data.chatRoom.name === 'lobby') {
+    if (
+      !client.data?.user ||
+      !client.data.chatRoom ||
+      client.data.chatRoom.name === 'lobby'
+    ) {
       return;
     }
     const message = await this.chatRoomService.saveMessage(
@@ -80,30 +84,6 @@ export class ChatRoomGateway
         'getChatRoomUsers',
         await this.getChatRoomUsers(client.data.chatRoom.name),
       );
-  }
-
-  async emitToKickUser(chatRoom: ChatRoomInfo, user: UserEntity) {
-    const sockets = await this.server.in(chatRoom.name).fetchSockets();
-    for (const socket of sockets) {
-      if (socket.data?.user?.id === user.id) {
-        socket.leave(chatRoom.name);
-        socket.join('lobby');
-        socket.emit('kickUser', chatRoom.name);
-      }
-    }
-  }
-
-  async emitToMuteUser(
-    chatRoom: ChatRoomInfo,
-    user: UserEntity,
-    setMute: string,
-  ) {
-    const sockets = await this.server.in(chatRoom.name).fetchSockets();
-    for (const socket of sockets) {
-      if (socket.data?.user?.id === user.id) {
-        socket.emit('setMuteUser', setMute);
-      }
-    }
   }
 
   @SubscribeMessage('kickUser')
@@ -191,8 +171,16 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
   ) {
-    this.ChatRoomLogger.debug(createChatRoomDto);
+    this.ChatRoomLogger.debug(
+      `[createChatRoom] createChatRoomDto: ${createChatRoomDto}`,
+    );
 
+    if (!client.data?.user) {
+      this.ChatRoomLogger.debug('로그인이 필요합니다.');
+      return;
+    }
+
+    // NOTE: 이미 존재하는 chat-room 이름인지 확인
     const isDuplicated = await this.chatRoomService.getChatRoomByName(
       createChatRoomDto.name,
     );
@@ -200,11 +188,15 @@ export class ChatRoomGateway
       this.ChatRoomLogger.debug('이미 존재하는 chat-room 이름 입니다.');
       throw new WsException('이미 존재하는 chat-room 이름 입니다.');
     }
+
     await this.chatRoomService.createChatRoom(
       createChatRoomDto,
       client.data.user,
     );
-    this.ChatRoomLogger.debug(`User ${client.data.user.id} created chat room`);
+    this.ChatRoomLogger.debug(
+      `User ${client.data.user.name} created chat room`,
+    );
+
     await this.clientJoinChatRoom(
       client,
       createChatRoomDto.name,
@@ -215,14 +207,62 @@ export class ChatRoomGateway
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
 
-  async getChatRoomUsers(roomName: string) {
-    const allSockets = await this.server.in(roomName).fetchSockets();
-    const chatRoomUsers = new Set<string>();
-    for (const socket of allSockets) {
-      socket.data.user && chatRoomUsers.add(socket.data.user.name);
+  @SubscribeMessage('enterChatRoom')
+  async enterChatRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('roomName') roomName: string,
+    @MessageBody('password') password: string,
+  ) {
+    if (!client.data?.user) {
+      this.ChatRoomLogger.debug('[enterChatRoom] 로그인이 필요합니다.');
+      return;
     }
-    const serializedSet = [...chatRoomUsers.keys()];
-    return serializedSet;
+    this.ChatRoomLogger.debug(
+      `[enterChatRoom] roomName: ${roomName}, user: ${client.data.user.name}`,
+    );
+    if (client.rooms.size > 1) {
+      client.leave(client.data.chatRoom);
+    }
+    await this.clientJoinChatRoom(client, roomName, password);
+  }
+
+  @SubscribeMessage('leaveChatRoom')
+  async leaveChatRoom(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user) {
+      this.ChatRoomLogger.debug('[leaveChatRoom] 로그인이 필요합니다.');
+      return;
+    }
+
+    if (!client.data?.chatRoom || client.data?.chatRoom === 'lobby') {
+      this.ChatRoomLogger.debug('[leaveChatRoom] chatRoom not found');
+    }
+    const roomName = client.data.chatRoom;
+    this.ChatRoomLogger.debug(
+      `[leaveChatRoom] roomName: ${roomName} user: ${client.data.user.name}`,
+    );
+
+    client.leave(roomName);
+    this.server
+      .to(roomName)
+      .emit('getChatRoomUsers', await this.getChatRoomUsers(roomName));
+    await this.clinetJoinLobby(client);
+  }
+
+  async handleConnection(client: Socket) {
+    const user = await this.authService.getUserBySocket(client);
+    if (!user) {
+      this.ChatRoomLogger.debug('[handleConnection] user not found');
+      client.disconnect();
+    }
+    this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
+    client.data.user = user;
+    client.leave(client.id);
+    await this.clinetJoinLobby(client);
+  }
+
+  async handleDisconnect() {
+    //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
+    this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 
   async clientJoinChatRoom(
@@ -231,66 +271,82 @@ export class ChatRoomGateway
     password: string,
   ) {
     const chatRoom = await this.chatRoomService.getChatRoomByName(chatRoomName);
-    if (chatRoom.type === ChatRoomType.PROTECTED) {
-      if (bcrypt.compareSync(password, chatRoom.password) === false) {
-        throw new WsException('Wrong password');
-      }
+
+    if (!chatRoom) {
+      this.ChatRoomLogger.debug('존재하지 않는 채팅방입니다.');
+      throw new WsException('존재하지 않는 채팅방입니다.');
     }
-    client.leave('lobby');
-    client.data.chatRoom = chatRoom;
+
+    if (
+      chatRoom.type === ChatRoomType.PROTECTED &&
+      bcrypt.compareSync(password, chatRoom.password) === false
+    ) {
+      this.ChatRoomLogger.debug('비밀번호가 틀렸습니다.');
+      throw new WsException('비밀번호가 틀렸습니다.');
+    }
+    chatRoom.bannedUsers.forEach((bannedUser) => {
+      if (bannedUser.id === client.data.user.id) {
+        this.ChatRoomLogger.debug('차단된 사용자입니다.');
+        throw new WsException('차단된 사용자입니다.');
+      }
+    });
+    client.leave(client.data.chatRoom);
+    client.data.chatRoom = chatRoomName;
     client.join(chatRoomName);
     client
       .to(chatRoomName)
       .emit('getChatRoomUsers', await this.getChatRoomUsers(chatRoomName));
+    //TODO: 가져올 메시지 개수 제한
     client.to(chatRoomName).emit('getChatRoomMessages', chatRoom.messages);
+    chatRoom.mutedUsers.forEach((mutedUser) => {
+      if (mutedUser.id === client.data.user.id) {
+        client.emit('setMuteUser', 'on');
+      }
+    });
     this.ChatRoomLogger.debug(chatRoom.messages);
   }
 
-  @SubscribeMessage('enterChatRoom')
-  async enterChatRoom(
-    @ConnectedSocket() client: Socket,
-    @MessageBody('roomName') roomName: string,
-    @MessageBody('password') password: string,
-  ) {
-    if (client.rooms.has(roomName)) {
-      return;
-    }
-    if (client.rooms.size > 1) {
-      client.leave(client.data.chatRoom.name);
-    }
-    await this.clientJoinChatRoom(client, roomName, password);
-  }
-
-  @SubscribeMessage('leaveChatRoom')
-  async leaveChatRoom(
-    @ConnectedSocket() client: Socket,
-    @MessageBody('roomName') roomName: string,
-  ) {
-    this.ChatRoomLogger.debug('getChatRoom');
-    client.leave(roomName);
-  }
-
-  async handleConnection(client: Socket) {
-    this.ChatRoomLogger.debug('chat-room handleConnection');
-
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
-      this.handleDisconnect();
-    }
-    const chatRoom = new ChatRoomInfo();
-    chatRoom.name = 'lobby';
-    client.data.user = user;
-    client.leave(client.id);
-    client.data.chatRoom = chatRoom;
-    client.join(client.data.chatRoom.name);
+  async clinetJoinLobby(client: Socket) {
+    client.data.chatRoom = 'lobby';
+    client.join('lobby');
     client.emit(
       'showChatRoomList',
       await this.chatRoomService.getAllChatRooms(),
     );
   }
 
-  async handleDisconnect() {
-    //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
-    this.ChatRoomLogger.log(`chat-room disconnected`);
+  async getChatRoomUsers(roomName: string) {
+    const allSockets = await this.server.in(roomName).fetchSockets();
+    const chatRoomUsers = new Set<string>();
+    for (const socket of allSockets) {
+      socket.data.user && chatRoomUsers.add(socket.data.user.name);
+    }
+
+    const serializedSet = [...chatRoomUsers.keys()];
+    return serializedSet;
+  }
+
+  async emitToKickUser(chatRoom: ChatRoomInfo, user: UserEntity) {
+    const sockets = await this.server.in(chatRoom.name).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === user.id) {
+        socket.leave(chatRoom.name);
+        socket.join('lobby');
+        socket.emit('kickUser', chatRoom.name);
+      }
+    }
+  }
+
+  async emitToMuteUser(
+    chatRoom: ChatRoomInfo,
+    user: UserEntity,
+    setMute: string,
+  ) {
+    const sockets = await this.server.in(chatRoom.name).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === user.id) {
+        socket.emit('setMuteUser', setMute);
+      }
+    }
   }
 }

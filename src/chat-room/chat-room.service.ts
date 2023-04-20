@@ -1,13 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { UserEntity } from 'src/users/entities/user.entity';
-import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomRepository } from './repository/chat-room.repository';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
-import {Socket} from 'socket.io';
+import { Socket } from 'socket.io';
 
 @Injectable()
 export class ChatRoomService {
