@@ -127,12 +127,9 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    // ACCEPT 상태로 FriendShip 변경 후, 친구와 나에게 친구목록 변경 이벤트 전송
+    // ACCEPT 상태로 FriendShip 변경 후, 친구와 나에게 친구목록 조회 이벤트 전송
     await this.friendService.acceptFriendRequest(user, friend);
-    await this.emitEventToActiveUser(friend, 'friendRenew', user);
-    this.server.to(client.id).emit('friendRenew', friend);
-    const reqeustFriends = await this.friendService.getFriendList(user);
-    await this.emitEventToActiveUser(user, 'friendRequest', reqeustFriends);
+    await this.emitFriendListToAll(user, friend);
   }
 
   @SubscribeMessage('rejectFriendRequest')
@@ -150,10 +147,17 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    // 이미 수락한 친구라면, 아무것도 하지 않음
+    const isAccepted = await this.friendService.isAcceptedFriendShip(
+      user,
+      friend,
+    );
+    if (isAccepted) {
+      return;
+    }
     // PENDING 상태인 FriendShip 삭제
     await this.friendService.removeFriendShip(client.data.user, friend);
-    const reqeustFriends = await this.friendService.getFriendList(user);
-    await this.emitEventToActiveUser(user, 'friendRequest', reqeustFriends);
+    await this.emitFriendListToAll(user, friend);
   }
 
   @SubscribeMessage('deleteFriend')
@@ -176,9 +180,24 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // 친구와 나에게 친구목록 변경 이벤트 전송 후 FriendShip 삭제
-    await this.emitEventToActiveUser(friend, 'friendRenew', user);
-    this.server.to(client.id).emit('friendRenew', friend);
     await this.friendService.removeFriendShip(client.data.user, friend);
+    await this.emitFriendListToAll(user, friend);
+  }
+
+  private async emitFriendListToAll(user: UserEntity, friend: UserEntity) {
+    const myFriendList = await this.friendService.getFriendList(user);
+    const friendFriendList = await this.friendService.getFriendList(friend);
+    const myFriendRequestList = await this.friendService.getFriendRequestList(
+      user,
+    );
+
+    await this.emitEventToActiveUser(user, 'friendList', myFriendList);
+    await this.emitEventToActiveUser(friend, 'friendList', friendFriendList);
+    await this.emitEventToActiveUser(
+      user,
+      'friendRequest',
+      myFriendRequestList,
+    );
   }
 
   private async emitEventToActiveUser(
@@ -189,7 +208,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
-      if (socket.data?.user.name === user.name) {
+      if (socket.data?.user?.name === user.name) {
         this.server.to(socket.id).emit(event, data);
       }
     }
