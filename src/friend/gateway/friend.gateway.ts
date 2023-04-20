@@ -131,6 +131,8 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     await this.friendService.acceptFriendRequest(user, friend);
     await this.emitEventToActiveUser(friend, 'friendRenew', user);
     this.server.to(client.id).emit('friendRenew', friend);
+    const reqeustFriends = await this.friendService.getFriendList(user);
+    await this.emitEventToActiveUser(user, 'friendRequest', reqeustFriends);
   }
 
   @SubscribeMessage('rejectFriendRequest')
@@ -138,7 +140,8 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
     @MessageBody('friendName') friendName: string,
   ) {
-    if (!client.data?.user) {
+    const user = client.data?.user;
+    if (!user) {
       return;
     }
 
@@ -149,6 +152,8 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // PENDING 상태인 FriendShip 삭제
     await this.friendService.removeFriendShip(client.data.user, friend);
+    const reqeustFriends = await this.friendService.getFriendList(user);
+    await this.emitEventToActiveUser(user, 'friendRequest', reqeustFriends);
   }
 
   @SubscribeMessage('deleteFriend')
