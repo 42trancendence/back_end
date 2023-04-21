@@ -47,7 +47,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }, SET_INTERVAL_TIME);
 
     setInterval(async () => {
-      this.gameManager.sendGame(this.server);
+      this.gameManager.sendGame(this.server, this.gameService);
     }, GAME_FRAME);
   }
 
@@ -213,7 +213,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const game = this.gameManager.getGameByRoomId(roomId);
     if (game != null) {
       this.gameManager.deleteGameByRoomId(roomId);
-      await this.gameService.deleteGameByRoomId(roomId);
+      if (game.getGameStatus() == GameStatus.Wait) {
+        await this.gameService.deleteGameById(game.getId());
+      }
       this.server.to(roomId).emit('postLeaveGame', 'delete');
       return;
     }

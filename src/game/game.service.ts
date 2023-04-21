@@ -2,14 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { GameRepository } from './repository/game.repository';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { Player } from './classes/player.class';
 import { Game } from './classes/game.class';
 import { GameManager } from './classes/gameManager.class';
 import { Logger } from '@nestjs/common';
 import { PlayerList } from './classes/playerList.class';
 import { WsException } from '@nestjs/websockets';
-import { GameStatus } from './constants/gameVariable';
-import { GameStatsEntity } from './entities/gameStats.entity';
+import * as uuid from 'uuid';
 
 @Injectable()
 export class GameService {
@@ -37,8 +35,13 @@ export class GameService {
       client2.data.roomId = newRoomId;
       client2.emit('startGame');
 
-      gameManager.createGame(`${player1.name}-${player2.name}`);
-      const newGame = await this.gameRepository.saveGameState(player1, player2);
+      const id = uuid.v4();
+      gameManager.createGame(id, `${player1.name}-${player2.name}`);
+      const newGame = await this.gameRepository.saveGameState(
+        id,
+        player1,
+        player2,
+      );
       if (newGame) {
         client1.emit('getMatching', newGame);
         client2.emit('getMatching', newGame);
@@ -51,9 +54,8 @@ export class GameService {
     return gameList;
   }
 
-  async updateGameState(game: GameStatsEntity) {
-    const gameData = await this.gameRepository.updateGameState(game);
-    return gameData;
+  async updateGameState(game: Game) {
+    return await this.gameRepository.updateGameState(game);
   }
 
   async getPlayerBySocket(client: Socket, players: PlayerList) {
@@ -81,5 +83,9 @@ export class GameService {
 
   async deleteGameByRoomId(roomId: string) {
     await this.gameRepository.deleteGameByRoomId(roomId);
+  }
+
+  async deleteGameById(id: string) {
+    await this.gameRepository.deleteGameById(id);
   }
 }

@@ -32,6 +32,10 @@ export class Paddle {
     }
   }
 
+  public reset(): void {
+    this.y_ = GameVariable.canvasHeight / 2 - GameVariable.paddleHeight / 2;
+  }
+
   public setKeyUp(): void {
     this.y_ -= GameVariable.paddleSpeed;
     if (this.y_ <= 0) {

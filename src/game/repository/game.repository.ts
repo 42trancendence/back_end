@@ -1,17 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { GameStatsEntity } from '../entities/gameStats.entity';
-import { GameStatus } from '../constants/gameVariable';
+import { GameStatus, GameVariable } from '../constants/gameVariable';
 import { UserEntity } from 'src/users/entities/user.entity';
+import { Game } from '../classes/game.class';
 
 @Injectable()
 export class GameRepository extends Repository<GameStatsEntity> {
   constructor(datasource: DataSource) {
     super(GameStatsEntity, datasource.createEntityManager());
   }
-  async saveGameState(player1: UserEntity, player2: UserEntity) {
+  async saveGameState(id: string, player1: UserEntity, player2: UserEntity) {
     const newGameState = new GameStatsEntity();
 
+    newGameState.id = id;
     newGameState.roomId = player1.name + '-' + player2.name;
     newGameState.player1 = player1;
     newGameState.player2 = player2;
@@ -25,8 +27,26 @@ export class GameRepository extends Repository<GameStatsEntity> {
     return await this.save(newGameState);
   }
 
-  async updateGameState(game: GameStatsEntity) {
-    return await this.save(game);
+  async updateGameState(game: Game) {
+    const score = game.getScore();
+
+    let winnerName = '';
+    let loserName = '';
+    if (score[0] > score[1]) {
+      winnerName = game.getPlayer1Name();
+      loserName = game.getPlayer2Name();
+    } else {
+      winnerName = game.getPlayer2Name();
+      loserName = game.getPlayer1Name();
+    }
+
+    return await this.update(game.getId(), {
+      player1Score: score[0],
+      player2Score: score[1],
+      status: game.getGameStatus(),
+      winnerName: winnerName,
+      loserName: loserName,
+    });
   }
 
   async getGameList() {
@@ -44,7 +64,15 @@ export class GameRepository extends Repository<GameStatsEntity> {
       .getOne(); // 가장 최근 항목 하나만 반환
   }
 
+  async getGameStateById(id: string) {
+    return await this.findOne({ where: { id: id } });
+  }
+
   async deleteGameByRoomId(roomId: string) {
     return await this.delete({ roomId });
+  }
+
+  async deleteGameById(id: string) {
+    return await this.delete({ id });
   }
 }
