@@ -5,6 +5,7 @@ export class UpdateUserDto {
   @ApiProperty({ description: '유저 이름' })
   @IsString()
   @MinLength(4)
+  @IsNotEmpty()
   name: string;
 
   @ApiProperty({ description: '유저 아바타 URL' })

@@ -29,6 +29,7 @@ import {
 } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
+import { CheckUserNameDto } from './dto/check-user-name.dto';
 
 @Controller('users')
 @UseGuards(AuthGuard('access-jwt'))
@@ -53,11 +54,14 @@ export class UsersController {
   @ApiQuery({ name: 'userName', description: '중복 확인할 이름' })
   @ApiOkResponse({ description: '성공' })
   @ApiNotFoundResponse({ description: '이미 존재하는 이름입니다.' })
+  @UsePipes(ValidationPipe)
   async checkName(
     @getUser() user: UserEntity,
-    @Query('userName') name: string,
+    @Query() checkUserNameDto: CheckUserNameDto,
   ) {
-    const foundUser = await this.usersService.getUserByName(name);
+    const foundUser = await this.usersService.getUserByName(
+      checkUserNameDto.userName,
+    );
     if (foundUser && foundUser.id !== user.id) {
       throw new NotFoundException('이미 존재하는 이름입니다.');
     }
