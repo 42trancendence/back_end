@@ -97,6 +97,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
   ) {
+    console.log(updateUserDto);
     await this.usersService.updateUserInfo(updateUserDto, user);
   }
 }

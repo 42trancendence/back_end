@@ -53,7 +53,7 @@ export class ChatRoomService {
     return await this.chatRoomRepository.getAllChatRooms();
   }
 
-  async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {
+  async getChatRoomById(chatRoomId: string): Promise<ChatRoomEntity> {
     return await this.chatRoomRepository.getChatRoomById(chatRoomId);
   }
 
