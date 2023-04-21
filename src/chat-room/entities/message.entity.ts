@@ -3,7 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
-  JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ChatRoomEntity } from './chatRoom.entity';
@@ -13,17 +13,20 @@ export class MessageEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => UserEntity, (user) => user.id, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
   user: UserEntity;
 
-  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages)
-  @JoinColumn({ name: 'chat_room_id' })
+  @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.messages, {
+    onDelete: 'CASCADE',
+  })
   chatRoom: ChatRoomEntity;
 
   @Column()
   message: string;
 
-  @Column()
+  @CreateDateColumn()
   timestamp: Date;
 }

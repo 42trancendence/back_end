@@ -18,7 +18,4 @@ export class UpdateChatRoomDto {
   @MinLength(4)
   @IsNotEmpty()
   password: string;
-
-  @ApiProperty({ example: 'room1', description: '채팅방 ID' })
-  id: string;
 }

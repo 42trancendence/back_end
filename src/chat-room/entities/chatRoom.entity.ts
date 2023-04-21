@@ -13,7 +13,7 @@ import { MessageEntity } from './message.entity';
 @Entity({ name: 'chat_rooms' })
 export class ChatRoomEntity {
   @PrimaryGeneratedColumn()
-  id: string;
+  id: number;
 
   @Column()
   name: string;
