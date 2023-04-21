@@ -63,13 +63,20 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const roomId = await this.gameService.getRoomIdByUserId(user.id);
     if (roomId) {
       client.join(roomId);
+      // REFACTOR
+      // 1. user 로 바로 받는다 (@exlude 사용)
       client.data.user = {
         id: user.id,
         name: user.name,
         email: user.email,
         avatarImageUrl: user.avatarImageUrl,
       };
+      // client.data.user = user;
+      // console.log('User', client.data.user);
       client.data.roomId = roomId;
+      // TODO
+      // 1. 프론트로 현재 진행중인 게임 방 접속해야 한다.
+      // client.emit('startGame', roomId);
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
 
@@ -160,49 +167,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   // 매칭되면 매칭된 유저에게 메시지 보내야 한다. (socket.id 사용하면 안된다.)
-  @SubscribeMessage('joinGame')
-  async joinGame(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() roomId: string,
-  ) {
-    // TODO
-    // 1. 룸 아이디로 DB에서 게임 정보를 가져온다.
-    // const gameRoom = await this.gameService.getGameRoomByRoomId(roomId);
-    const gameRoom = {
-      id: '1',
-      roomId: '1',
-      player1: {
-        id: '1',
-        name: '1',
-        email: '1',
-        avatarImageUrl: '1',
-        isReady: GameStatus.Wait,
-      },
-      player2: {
-        id: '2',
-        name: '2',
-        email: '2',
-        avatarImageUrl: '2',
-        isReady: GameStatus.Wait,
-      },
-    };
-    // if (!gameRoom) {
-    //   this.WsLogger.log(`GameRoom ${roomId} is not exist`);
-    //   return;
-    // }
-    // 2. 게임 정보를 기반으로 게임에 참여한다.
+  @SubscribeMessage('joinSpectatorGame')
+  async joinSpectatorGame(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('postKey', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+    const data = client.data;
+
+    this.server.to('roomId').emit('joinGame', data.user);
+    const roomId = data.roomId;
     client.leave('lobby');
     client.join(roomId);
-    // 3. 게임에 참여한 유저에게 게임 정보를 보낸다.
-    client.emit('getGameRoomInfo', gameRoom);
-    this.WsLogger.log(`User ${client.id} joined game ${roomId}`);
+    client.data.roomId = roomId;
+
+    // 게임에 참여하고 있는 유저들에게 새로운 유저가 입장했다고 알린다.
+    // 해당 유저는 게임에 참여해야 한다.
+    client.emit('joinSpectatorGame');
   }
 
   @SubscribeMessage('postLeaveGame')
   async postLeaveGame(@ConnectedSocket() client: Socket) {
     // TODO
     // 1. 유저가 게임에 참여하고 있는지 확인한다.
-    // 2. 게임에 참여하고 있다면 게임을 종료한다.
+    // 2. 게임이 대기상태이면 게임방을 나간다.
     // 3. 유저가 로비에 있는지 확인한다.
 
     if (!client.data?.user) {
@@ -213,19 +202,31 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const data = client.data;
 
     const roomId = data.roomId;
-    if (this.gameManager.isGameByRoomId(roomId) == true) {
-      this.WsLogger.log('Game is not exist');
-      this.gameManager.removeGame(roomId);
+    if (client.data.roomId == 'lobby') {
+      this.WsLogger.log(`User ${client.id} not in game`);
+      client.emit('postLeaveGame', 'not in game');
       return;
     }
 
+    // 처음 게임방을 나가는 경우 게임방을 삭제한다.
+    // 게임방에 입장해 있는 유저들에게 게임방을 나가라고 알린다.
+    const game = this.gameManager.getGameByRoomId(roomId);
+    if (game != null) {
+      this.gameManager.deleteGameByRoomId(roomId);
+      await this.gameService.deleteGameByRoomId(roomId);
+      this.server.to(roomId).emit('postLeaveGame', 'delete');
+      return;
+    }
+
+    // 게임방에 입장해 있는 경우
     client.leave(roomId);
     client.join('lobby');
-    this.server.to(roomId).emit('postLeaveGame', roomId);
-    this.WsLogger.log(`User ${client.id} left game ${roomId}`);
+    client.data.roomId = 'lobby';
+    client.emit('postLeaveGame', 'leave');
+    this.WsLogger.log(`User [${data.user.name}] left game [${roomId}]`);
   }
 
-  @SubscribeMessage('postReady')
+  @SubscribeMessage('postReadyGame')
   async postReady(@ConnectedSocket() client: Socket) {
     if (!client.data?.user) {
       client.disconnect();
@@ -277,7 +278,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const score = game.getScore();
       if (score[0] >= 10 || score[1] >= 10) {
         game.setGameStatus(GameStatus.End);
-        this.gameManager.removeGame(roomId);
+        this.gameManager.deleteGameByRoomId(roomId);
         // TODO: 게임 종료 후 DB에 저장
         // this.gameService.updateGameState(game);
       }

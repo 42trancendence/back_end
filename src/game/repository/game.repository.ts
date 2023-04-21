@@ -43,4 +43,8 @@ export class GameRepository extends Repository<GameStatsEntity> {
       .orderBy('gameStats.createAt', 'DESC') // 최근 날짜부터 정렬
       .getOne(); // 가장 최근 항목 하나만 반환
   }
+
+  async deleteGameByRoomId(roomId: string) {
+    return await this.delete({ roomId });
+  }
 }

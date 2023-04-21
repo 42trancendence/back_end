@@ -3,6 +3,7 @@ import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from './friendship.entity';
+import { Exclude } from 'class-transformer';
 
 @Entity('User')
 export class UserEntity {
@@ -15,6 +16,7 @@ export class UserEntity {
   @Column({ length: 60, nullable: true })
   email: string;
 
+  @Exclude()
   @Column({ length: 60, nullable: true })
   twoFactorAuthCode: string;
 
@@ -24,6 +26,7 @@ export class UserEntity {
   @Column({ name: 'registration_date' })
   registrationDate: Date;
 
+  @Exclude()
   @Column()
   isVerified: boolean;
 
@@ -32,9 +35,6 @@ export class UserEntity {
 
   @Column({ default: Status.OFFLINE })
   status: Status;
-
-  // @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
-  // wonGames: GameSessionEntity[];
 
   @OneToMany(() => FriendShipEntity, (friendship) => friendship.user, {
     eager: true,

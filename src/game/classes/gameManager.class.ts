@@ -21,7 +21,7 @@ export class GameManager {
     this.gameList.set(roomId, game);
   }
 
-  removeGame(roomId: string): void {
+  deleteGameByRoomId(roomId: string): void {
     this.gameList.delete(roomId);
   }
 
