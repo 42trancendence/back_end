@@ -9,7 +9,7 @@ import {
   ConnectedSocket,
   WsException,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { RemoteSocket, Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { ChatRoomInfo } from '../chat-room-info';
 import { ChatRoomService } from '../chat-room.service';
@@ -20,6 +20,7 @@ import { ChatRoomValidationPipe } from '../pipes/chat-room-validation.pipe';
 import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
 import { UserEntity } from 'src/users/entities/user.entity';
+import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -42,19 +43,33 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: string,
   ) {
-    if (
-      !client.data?.user ||
-      !client.data.chatRoom ||
-      client.data.chatRoom.name === 'lobby'
-    ) {
+    if (!client.data?.user) {
+      this.ChatRoomLogger.error('[updateChatRoom] User not found');
       return;
     }
+
+    if (!client.data?.chatRoomId || client.data.chatRoomId === 'lobby') {
+      this.ChatRoomLogger.error(
+        '[updateChatRoom] Chat room에 접속해 있지 않은 유저 입니다.',
+      );
+      return;
+    }
+
+    const chatRoom = await this.chatRoomService.getChatRoomById(
+      client.data.chatRoomId,
+    );
+
+    if (!chatRoom) {
+      this.ChatRoomLogger.error('[updateChatRoom] Chat room not found');
+    }
+
     const message = await this.chatRoomService.saveMessage(
       client.data.user,
-      client.data.chatRoom,
+      chatRoom,
       payload,
     );
-    client.broadcast.to(client.data.chatRoom.name).emit('getMessage', message);
+
+    client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
   }
 
   @SubscribeMessage('toggleBanUser')
@@ -71,18 +86,18 @@ export class ChatRoomGateway
       throw new WsException('User not found');
     }
     const isBannedUser = await this.chatRoomService.toggleBanUser(
-      client.data.chatRoom,
+      client.data.chatRoomId,
       banUser,
     );
     if (isBannedUser) {
       return;
     }
-    await this.emitToKickUser(client.data.chatRoom, banUser);
+    await this.emitToKickUser(client.data.chatRoomId, banUser);
     this.server
-      .in(client.data.chatRoom.name)
+      .in(client.data.chatRoomId.name)
       .emit(
         'getChatRoomUsers',
-        await this.getChatRoomUsers(client.data.chatRoom.name),
+        await this.getChatRoomUsers(client.data.chatRoomId.name),
       );
   }
 
@@ -99,12 +114,12 @@ export class ChatRoomGateway
     if (!kickUser) {
       throw new WsException('User not found');
     }
-    await this.emitToKickUser(client.data.chatRoom, kickUser);
+    await this.emitToKickUser(client.data.chatRoomId, kickUser);
     this.server
-      .in(client.data.chatRoom.name)
+      .in(client.data.chatRoomId.name)
       .emit(
         'getChatRoomUsers',
-        await this.getChatRoomUsers(client.data.chatRoom.name),
+        await this.getChatRoomUsers(client.data.chatRoomId.name),
       );
   }
 
@@ -123,13 +138,13 @@ export class ChatRoomGateway
       throw new WsException('User not found');
     }
     const isMuted = await this.chatRoomService.toggleMuteUser(
-      client.data.chatRoom,
+      client.data.chatRoomId,
       muteUser,
     );
     if (isMuted) {
-      await this.emitToMuteUser(client.data.chatRoom, muteUser, 'off');
+      await this.emitToMuteUser(client.data.chatRoomId, muteUser, 'off');
     } else {
-      await this.emitToMuteUser(client.data.chatRoom, muteUser, 'on');
+      await this.emitToMuteUser(client.data.chatRoomId, muteUser, 'on');
     }
   }
 
@@ -138,14 +153,37 @@ export class ChatRoomGateway
     @ConnectedSocket() client: Socket,
     @MessageBody(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
   ) {
-    const chatRoom = await this.chatRoomService.getChatRoomByName(
-      updateChatRoomDto.name,
+    if (!client.data?.user) {
+      this.ChatRoomLogger.error('[updateChatRoom] User not found');
+      return;
+    }
+
+    if (
+      !client.data?.chatRoomId ||
+      client.data.chatRoomId === 'lobby' ||
+      client.data.chatRoomId !== updateChatRoomDto.id
+    ) {
+      this.ChatRoomLogger.error(
+        '[updateChatRoom] Chat room에 접속해 있지 않은 유저 입니다.',
+      );
+      return;
+    }
+
+    const chatRoom = await this.chatRoomService.getChatRoomById(
+      updateChatRoomDto.id,
     );
+
+    if (!chatRoom) {
+      this.ChatRoomLogger.error('[updateChatRoom] Chat room not found');
+      return;
+    }
+
     if (chatRoom.owner.id !== client.data.user.id) {
       throw new WsException('You are not owner of this chat room');
     }
+
     await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
-    client
+    this.server
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
@@ -153,17 +191,45 @@ export class ChatRoomGateway
   @SubscribeMessage('deleteChatRoom')
   async deleteChatRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody('roomName') roomName: string,
+    @MessageBody('roomId') roomId: string,
   ) {
-    const chatRoom = await this.chatRoomService.getChatRoomByName(roomName);
+    if (!client.data?.user) {
+      this.ChatRoomLogger.error('[deleteChatRoom] User not found');
+      return;
+    }
+
+    if (
+      !client.data?.chatRoomId ||
+      client.data.chatRoomId === 'lobby' ||
+      client.data.chatRoomId !== roomId
+    ) {
+      this.ChatRoomLogger.error(
+        '[updateChatRoom] Chat room에 접속해 있지 않은 유저 입니다.',
+      );
+      return;
+    }
+
+    const chatRoom = await this.chatRoomService.getChatRoomById(roomId);
+    if (!chatRoom) {
+      this.ChatRoomLogger.error('[deleteChatRoom] Chat room not found');
+      return;
+    }
 
     if (chatRoom.owner.id !== client.data.user.id) {
       throw new WsException('You are not owner of this chat room');
     }
+
     await this.chatRoomService.deleteChatRoom(chatRoom);
-    client
+
+    this.server
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+
+    const sockets = await this.server.in(client.data.chatRoomId).fetchSockets();
+    for (const socket of sockets) {
+      socket.emit('kickUser');
+      await this.clinetJoinLobby(socket);
+    }
   }
 
   @SubscribeMessage('createChatRoom')
@@ -176,25 +242,34 @@ export class ChatRoomGateway
     );
 
     if (!client.data?.user) {
-      this.ChatRoomLogger.debug('로그인이 필요합니다.');
+      this.ChatRoomLogger.debug('[createChatRoom] 로그인이 필요합니다.');
       return;
     }
 
-    // NOTE: 이미 존재하는 chat-room 이름인지 확인
+    if (client.data?.chatRoomId !== 'lobby') {
+      this.ChatRoomLogger.debug(
+        `[createChatRoom] ${client.data?.chatRoom} 비정상적인 접근입니다.`,
+      );
+      return;
+    }
+
     const isDuplicated = await this.chatRoomService.getChatRoomByName(
       createChatRoomDto.name,
     );
     if (isDuplicated) {
-      this.ChatRoomLogger.debug('이미 존재하는 chat-room 이름 입니다.');
-      throw new WsException('이미 존재하는 chat-room 이름 입니다.');
+      this.ChatRoomLogger.debug(
+        '[createChatRoom] 이미 존재하는 chat-room 이름 입니다.',
+      );
+      return;
     }
 
     await this.chatRoomService.createChatRoom(
       createChatRoomDto,
       client.data.user,
     );
+
     this.ChatRoomLogger.debug(
-      `User ${client.data.user.name} created chat room`,
+      `[createChatRoom] User ${client.data.user.name} created chat room`,
     );
 
     await this.clientJoinChatRoom(
@@ -220,8 +295,10 @@ export class ChatRoomGateway
     this.ChatRoomLogger.debug(
       `[enterChatRoom] roomName: ${roomName}, user: ${client.data.user.name}`,
     );
-    if (client.rooms.size > 1) {
-      client.leave(client.data.chatRoom);
+    if (client.data?.chatRoomId !== 'lobby') {
+      this.ChatRoomLogger.debug(
+        `[enterChatRoom] ${client.data.chatRoomId} 비정상적인 접근입니다. `,
+      );
     }
     await this.clientJoinChatRoom(client, roomName, password);
   }
@@ -233,18 +310,13 @@ export class ChatRoomGateway
       return;
     }
 
-    if (!client.data?.chatRoom || client.data?.chatRoom === 'lobby') {
+    if (client.data?.chatRoomId === 'lobby') {
       this.ChatRoomLogger.debug('[leaveChatRoom] chatRoom not found');
+      return;
     }
-    const roomName = client.data.chatRoom;
     this.ChatRoomLogger.debug(
-      `[leaveChatRoom] roomName: ${roomName} user: ${client.data.user.name}`,
+      `[leaveChatRoom] roomName: ${client.data.chatRoomId} user: ${client.data.user.name}`,
     );
-
-    client.leave(roomName);
-    this.server
-      .to(roomName)
-      .emit('getChatRoomUsers', await this.getChatRoomUsers(roomName));
     await this.clinetJoinLobby(client);
   }
 
@@ -256,6 +328,7 @@ export class ChatRoomGateway
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
+    client.data.chatRoomId = 'lobby';
     client.leave(client.id);
     await this.clinetJoinLobby(client);
   }
@@ -286,28 +359,37 @@ export class ChatRoomGateway
     }
     chatRoom.bannedUsers.forEach((bannedUser) => {
       if (bannedUser.id === client.data.user.id) {
-        this.ChatRoomLogger.debug('차단된 사용자입니다.');
-        throw new WsException('차단된 사용자입니다.');
+        this.ChatRoomLogger.debug('해당 방에서 차단된 사용자입니다.');
+        throw new WsException('해당 방에서 차단된 사용자입니다.');
       }
     });
-    client.leave(client.data.chatRoom);
-    client.data.chatRoom = chatRoomName;
-    client.join(chatRoomName);
-    client
-      .to(chatRoomName)
-      .emit('getChatRoomUsers', await this.getChatRoomUsers(chatRoomName));
-    //TODO: 가져올 메시지 개수 제한
-    client.to(chatRoomName).emit('getChatRoomMessages', chatRoom.messages);
+
+    client.leave('lobby');
+    client.data.chatRoomId = chatRoom.id;
+    client.join(chatRoom.id);
+    this.server
+      .to(chatRoom.id)
+      .emit('getChatRoomUsers', await this.getChatRoomUsers(chatRoom.id));
+    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
+    client.emit('getChatRoomMessages', chatRoom.messages);
     chatRoom.mutedUsers.forEach((mutedUser) => {
       if (mutedUser.id === client.data.user.id) {
         client.emit('setMuteUser', 'on');
       }
     });
-    this.ChatRoomLogger.debug(chatRoom.messages);
   }
 
-  async clinetJoinLobby(client: Socket) {
-    client.data.chatRoom = 'lobby';
+  async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
+    if (client.data.chatRoomId !== 'lobby') {
+      this.server
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.getChatRoomUsers(client.data.chatRoomId),
+        );
+      client.leave(client.data.chatRoomId);
+    }
+    client.data.chatRoomId = 'lobby';
     client.join('lobby');
     client.emit(
       'showChatRoomList',
@@ -315,11 +397,11 @@ export class ChatRoomGateway
     );
   }
 
-  async getChatRoomUsers(roomName: string) {
-    const allSockets = await this.server.in(roomName).fetchSockets();
+  async getChatRoomUsers(chatRoomId: string) {
+    const allSockets = await this.server.in(chatRoomId).fetchSockets();
     const chatRoomUsers = new Set<string>();
     for (const socket of allSockets) {
-      socket.data.user && chatRoomUsers.add(socket.data.user.name);
+      socket.data?.user && chatRoomUsers.add(socket.data.user.name);
     }
 
     const serializedSet = [...chatRoomUsers.keys()];

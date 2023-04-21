@@ -20,7 +20,7 @@ export class ChatRoomValidationPipe implements PipeTransform {
     ) {
       value.password = null;
     }
-    value.name = 'chatRoom: ' + value.name;
+    value.name = value.name;
     return value;
   }
 }

@@ -36,7 +36,7 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     ]);
   }
 
-  async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {
+  async getChatRoomById(chatRoomId: string): Promise<ChatRoomEntity> {
     return await this.findOne({ where: { id: chatRoomId } });
   }
 

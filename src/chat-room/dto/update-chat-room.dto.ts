@@ -3,7 +3,7 @@ import { IsNotEmpty, IsString, MaxLength, MinLength } from 'class-validator';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
 
 export class UpdateChatRoomDto {
-  @ApiProperty({ example: 'room1', description: '채팅방 이름' })
+  @ApiProperty({ example: "soum's room", description: '채팅방 이름' })
   @IsString()
   @MinLength(3)
   @IsNotEmpty()
@@ -18,4 +18,7 @@ export class UpdateChatRoomDto {
   @MinLength(4)
   @IsNotEmpty()
   password: string;
+
+  @ApiProperty({ example: 'room1', description: '채팅방 ID' })
+  id: string;
 }

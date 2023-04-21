@@ -9,7 +9,6 @@ export class PostgreConfigProvider {
     @Inject(postgreConfig.KEY) private config: ConfigType<typeof postgreConfig>,
   ) {}
   createTypeOrmOptions(): TypeOrmModuleOptions {
-    console.log(this.config);
     return {
       type: 'postgres',
       host: this.config.host,
