@@ -19,11 +19,6 @@ export class AuthService {
     const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
     res.header('Authorization', 'Bearer ' + token);
-    res.cookie('accessToken', token, {
-      domain: '	localhost',
-      path: '/',
-      httpOnly: true,
-    });
     console.log(token);
     return token;
   }
@@ -33,13 +28,11 @@ export class AuthService {
     res.cookie('refreshToken', token, {
       domain: 'localhost',
       path: '/',
-      // NOTE: after change httpOnly to true
-      httpOnly: false,
+      httpOnly: true,
     });
   }
 
   async logout(res: Response) {
-    res.cookie('accessToken', '');
     res.cookie('refreshToken', '');
     return res.redirect('http://localhost:4000/login');
   }
