@@ -37,7 +37,8 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   }
 
   async getChatRoomById(chatRoomId: string): Promise<ChatRoomEntity> {
-    return await this.findOne({ where: { id: chatRoomId } });
+    const id = parseInt(chatRoomId);
+    return await this.findOne({ where: { id: id } });
   }
 
   async getChatRoomByName(chatRoomName: string): Promise<ChatRoomEntity> {
@@ -51,30 +52,30 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   async toggleBanUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
-    isBanned: boolean,
   ): Promise<boolean> {
-    if (isBanned) {
+    if (chatRoom.bannedUsers.includes(user)) {
       const index = chatRoom.bannedUsers.indexOf(user);
       chatRoom.bannedUsers.splice(index, 1);
-    } else {
-      chatRoom.bannedUsers.push(user);
+      await this.save(chatRoom);
+      return true;
     }
+    chatRoom.bannedUsers.push(user);
     await this.save(chatRoom);
-    return isBanned;
+    return false;
   }
 
   async toggleMuteUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
-    isMuted: boolean,
   ): Promise<boolean> {
-    if (isMuted) {
-      const index = chatRoom.mutedUsers.indexOf(user);
+    if (chatRoom.mutedUsers.includes(user)) {
+      const index = chatRoom.bannedUsers.indexOf(user);
       chatRoom.mutedUsers.splice(index, 1);
-    } else {
-      chatRoom.bannedUsers.push(user);
+      await this.save(chatRoom);
+      return true;
     }
+    chatRoom.mutedUsers.push(user);
     await this.save(chatRoom);
-    return isMuted;
+    return false;
   }
 }

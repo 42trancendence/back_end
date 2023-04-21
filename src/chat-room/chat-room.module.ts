@@ -8,6 +8,7 @@ import { MessageRepository } from './repository/message.repository';
 import { AuthModule } from 'src/auth/auth.module';
 import { UsersModule } from 'src/users/users.module';
 import { MessageEntity } from './entities/message.entity';
+import { ChatRoomValidation } from './chat-room.validation';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { MessageEntity } from './entities/message.entity';
   controllers: [],
   providers: [
     ChatRoomService,
+    ChatRoomValidation,
     ChatRoomRepository,
     MessageRepository,
     ChatRoomGateway,
