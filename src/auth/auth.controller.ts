@@ -84,7 +84,7 @@ export class AuthController {
     summary: '유저 로그아웃 API',
     description: '쿠키와 db의 refresh token 파기 API.',
   })
-  async logout(@getUser() user: UserEntity, @Res() res: Response) {
+  async logout(@Res() res: Response) {
     this.authLogger.verbose('[GET] /logout');
 
     return await this.authService.logout(res);
@@ -99,8 +99,8 @@ export class AuthController {
   async refreshToken(@getUser() user: UserEntity, @Res() res: Response) {
     this.authLogger.verbose('[GET] /refresh');
 
-    await this.authService.createAccessToken(user, res);
+    const accessToken = await this.authService.createAccessToken(user, res);
     await this.authService.createRefreshToken(user, res);
-    return res.status(200).json({ message: 'success' });
+    return res.status(200).json({ message: 'success', accessToken });
   }
 }
