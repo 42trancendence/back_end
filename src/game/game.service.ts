@@ -24,7 +24,8 @@ export class GameService {
       const client2 = allSockets.shift();
       const player1 = client1.data.user;
       const player2 = client2.data.user;
-      const newRoomId = `${player1.name}-${player2.name}`;
+      const title = `${player1.name}-${player2.name}`;
+      const newRoomId = uuid.v4();
 
       client1.leave('matching');
       client1.join(newRoomId);
@@ -35,10 +36,10 @@ export class GameService {
       client2.data.roomId = newRoomId;
       client2.emit('startGame');
 
-      const id = uuid.v4();
-      gameManager.createGame(id, `${player1.name}-${player2.name}`);
+      gameManager.createGame(newRoomId, title);
       const newGame = await this.gameRepository.saveGameState(
-        id,
+        newRoomId,
+        title,
         player1,
         player2,
       );
@@ -81,11 +82,11 @@ export class GameService {
     return null;
   }
 
+  // async deleteGameByRoomId(roomId: string) {
+  //   await this.gameRepository.deleteGameByRoomId(roomId);
+  // }
+
   async deleteGameByRoomId(roomId: string) {
     await this.gameRepository.deleteGameByRoomId(roomId);
-  }
-
-  async deleteGameById(id: string) {
-    await this.gameRepository.deleteGameById(id);
   }
 }

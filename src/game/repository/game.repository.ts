@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { GameStatsEntity } from '../entities/gameStats.entity';
-import { GameStatus, GameVariable } from '../constants/gameVariable';
+import { GameStatus } from '../constants/gameVariable';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Game } from '../classes/game.class';
 
@@ -10,11 +10,16 @@ export class GameRepository extends Repository<GameStatsEntity> {
   constructor(datasource: DataSource) {
     super(GameStatsEntity, datasource.createEntityManager());
   }
-  async saveGameState(id: string, player1: UserEntity, player2: UserEntity) {
+  async saveGameState(
+    roomId: string,
+    title: string,
+    player1: UserEntity,
+    player2: UserEntity,
+  ) {
     const newGameState = new GameStatsEntity();
 
-    newGameState.id = id;
-    newGameState.roomId = player1.name + '-' + player2.name;
+    newGameState.roomId = roomId;
+    newGameState.title = title;
     newGameState.player1 = player1;
     newGameState.player2 = player2;
     newGameState.player1Score = 0;
@@ -40,7 +45,7 @@ export class GameRepository extends Repository<GameStatsEntity> {
       loserName = game.getPlayer1Name();
     }
 
-    return await this.update(game.getId(), {
+    return await this.update(game.getRoomId(), {
       player1Score: score[0],
       player2Score: score[1],
       status: game.getGameStatus(),
@@ -64,15 +69,15 @@ export class GameRepository extends Repository<GameStatsEntity> {
       .getOne(); // 가장 최근 항목 하나만 반환
   }
 
-  async getGameStateById(id: string) {
-    return await this.findOne({ where: { id: id } });
+  async getGameStateById(roomId: string) {
+    return await this.findOne({ where: { roomId: roomId } });
   }
+
+  // async deleteGameByRoomId(id: string) {
+  //   return await this.delete({ id });
+  // }
 
   async deleteGameByRoomId(roomId: string) {
     return await this.delete({ roomId });
-  }
-
-  async deleteGameById(id: string) {
-    return await this.delete({ id });
   }
 }

@@ -30,7 +30,7 @@ export class UserEntity {
   @Column()
   isVerified: boolean;
 
-  @OneToMany(() => GameStatsEntity, (game) => game.id)
+  @OneToMany(() => GameStatsEntity, (game) => game.roomId)
   gameStats: GameStatsEntity[];
 
   @Column({ default: Status.OFFLINE })

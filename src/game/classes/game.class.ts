@@ -3,8 +3,8 @@ import { GameStatus, GameVariable } from '../constants/gameVariable';
 import { Paddle } from './paddle.class';
 
 export class Game {
-  private id_: string;
   private roomId_: string;
+  private title_: string;
   private gameStatus_: string = GameStatus.Wait;
   private ball_: Ball = new Ball();
   private player1Name_: string;
@@ -15,11 +15,12 @@ export class Game {
   ];
   private score_: Array<number> = [0, 0];
   private setReady_: Array<string> = [];
+  private setDifficulty_: Array<string> = [];
 
-  constructor(private id: string, private roomId: string) {
-    this.id_ = id;
+  constructor(private roomId: string, private title: string) {
     this.roomId_ = roomId;
-    const userIds = this.roomId_.split('-');
+    this.title_ = title;
+    const userIds = this.title.split('-');
     this.paddles_[0].setUserId(userIds[0]);
     this.paddles_[1].setUserId(userIds[1]);
     this.player1Name_ = userIds[0];
@@ -35,12 +36,12 @@ export class Game {
     this.ball_.move(paddle, this.score_);
   }
 
-  public getId(): string {
-    return this.id_;
-  }
-
   public getRoomId(): string {
     return this.roomId_;
+  }
+
+  public getTitle(): string {
+    return this.title_;
   }
 
   public getGameStatus(): string {
@@ -67,12 +68,20 @@ export class Game {
     return this.gameStatus_;
   }
 
+  public getBall(): Ball {
+    return this.ball_;
+  }
+
   public setGameStatus(gameStatus: string): void {
     this.gameStatus_ = gameStatus;
   }
 
   public setReady(userId: string): void {
     this.setReady_.push(userId);
+  }
+
+  public setDifficulty(userId: string): void {
+    this.setDifficulty_.push(userId);
   }
 
   public isReady(): boolean {
@@ -83,12 +92,20 @@ export class Game {
     return this.setReady_.includes(userId);
   }
 
+  public isDifficulty(): boolean {
+    return this.setDifficulty_.length == 2;
+  }
+
   public cancelReady(userId: string): void {
     this.setReady_ = this.setReady_.filter((id) => id != userId);
   }
 
-  public reset(id: string): void {
-    this.id_ = id;
+  public cancelDifficulty(userId: string): void {
+    this.setDifficulty_ = this.setDifficulty_.filter((id) => id != userId);
+  }
+
+  public reset(roomId: string): void {
+    this.roomId_ = roomId;
     this.score_ = [0, 0];
     this.setReady_ = [];
     this.ball_.reset();

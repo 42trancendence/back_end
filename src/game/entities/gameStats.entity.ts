@@ -4,10 +4,10 @@ import { Entity, Column, ManyToOne, PrimaryColumn } from 'typeorm';
 @Entity({ name: 'gameStats' })
 export class GameStatsEntity {
   @PrimaryColumn()
-  id: string;
+  roomId: string;
 
   @Column()
-  roomId: string;
+  title: string;
 
   @ManyToOne(() => UserEntity, (user) => user.gameStats, { eager: true })
   player1: UserEntity;

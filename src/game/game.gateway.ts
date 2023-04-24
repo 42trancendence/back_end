@@ -18,7 +18,7 @@ import {
   MAX_QUEUE_SIZE,
   SET_INTERVAL_TIME,
 } from './constants/game.constant';
-import { GameStatus } from './constants/gameVariable';
+import { GameStatus, GameVariable } from './constants/gameVariable';
 
 @WebSocketGateway({
   namespace: 'game',
@@ -130,7 +130,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     client.emit('getGameList', gameList);
-    // this.WsLogger.log(`User ${client.data.user.name}: get gameList`);
     this.WsLogger.log(`User ${client.id}: get gameList`);
   }
 
@@ -166,18 +165,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.WsLogger.log(`${playerName} is leave wait`);
   }
 
-  // 매칭되면 매칭된 유저에게 메시지 보내야 한다. (socket.id 사용하면 안된다.)
   @SubscribeMessage('joinSpectatorGame')
-  async joinSpectatorGame(@ConnectedSocket() client: Socket) {
+  async joinSpectatorGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() roomId: string,
+  ) {
     if (!client.data?.user) {
       client.disconnect();
       client.emit('postKey', 'disconnected');
       throw new WsException('Unauthorized');
     }
-    const data = client.data;
 
-    this.server.to('roomId').emit('joinGame', data.user);
-    const roomId = data.roomId;
+    this.server.to(roomId).emit('joinGame', client.data.user);
     client.leave('lobby');
     client.join(roomId);
     client.data.roomId = roomId;
@@ -214,7 +213,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (game != null) {
       this.gameManager.deleteGameByRoomId(roomId);
       if (game.getGameStatus() == GameStatus.Wait) {
-        await this.gameService.deleteGameById(game.getId());
+        await this.gameService.deleteGameByRoomId(game.getRoomId());
       }
       this.server.to(roomId).emit('postLeaveGame', 'delete');
       return;
@@ -260,35 +259,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('setGame')
-  async gaming(
+  @SubscribeMessage('postDifficulty')
+  async postDifficulty(
     @ConnectedSocket() client: Socket,
-    @MessageBody() roomId: string,
+    @MessageBody() difficulty: string,
   ) {
-    // TODO
-    // 1. 게임에 필요한 볼, 패들, 스코어 가져오기
-    // 2. 게임 상태에 따라 게임 진행
-    // 3. 게임 종료 후 DB에 저장
-    const game = this.gameManager.getGameByRoomId(roomId);
-    if (!game) {
-      this.WsLogger.log(`Game ${roomId} is not exist`);
-      return;
-    }
-    if (game.getGameStatus() == GameStatus.Wait) {
-      game.setGameStatus(GameStatus.Play);
-    } else if (game.getGameStatus() == GameStatus.Play) {
-      const score = game.getScore();
-      if (score[0] >= 10 || score[1] >= 10) {
-        game.setGameStatus(GameStatus.End);
-        this.gameManager.deleteGameByRoomId(roomId);
-        // TODO: 게임 종료 후 DB에 저장
-        // this.gameService.updateGameState(game);
-      }
-    } else if (game.getGameStatus() == GameStatus.End) {
-      game.setGameStatus(GameStatus.Wait);
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('postKey', 'disconnected');
+      throw new WsException('Unauthorized');
     }
 
-    client.emit('setGame', game);
+    const data = client.data;
+    const roomId = data.roomId;
+    const game = this.gameManager.getGameByRoomId(roomId);
+    const ball = game.getBall();
+
+    if (difficulty == 'hard') {
+      game.setDifficulty(data.user.id);
+    } else if (difficulty == 'normal') {
+      game.cancelDifficulty(data.user.id);
+    }
+    if (game.isDifficulty()) {
+      ball.setSpeed(GameVariable.hardBallSpeed);
+    } else if (!game.isDifficulty()) {
+      ball.setSpeed(GameVariable.normalBallSpeed);
+    }
   }
 
   @SubscribeMessage('postKey')

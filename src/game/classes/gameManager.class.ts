@@ -16,7 +16,7 @@ export class GameManager {
         // 게임 종료 뒤 결과 저장하고 방 폭파
         game.setGameStatus(GameStatus.End);
         gameService.updateGameState(game);
-        this.deleteGameById(game.getId());
+        this.deleteGameByRoomId(game.getRoomId());
         server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
       }
       if (game.getGameStatus() !== GameStatus.Play) return;
@@ -25,17 +25,13 @@ export class GameManager {
     });
   }
 
-  createGame(id: string, roomId: string): void {
-    const game = new Game(id, roomId);
+  createGame(roomId: string, title: string): void {
+    const game = new Game(roomId, title);
     this.gameList.set(roomId, game);
   }
 
-  deleteGameById(id: string): void {
-    this.gameList.forEach((game) => {
-      if (game.getId() === id) {
-        this.gameList.delete(game.getRoomId());
-      }
-    });
+  deleteGameByTitle(title: string): void {
+    this.gameList.delete(title);
   }
 
   deleteGameByRoomId(roomId: string): void {
