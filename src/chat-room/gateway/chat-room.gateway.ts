@@ -19,6 +19,7 @@ import * as bcrypt from 'bcrypt';
 import { UsersService } from 'src/users/users.service';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { ChatRoomValidation } from '../chat-room.validation';
+import { ChatRoomType } from '../enum/chat-room-type.enum';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -237,6 +238,9 @@ export class ChatRoomGateway
     @MessageBody('password') password: string,
   ) {
     try {
+      this.ChatRoomLogger.debug(
+        `[enterChatRoom] roomName: ${roomName}, password: ${password}`,
+      );
       await this.chatRoomValidation.validateUserInLobby(client);
 
       await this.clientJoinChatRoom(client, roomName, password);
@@ -285,14 +289,19 @@ export class ChatRoomGateway
       throw new WsException('존재하지 않는 채팅방입니다.');
     }
 
-    if (bcrypt.compareSync(password, chatRoom.password) === false) {
+    if (
+      chatRoom.type === ChatRoomType.PROTECTED &&
+      bcrypt.compareSync(password, chatRoom.password) === false
+    ) {
       throw new WsException('비밀번호가 틀렸습니다.');
     }
-    chatRoom.bannedUsers.forEach((bannedUser) => {
-      if (bannedUser.id === client.data.user.id) {
-        throw new WsException('해당 방에서 차단된 사용자입니다.');
-      }
-    });
+    if (chatRoom.bannedUsers) {
+      chatRoom.bannedUsers.forEach((bannedUser) => {
+        if (bannedUser.id === client.data.user.id) {
+          throw new WsException('해당 방에서 차단된 사용자입니다.');
+        }
+      });
+    }
 
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
@@ -305,11 +314,13 @@ export class ChatRoomGateway
       );
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
-    chatRoom.mutedUsers.forEach((mutedUser) => {
-      if (mutedUser.id === client.data.user.id) {
-        client.emit('muteUser', true);
-      }
-    });
+    if (chatRoom.mutedUsers) {
+      chatRoom.mutedUsers.forEach((mutedUser) => {
+        if (mutedUser.id === client.data.user.id) {
+          client.emit('muteUser', true);
+        }
+      });
+    }
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
@@ -332,6 +343,7 @@ export class ChatRoomGateway
     }
 
     const serializedSet = [...chatRoomUsers.keys()];
+    this.ChatRoomLogger.debug(`[getChatRoomUsers] ${serializedSet}`);
     return serializedSet;
   }
 

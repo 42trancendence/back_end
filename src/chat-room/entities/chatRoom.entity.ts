@@ -32,10 +32,10 @@ export class ChatRoomEntity {
   messages: MessageEntity[];
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.bannedChatRooms)
+  @ManyToOne(() => UserEntity, (user) => user.bannedChatRooms, { eager: true })
   bannedUsers: UserEntity[];
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.mutedChatRooms)
+  @ManyToOne(() => UserEntity, (user) => user.mutedChatRooms, { eager: true })
   mutedUsers: UserEntity[];
 }
