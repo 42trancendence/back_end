@@ -20,6 +20,7 @@ import { UsersService } from 'src/users/users.service';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { ChatRoomValidation } from '../chat-room.validation';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
+import { DirectMessageEntity } from '../entities/directMessage.entity';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -37,6 +38,8 @@ export class ChatRoomGateway
     private authService: AuthService,
     private usersService: UsersService,
   ) {}
+
+  //TODO: add validation for userId
 
   @SubscribeMessage('sendMessage')
   async handleMessage(
@@ -60,8 +63,63 @@ export class ChatRoomGateway
     }
   }
 
+  @SubscribeMessage('sendDirectMessage')
+  async handleDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: string,
+  ) {
+    try {
+      const directMessage =
+        await this.chatRoomValidation.validateUserInDirectMessage(client);
+
+      const message = await this.chatRoomService.saveDirectMessage(
+        client.data.user,
+        directMessage,
+        payload,
+      );
+
+      if (!message) {
+        return;
+      }
+
+      client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
+      // TODO: add notification to sender
+    } catch (error) {
+      this.ChatRoomLogger.error(`[sendDirectMessage] ${error.message}`);
+    }
+  }
+
+  @SubscribeMessage('toggleBlockUser')
+  async toggleBlockUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('userId') userId: string,
+  ) {
+    try {
+      if (!client.data?.user) {
+        throw new WsException('User not found');
+      }
+
+      const blockUser = await this.usersService.getUserById(userId);
+      if (!blockUser) {
+        throw new WsException('User not found');
+      }
+
+      const directMessage = await this.chatRoomService.createDirectMessage(
+        client.data.user,
+        blockUser,
+      );
+
+      await this.chatRoomService.toggleBlockUser(
+        directMessage,
+        client.data.user,
+      );
+    } catch (error) {
+      this.ChatRoomLogger.error(`[toggleBlockUser] ${error.message}`);
+    }
+  }
+
   @SubscribeMessage('toggleBanUser')
-  async banUser(
+  async toggleBanUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
   ) {
@@ -88,8 +146,8 @@ export class ChatRoomGateway
       this.server
         .to(client.data.chatRoomId)
         .emit(
-          'getChatRoom',
-          await this.chatRoomService.getChatRoomById(client.data.chatRoomId),
+          'getChatRoomUsers',
+          await this.getChatRoomUsers(client.data.chatRoomId),
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
@@ -115,8 +173,8 @@ export class ChatRoomGateway
       this.server
         .to(client.data.chatRoomId)
         .emit(
-          'getChatRoom',
-          await this.chatRoomService.getChatRoomById(client.data.chatRoomId),
+          'getChatRoomUsers',
+          await this.getChatRoomUsers(client.data.chatRoomId),
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[kickUser] ${error.message}`);
@@ -176,28 +234,64 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('deleteChatRoom')
-  async deleteChatRoom(@ConnectedSocket() client: Socket) {
+  // @SubscribeMessage('deleteChatRoom')
+  // async deleteChatRoom(@ConnectedSocket() client: Socket) {
+  //   try {
+  //     const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
+  //       client,
+  //     );
+  //
+  //     await this.chatRoomService.deleteChatRoom(chatRoom);
+  //
+  //     this.server
+  //       .to('lobby')
+  //       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+  //
+  //     await this.emitEventToChatRoomUser(
+  //       client.data.chatRoomId,
+  //       'kickUser',
+  //       null,
+  //       null,
+  //       true,
+  //     );
+  //   } catch (error) {
+  //     this.ChatRoomLogger.error(`[deleteChatRoom] ${error.message}`);
+  //   }
+  // }
+
+  @SubscribeMessage('createDirectMessage')
+  async createDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() receiverId: string,
+  ) {
     try {
-      const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
-        client,
+      await this.chatRoomValidation.validateUserInLobby(client);
+
+      const receiver = await this.usersService.getUserById(receiverId);
+      if (!receiver) {
+        throw new WsException('User not found');
+      }
+
+      const directMessage = await this.chatRoomService.createDirectMessage(
+        client.data.user,
+        receiver,
       );
 
-      await this.chatRoomService.deleteChatRoom(chatRoom);
+      await this.clientJoinDirectMessage(client, directMessage);
 
-      this.server
-        .to('lobby')
-        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
-
-      await this.emitEventToChatRoomUser(
-        client.data.chatRoomId,
-        'kickUser',
-        null,
-        null,
-        true,
-      );
+      const sockets = await this.server.fetchSockets();
+      for (const socket of sockets) {
+        if (socket.data.user.id === receiverId) {
+          this.server
+            .to(socket.id)
+            .emit(
+              'showDirectMessageList',
+              await this.chatRoomService.getDirectMessages(receiver),
+            );
+        }
+      }
     } catch (error) {
-      this.ChatRoomLogger.error(`[deleteChatRoom] ${error.message}`);
+      this.ChatRoomLogger.error(`[createDirectMessage] ${error.message}`);
     }
   }
 
@@ -231,6 +325,28 @@ export class ChatRoomGateway
     }
   }
 
+  @SubscribeMessage('enterDirectMessage')
+  async enterDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('directMessageId') directMessageId: string,
+  ) {
+    try {
+      await this.chatRoomValidation.validateUserInLobby(client);
+
+      const directMessage = await this.chatRoomService.getDirectMessageById(
+        directMessageId,
+      );
+
+      if (!directMessage) {
+        throw new WsException('Direct message not found');
+      }
+
+      await this.clientJoinDirectMessage(client, directMessage);
+    } catch (error) {
+      this.ChatRoomLogger.error(`[enterDirectMessage] ${error.message}`);
+    }
+  }
+
   @SubscribeMessage('enterChatRoom')
   async enterChatRoom(
     @ConnectedSocket() client: Socket,
@@ -254,6 +370,7 @@ export class ChatRoomGateway
     try {
       await this.chatRoomValidation.validateUserInChatRoom(client);
 
+      // TODO: 만약 나가는 유저가 방장이라면 방장을 위임해야함
       await this.clinetJoinLobby(client);
     } catch (error) {
       this.ChatRoomLogger.error(`[leaveChatRoom] ${error.message}`);
@@ -265,6 +382,7 @@ export class ChatRoomGateway
     if (!user) {
       this.ChatRoomLogger.debug('[handleConnection] user not found');
       client.disconnect();
+      return;
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
@@ -276,6 +394,20 @@ export class ChatRoomGateway
   async handleDisconnect() {
     //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
     this.ChatRoomLogger.log(`chat-room disconnected`);
+  }
+
+  async clientJoinDirectMessage(
+    client: Socket,
+    directMessage: DirectMessageEntity,
+  ) {
+    if (!directMessage) {
+      throw new WsException('Direct Message not found');
+    }
+
+    client.leave('lobby');
+    client.data.chatRoomId = 'DM' + directMessage.id;
+    client.join(client.data.chatRoomId);
+    client.emit('getChatRoomMessages', directMessage.messages);
   }
 
   async clientJoinChatRoom(
@@ -327,11 +459,17 @@ export class ChatRoomGateway
     if (client.data.chatRoomId !== 'lobby') {
       client.leave(client.data.chatRoomId);
     }
+
     client.data.chatRoomId = 'lobby';
     client.join('lobby');
     client.emit(
       'showChatRoomList',
       await this.chatRoomService.getAllChatRooms(),
+    );
+
+    client.emit(
+      'showDirectMessageList',
+      await this.chatRoomService.getDirectMessages(client.data.user),
     );
   }
 
