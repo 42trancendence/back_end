@@ -9,10 +9,16 @@ import { AuthModule } from 'src/auth/auth.module';
 import { UsersModule } from 'src/users/users.module';
 import { MessageEntity } from './entities/message.entity';
 import { ChatRoomValidation } from './chat-room.validation';
+import { DirectMessageEntity } from './entities/directMessage.entity';
+import { DirectMessageRepository } from './repository/directMessage.repository';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatRoomEntity, MessageEntity]),
+    TypeOrmModule.forFeature([
+      ChatRoomEntity,
+      MessageEntity,
+      DirectMessageEntity,
+    ]),
     AuthModule,
     UsersModule,
   ],
@@ -21,6 +27,7 @@ import { ChatRoomValidation } from './chat-room.validation';
     ChatRoomService,
     ChatRoomValidation,
     ChatRoomRepository,
+    DirectMessageRepository,
     MessageRepository,
     ChatRoomGateway,
   ],

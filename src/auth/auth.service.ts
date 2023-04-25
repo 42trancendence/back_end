@@ -44,7 +44,10 @@ export class AuthService {
   }
 
   isVerifiedToken(socket: Socket) {
-    const auth = socket.handshake.headers.authorization;
+    const auth = socket.handshake.headers?.authorization;
+    if (!auth) {
+      throw new UnauthorizedException('Unauthorized jwt');
+    }
     const token = auth.split(' ')[1];
     return this.jwtService.verify(token);
   }
