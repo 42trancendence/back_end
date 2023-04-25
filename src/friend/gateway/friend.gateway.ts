@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
+import { FriendNameDto } from 'src/users/dto/friend-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Status } from 'src/users/enum/status.enum';
 import { UsersService } from 'src/users/users.service';
@@ -76,18 +77,23 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('addFriend')
+  @UsePipes(ValidationPipe)
   async addFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    this.friendWsLogger.debug(`[addFriend event] friendName: ${friendName}`);
+    this.friendWsLogger.debug(
+      `[addFriend event] friendName: ${friendNameDto.friendName}`,
+    );
 
     if (!client.data?.user) {
       this.friendWsLogger.debug('[addFriend] user not found');
       return;
     }
 
-    const friend = await this.usersService.getUserByName(friendName);
+    const friend = await this.usersService.getUserByName(
+      friendNameDto.friendName,
+    );
     if (!friend) {
       this.friendWsLogger.debug('[addFriend] friend not found');
       return;
@@ -105,14 +111,14 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
   }
 
-  // TODO: add dto for friendName and validation pipe
   @SubscribeMessage('acceptFriendRequest')
+  @UsePipes(ValidationPipe)
   async acceptFriendRequest(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
     this.friendWsLogger.debug(
-      `[acceptFriendRequest event] friendName: ${friendName}`,
+      `[acceptFriendRequest event] friendName: ${friendNameDto.friendName}`,
     );
 
     const user = client.data?.user;
@@ -121,7 +127,9 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const friend = await this.usersService.getUserByName(friendName);
+    const friend = await this.usersService.getUserByName(
+      friendNameDto.friendName,
+    );
     if (!friend) {
       this.friendWsLogger.debug('[acceptFriendRequest] friend not found');
       return;
@@ -133,16 +141,19 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('rejectFriendRequest')
+  @UsePipes(ValidationPipe)
   async rejectFriendRequest(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
     const user = client.data?.user;
     if (!user) {
       return;
     }
 
-    const friend = await this.usersService.getUserByName(friendName);
+    const friend = await this.usersService.getUserByName(
+      friendNameDto.friendName,
+    );
     if (!friend) {
       return;
     }
@@ -161,11 +172,14 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('deleteFriend')
+  @UsePipes(ValidationPipe)
   async deleteFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    this.friendWsLogger.debug(`[deleteFriend event] friendName: ${friendName}`);
+    this.friendWsLogger.debug(
+      `[deleteFriend event] friendName: ${friendNameDto.friendName}`,
+    );
 
     const user = client.data?.user;
     if (!user) {
@@ -173,7 +187,9 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
-    const friend = await this.usersService.getUserByName(friendName);
+    const friend = await this.usersService.getUserByName(
+      friendNameDto.friendName,
+    );
     if (!friend) {
       this.friendWsLogger.debug('[deleteFriend] friend not found');
       return;
