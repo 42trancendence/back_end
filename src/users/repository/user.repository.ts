@@ -65,7 +65,8 @@ export class UserRepository extends Repository<UserEntity> {
 
   async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
     user.name = updateUserDto.name;
-    user.avatarImageUrl = updateUserDto.avatarImageUrl;
+    // TODO: save avatarImageUrl
+    // user.avatarImageUrl = updateUserDto.avatarImageUrl;
     await this.save(user);
   }
 }

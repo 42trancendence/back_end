@@ -25,7 +25,10 @@ export class ChatRoomEntity {
   @Column({ nullable: true })
   password: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
+  @ManyToOne(() => UserEntity, (user) => user.id, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
   owner: UserEntity;
 
   @OneToMany(() => MessageEntity, (message) => message.chatRoom)
