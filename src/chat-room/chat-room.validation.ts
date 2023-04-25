@@ -3,6 +3,7 @@ import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 import { ChatRoomService } from './chat-room.service';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
+import { DirectMessageEntity } from './entities/directMessage.entity';
 
 @Injectable()
 export class ChatRoomValidation {
@@ -19,6 +20,29 @@ export class ChatRoomValidation {
     ) {
       throw new WsException('User not in lobby');
     }
+  }
+
+  async validateUserInDirectMessage(
+    client: Socket,
+  ): Promise<DirectMessageEntity> {
+    if (!client.data?.user) {
+      throw new WsException('User not found');
+    }
+    if (
+      !client.data?.chatRoomId ||
+      !client.rooms.has(client.data.chatRoomId) ||
+      client.data.chatRoomId === 'lobby'
+    ) {
+      throw new WsException('User not in direct message');
+    }
+
+    const directMessage = await this.chatRoomService.getDirectMessageById(
+      client.data.ChatRoomId,
+    );
+    if (!directMessage) {
+      throw new WsException('Direct message not found');
+    }
+    return directMessage;
   }
 
   async validateUserInChatRoom(client: Socket): Promise<ChatRoomEntity> {

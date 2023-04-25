@@ -48,13 +48,4 @@ export class UserEntity {
 
   @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
   friendOf: FriendShipEntity[];
-
-  @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
-  chatRooms: ChatRoomEntity[];
-
-  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.bannedUsers)
-  bannedChatRooms: ChatRoomEntity[];
-
-  @ManyToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.mutedUsers)
-  mutedChatRooms: ChatRoomEntity[];
 }

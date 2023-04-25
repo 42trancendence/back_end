@@ -6,11 +6,14 @@ import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
+import { DirectMessageRepository } from './repository/directMessage.repository';
+import { DirectMessageEntity } from './entities/directMessage.entity';
 
 @Injectable()
 export class ChatRoomService {
   constructor(
     private chatRoomRepository: ChatRoomRepository,
+    private directMessageRepository: DirectMessageRepository,
     private messageRepository: MessageRepository,
   ) {}
 
@@ -19,6 +22,31 @@ export class ChatRoomService {
     user: UserEntity,
   ): Promise<void> {
     await this.chatRoomRepository.createNewChatRoom(createChatRoomDto, user);
+  }
+
+  async createDirectMessage(
+    sender: UserEntity,
+    receiver: UserEntity,
+  ): Promise<DirectMessageEntity> {
+    const directMessage = await this.directMessageRepository.getDirectMessage(
+      sender,
+      receiver,
+    );
+
+    if (!directMessage) {
+      return await this.directMessageRepository.createDirectMessage(
+        sender,
+        receiver,
+      );
+    }
+    return directMessage;
+  }
+
+  async toggleBlockUser(
+    directMessage: DirectMessageEntity,
+    user: UserEntity,
+  ): Promise<void> {
+    await this.directMessageRepository.toggleBlockUser(directMessage, user);
   }
 
   async toggleBanUser(
@@ -33,6 +61,25 @@ export class ChatRoomService {
     user: UserEntity,
   ): Promise<boolean> {
     return await this.chatRoomRepository.toggleMuteUser(chatRoom, user);
+  }
+
+  async getDirectMessage(
+    user1: UserEntity,
+    user2: UserEntity,
+  ): Promise<DirectMessageEntity> {
+    return await this.directMessageRepository.getDirectMessage(user1, user2);
+  }
+
+  async getDirectMessageById(
+    directMessageId: string,
+  ): Promise<DirectMessageEntity> {
+    return await this.directMessageRepository.getDirectMessageById(
+      directMessageId,
+    );
+  }
+
+  async getDirectMessages(user: UserEntity): Promise<DirectMessageEntity[]> {
+    return await this.directMessageRepository.getDirectMessages(user);
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
@@ -53,11 +100,32 @@ export class ChatRoomService {
     payload: string,
   ): Promise<MessageEntity> {
     const message = new MessageEntity();
-
     message.user = user;
     message.message = payload;
     message.chatRoom = chatRoom;
+    message.directMessage = null;
+    await this.messageRepository.saveMessage(message);
+    return message;
+  }
 
+  async saveDirectMessage(
+    user: UserEntity,
+    directMessage: DirectMessageEntity,
+    payload: string,
+  ): Promise<MessageEntity> {
+    if (directMessage.user1 === user && directMessage.isBlockedByUser2) {
+      return;
+    }
+
+    if (directMessage.user2 === user && directMessage.isBlockedByUser1) {
+      return;
+    }
+
+    const message = new MessageEntity();
+    message.user = user;
+    message.message = payload;
+    message.directMessage = directMessage;
+    message.chatRoom = null;
     await this.messageRepository.saveMessage(message);
     return message;
   }
@@ -73,7 +141,6 @@ export class ChatRoomService {
     chatRoom.name = updateChatRoomDto.name;
     chatRoom.type = updateChatRoomDto.type;
     chatRoom.password = updateChatRoomDto.password;
-
     await this.chatRoomRepository.save(chatRoom);
   }
 }

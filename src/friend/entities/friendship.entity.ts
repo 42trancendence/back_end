@@ -10,13 +10,11 @@ export class FriendShipEntity {
   @ManyToOne(() => UserEntity, (user) => user.friendships, {
     onDelete: 'CASCADE',
   })
-  // @JoinColumn({ name: 'user_id', referencedColumnName: 'id' })
   user: UserEntity;
 
   @ManyToOne(() => UserEntity, (user) => user.friendOf, {
     onDelete: 'CASCADE',
   })
-  // @JoinColumn({ name: 'friend_id', referencedColumnName: 'id' })
   friend: UserEntity;
 
   @Column()

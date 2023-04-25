@@ -25,17 +25,17 @@ export class ChatRoomEntity {
   @Column({ nullable: true })
   password: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.chatRooms, { eager: true })
+  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
   owner: UserEntity;
 
   @OneToMany(() => MessageEntity, (message) => message.chatRoom)
   messages: MessageEntity[];
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.bannedChatRooms, { eager: true })
+  @OneToMany(() => UserEntity, (user) => user.id, { nullable: true })
   bannedUsers: UserEntity[];
 
   @Exclude()
-  @ManyToOne(() => UserEntity, (user) => user.mutedChatRooms, { eager: true })
+  @OneToMany(() => UserEntity, (user) => user.id, { nullable: true })
   mutedUsers: UserEntity[];
 }
