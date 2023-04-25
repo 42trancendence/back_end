@@ -21,6 +21,7 @@ import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { ChatRoomValidation } from '../chat-room.validation';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
 import { DirectMessageEntity } from '../entities/directMessage.entity';
+import { ChatRoomRole } from '../enum/chat-room-role.enum';
 
 @WebSocketGateway({
   namespace: 'chat-room',
@@ -97,12 +98,12 @@ export class ChatRoomGateway
         client,
       );
 
-      const adminUser = await this.usersService.getUserById(userId);
-      if (!adminUser) {
+      const user = await this.usersService.getUserById(userId);
+      if (!user) {
         throw new WsException('User not found');
       }
 
-      await this.chatRoomService.setAdminUser(chatRoom, adminUser);
+      await this.chatRoomService.setAdminUser(chatRoom, user);
     } catch (error) {}
   }
 
@@ -145,17 +146,17 @@ export class ChatRoomGateway
         client,
       );
 
-      const banUser = await this.usersService.getUserById(userId);
-      if (!banUser) {
+      const user = await this.usersService.getUserById(userId);
+      if (!user) {
         throw new WsException('User not found');
       }
 
-      if (!(await this.chatRoomService.toggleBanUser(chatRoom, banUser))) {
+      if (await this.chatRoomService.toggleBanUser(chatRoom, user)) {
         await this.emitEventToChatRoomUser(
           client.data.chatRoomId,
           'kickUser',
           null,
-          banUser.id,
+          user.id,
           false,
         );
       }
@@ -179,6 +180,7 @@ export class ChatRoomGateway
     try {
       await this.chatRoomValidation.validateChatRoomAdmin(client);
 
+      //TODO: delete chatRoomUser
       await this.emitEventToChatRoomUser(
         client.data.chatRoomId,
         'kickUser',
@@ -208,12 +210,12 @@ export class ChatRoomGateway
         client,
       );
 
-      const muteUser = await this.usersService.getUserById(userId);
-      if (!muteUser) {
+      const user = await this.usersService.getUserById(userId);
+      if (!user) {
         throw new WsException('User not found');
       }
 
-      await this.chatRoomService.setMuteUser(chatRoom, muteUser);
+      await this.chatRoomService.setMuteUser(chatRoom, user);
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleMuteUser] ${error.message}`);
     }
@@ -407,13 +409,12 @@ export class ChatRoomGateway
     ) {
       throw new WsException('비밀번호가 틀렸습니다.');
     }
-    if (chatRoom.bannedUsers) {
-      chatRoom.bannedUsers.forEach((bannedUser) => {
-        if (bannedUser.id === client.data.user.id) {
-          throw new WsException('해당 방에서 차단된 사용자입니다.');
-        }
-      });
-    }
+
+    await this.chatRoomService.createChatRoomUser(
+      chatRoom,
+      client.data.user,
+      ChatRoomRole.NORMAL,
+    );
 
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
@@ -426,13 +427,6 @@ export class ChatRoomGateway
       );
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
-    if (chatRoom.mutedUsers) {
-      chatRoom.mutedUsers.forEach((mutedUser) => {
-        if (mutedUser.id === client.data.user.id) {
-          client.emit('muteUser', true);
-        }
-      });
-    }
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {

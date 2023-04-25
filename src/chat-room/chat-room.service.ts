@@ -9,6 +9,8 @@ import { MessageRepository } from './repository/message.repository';
 import { DirectMessageRepository } from './repository/directMessage.repository';
 import { DirectMessageEntity } from './entities/directMessage.entity';
 import { WsException } from '@nestjs/websockets';
+import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
+import { ChatRoomRole } from './enum/chat-room-role.enum';
 
 @Injectable()
 export class ChatRoomService {
@@ -16,13 +18,41 @@ export class ChatRoomService {
     private chatRoomRepository: ChatRoomRepository,
     private directMessageRepository: DirectMessageRepository,
     private messageRepository: MessageRepository,
+
+    private chatRoomUserRepository: ChatRoomUserRepository,
   ) {}
 
   async createChatRoom(
     createChatRoomDto: CreateChatRoomDto,
     user: UserEntity,
   ): Promise<void> {
-    await this.chatRoomRepository.createNewChatRoom(createChatRoomDto, user);
+    const chatRoom = await this.chatRoomRepository.createNewChatRoom(
+      createChatRoomDto,
+    );
+    await this.createChatRoomUser(chatRoom, user, ChatRoomRole.ADMIN);
+  }
+
+  async createChatRoomUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+    role: ChatRoomRole,
+  ): Promise<void> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+
+    if (chatRoomUser) {
+      if (chatRoomUser.isBanned) {
+        throw new WsException('You are banned from this chat room');
+      }
+      return;
+    }
+    await this.chatRoomUserRepository.createChatRoomUser(chatRoom, user, role);
+  }
+
+  async getChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
+    return await this.chatRoomUserRepository.getChatRoomUser(chatRoom, user);
   }
 
   async createDirectMessage(
@@ -54,18 +84,51 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<boolean> {
-    return await this.chatRoomRepository.toggleBanUser(chatRoom, user);
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    return await this.chatRoomUserRepository.toggleBanUser(chatRoomUser);
   }
 
   async setAdminUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<void> {
-    return await this.chatRoomRepository.setAdminUser(chatRoom, user);
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    await this.chatRoomUserRepository.setUserRole(
+      chatRoomUser,
+      ChatRoomRole.ADMIN,
+    );
   }
 
   async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
-    return await this.chatRoomRepository.setMuteUser(chatRoom, user);
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    await this.chatRoomUserRepository.setMuteUser(chatRoomUser, true);
   }
 
   async getDirectMessage(
@@ -104,17 +167,21 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
     payload: string,
   ): Promise<MessageEntity> {
-    const mutedUser = await this.chatRoomRepository.getMutedUser(
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
       chatRoom,
       user,
     );
-    if (mutedUser) {
+    if (!chatRoomUser) {
+      throw new WsException('You are not a member of this chat room');
+    }
+
+    if (chatRoomUser.isMuted) {
       const now = new Date();
       // NOTE: 5 minutes
-      if (now.getTime() <= mutedUser.date.getTime() + 1000 * 60 * 5) {
+      if (now.getTime() <= chatRoomUser?.mutedUntil.getTime() + 1000 * 60 * 5) {
         throw new WsException('You are muted in this chat room');
       }
-      await this.chatRoomRepository.deleteMutedUser(mutedUser);
+      await this.chatRoomUserRepository.setMuteUser(chatRoomUser, false);
     }
 
     const message = new MessageEntity();

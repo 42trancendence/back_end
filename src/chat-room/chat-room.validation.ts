@@ -4,6 +4,7 @@ import { Socket } from 'socket.io';
 import { ChatRoomService } from './chat-room.service';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { DirectMessageEntity } from './entities/directMessage.entity';
+import { ChatRoomRole } from './enum/chat-room-role.enum';
 
 @Injectable()
 export class ChatRoomValidation {
@@ -70,7 +71,11 @@ export class ChatRoomValidation {
   async validateChatRoomOwnerShip(client: Socket): Promise<ChatRoomEntity> {
     const chatRoom = await this.validateUserInChatRoom(client);
 
-    if (chatRoom.owner.id !== client.data.user.id) {
+    const chatRoomUser = await this.chatRoomService.getChatRoomUser(
+      chatRoom,
+      client.data.user,
+    );
+    if (!chatRoomUser || chatRoomUser.role !== ChatRoomRole.OWNER) {
       throw new WsException('User is not owner of chat room');
     }
     return chatRoom;
@@ -79,7 +84,12 @@ export class ChatRoomValidation {
   async validateChatRoomAdmin(client: Socket): Promise<ChatRoomEntity> {
     const chatRoom = await this.validateUserInChatRoom(client);
 
-    if (!chatRoom.admin.includes(client.data.user)) {
+    const chatRoomUser = await this.chatRoomService.getChatRoomUser(
+      chatRoom,
+      client.data.user,
+    );
+
+    if (!chatRoomUser || chatRoomUser.role === ChatRoomRole.NORMAL) {
       throw new WsException('User is not admin of chat room');
     }
     return chatRoom;

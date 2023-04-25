@@ -11,7 +11,8 @@ import { MessageEntity } from './entities/message.entity';
 import { ChatRoomValidation } from './chat-room.validation';
 import { DirectMessageEntity } from './entities/directMessage.entity';
 import { DirectMessageRepository } from './repository/directMessage.repository';
-import { MuteUserEntity } from './entities/muteUser.entity';
+import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
+import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { MuteUserEntity } from './entities/muteUser.entity';
       ChatRoomEntity,
       MessageEntity,
       DirectMessageEntity,
-      MuteUserEntity,
+      ChatRoomUserEntity,
     ]),
     AuthModule,
     UsersModule,
@@ -31,6 +32,7 @@ import { MuteUserEntity } from './entities/muteUser.entity';
     ChatRoomRepository,
     DirectMessageRepository,
     MessageRepository,
+    ChatRoomUserRepository,
     ChatRoomGateway,
   ],
 })
