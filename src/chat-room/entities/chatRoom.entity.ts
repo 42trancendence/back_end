@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
 import { MessageEntity } from './message.entity';
+import { MuteUserEntity } from './muteUser.entity';
 
 @Entity({ name: 'chat_rooms' })
 export class ChatRoomEntity {
@@ -31,6 +32,9 @@ export class ChatRoomEntity {
   })
   owner: UserEntity;
 
+  @OneToMany(() => UserEntity, (user) => user.id)
+  admin: UserEntity[];
+
   @OneToMany(() => MessageEntity, (message) => message.chatRoom)
   messages: MessageEntity[];
 
@@ -39,6 +43,8 @@ export class ChatRoomEntity {
   bannedUsers: UserEntity[];
 
   @Exclude()
-  @OneToMany(() => UserEntity, (user) => user.id, { nullable: true })
-  mutedUsers: UserEntity[];
+  @OneToMany(() => MuteUserEntity, (muteUser) => muteUser.chatRoom, {
+    nullable: true,
+  })
+  mutedUsers: MuteUserEntity[];
 }

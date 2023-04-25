@@ -39,8 +39,6 @@ export class ChatRoomGateway
     private usersService: UsersService,
   ) {}
 
-  //TODO: add validation for userId
-
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @ConnectedSocket() client: Socket,
@@ -89,6 +87,25 @@ export class ChatRoomGateway
     }
   }
 
+  @SubscribeMessage('setAdminUser')
+  async setAdminUser(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('userId') userId: string,
+  ) {
+    try {
+      const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
+        client,
+      );
+
+      const adminUser = await this.usersService.getUserById(userId);
+      if (!adminUser) {
+        throw new WsException('User not found');
+      }
+
+      await this.chatRoomService.setAdminUser(chatRoom, adminUser);
+    } catch (error) {}
+  }
+
   @SubscribeMessage('toggleBlockUser')
   async toggleBlockUser(
     @ConnectedSocket() client: Socket,
@@ -124,7 +141,7 @@ export class ChatRoomGateway
     @MessageBody('userId') userId: string,
   ) {
     try {
-      const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
+      const chatRoom = await this.chatRoomValidation.validateChatRoomAdmin(
         client,
       );
 
@@ -160,7 +177,7 @@ export class ChatRoomGateway
     @MessageBody('userId') userId: string,
   ) {
     try {
-      await this.chatRoomValidation.validateChatRoomOwnerShip(client);
+      await this.chatRoomValidation.validateChatRoomAdmin(client);
 
       await this.emitEventToChatRoomUser(
         client.data.chatRoomId,
@@ -181,13 +198,13 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('toggleMuteUser')
+  @SubscribeMessage('setMuteUser')
   async muteUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
   ) {
     try {
-      const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
+      const chatRoom = await this.chatRoomValidation.validateChatRoomAdmin(
         client,
       );
 
@@ -196,19 +213,7 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
 
-      // NOTE: if isMuted is true, already muted, so we need to unmute
-      const isMuted = await this.chatRoomService.toggleMuteUser(
-        chatRoom,
-        muteUser,
-      );
-
-      await this.emitEventToChatRoomUser(
-        client.data.chatRoomId,
-        'muteUser',
-        !isMuted,
-        muteUser.id,
-        false,
-      );
+      await this.chatRoomService.setMuteUser(chatRoom, muteUser);
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleMuteUser] ${error.message}`);
     }
@@ -233,31 +238,6 @@ export class ChatRoomGateway
       this.ChatRoomLogger.error(`[updateChatRoom] ${error.message}`);
     }
   }
-
-  // @SubscribeMessage('deleteChatRoom')
-  // async deleteChatRoom(@ConnectedSocket() client: Socket) {
-  //   try {
-  //     const chatRoom = await this.chatRoomValidation.validateChatRoomOwnerShip(
-  //       client,
-  //     );
-  //
-  //     await this.chatRoomService.deleteChatRoom(chatRoom);
-  //
-  //     this.server
-  //       .to('lobby')
-  //       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
-  //
-  //     await this.emitEventToChatRoomUser(
-  //       client.data.chatRoomId,
-  //       'kickUser',
-  //       null,
-  //       null,
-  //       true,
-  //     );
-  //   } catch (error) {
-  //     this.ChatRoomLogger.error(`[deleteChatRoom] ${error.message}`);
-  //   }
-  // }
 
   @SubscribeMessage('createDirectMessage')
   async createDirectMessage(
