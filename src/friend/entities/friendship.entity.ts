@@ -7,12 +7,12 @@ export class FriendShipEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.friendships, {
+  @ManyToOne(() => UserEntity, (user) => user.id, {
     onDelete: 'CASCADE',
   })
   user: UserEntity;
 
-  @ManyToOne(() => UserEntity, (user) => user.friendOf, {
+  @ManyToOne(() => UserEntity, (user) => user.id, {
     onDelete: 'CASCADE',
   })
   friend: UserEntity;

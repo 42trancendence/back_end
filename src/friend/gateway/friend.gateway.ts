@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
@@ -7,9 +7,11 @@ import {
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
+  WsException,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
+import { FriendNameDto } from 'src/users/dto/friend-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Status } from 'src/users/enum/status.enum';
 import { UsersService } from 'src/users/users.service';
@@ -32,21 +34,43 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private friendService: FriendService,
   ) {}
 
-  async handleDisconnect(client: Socket) {
-    if (!client.data?.user) {
-      return;
+  async validateClient(client: Socket): Promise<UserEntity> {
+    if (!client.data?.userId) {
+      throw new WsException('user not found');
     }
-    this.friendWsLogger.debug(`disconnect ${client.data.user.name}`);
 
-    // 해당 socket의 유저가 다른 소켓에서 접속되어 있는지 확인
-    const allSockets = await this.server.fetchSockets();
-    for (const socket of allSockets) {
-      if (socket.data?.user?.id === client.data.user.id) {
-        return;
-      }
+    const user = await this.usersService.getUserById(client.data.userId);
+    if (!user) {
+      throw new WsException('user not found');
     }
-    // 다른 소켓에서 접속되어 있지 않다면, 유저의 상태를 OFFLINE으로 변경
-    await this.setActiveStatus(client, client.data.user, Status.OFFLINE);
+    return user;
+  }
+
+  async validateFriend(friendName: string): Promise<UserEntity> {
+    const friend = await this.usersService.getUserByName(friendName);
+    if (!friend) {
+      throw new WsException('friend not found');
+    }
+    return friend;
+  }
+
+  async handleDisconnect(client: Socket) {
+    try {
+      const user = await this.validateClient(client);
+      this.friendWsLogger.debug(`[handleDisconnect] ${user.name}`);
+
+      // 해당 socket의 유저가 다른 소켓에서 접속되어 있는지 확인
+      const allSockets = await this.server.fetchSockets();
+      for (const socket of allSockets) {
+        if (socket.data?.userId === client.data.userId) {
+          return;
+        }
+      }
+      // 다른 소켓에서 접속되어 있지 않다면, 유저의 상태를 OFFLINE으로 변경
+      await this.setActiveStatus(client, user, Status.OFFLINE);
+    } catch (error) {
+      this.friendWsLogger.error(`[handleDisconnect] ${error.message}`);
+    }
   }
 
   async handleConnection(client: Socket) {
@@ -57,131 +81,126 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.disconnect();
       return;
     }
-    this.friendWsLogger.debug(`connect ${user?.name}`);
-    client.data.user = user;
+    this.friendWsLogger.debug(`connect ${user.name}`);
+    client.data.userId = user.id;
     // 유저의 상태를 ONLINE으로 변경
     await this.setActiveStatus(client, user, Status.ONLINE);
   }
 
   @SubscribeMessage('updateActiveStatus')
   async updateActiveStatus(client: Socket, status: Status) {
-    if (!client.data?.user) {
-      return;
+    try {
+      const user = await this.validateClient(client);
+      this.friendWsLogger.debug(
+        `[updateActiveStatus event] client: ${user.name} status: ${status}`,
+      );
+      // 유저의 상태를 status로 변경
+      await this.setActiveStatus(client, user, status);
+    } catch (error) {
+      this.friendWsLogger.error(`[updateActiveStatus] ${error.message}`);
     }
-    this.friendWsLogger.debug(
-      `[updateActiveStatus event] client: ${client.data.user.name} status: ${status}`,
-    );
-    // 유저의 상태를 status로 변경
-    await this.setActiveStatus(client, client.data.user, status);
   }
 
   @SubscribeMessage('addFriend')
+  @UsePipes(ValidationPipe)
   async addFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    this.friendWsLogger.debug(`[addFriend event] friendName: ${friendName}`);
+    try {
+      const user = await this.validateClient(client);
+      const friend = await this.validateFriend(friendNameDto.friendName);
 
-    if (!client.data?.user) {
-      this.friendWsLogger.debug('[addFriend] user not found');
-      return;
+      this.friendWsLogger.debug(
+        `[addFriend event] user: ${user.name} friendName: ${friendNameDto.friendName}`,
+      );
+
+      // PENDING 상태로 FriendShip 생성 후, 친구에게 친구 요청 이벤트 전송
+      await this.friendService.addFriend(user, friend);
+
+      const requestFriendList = await this.friendService.getFriendRequestList(
+        friend,
+      );
+      await this.emitEventToActiveUser(
+        friend,
+        'friendRequest',
+        requestFriendList,
+      );
+    } catch (error) {
+      this.friendWsLogger.error(`[addFriend] ${error.message}`);
     }
-
-    const friend = await this.usersService.getUserByName(friendName);
-    if (!friend) {
-      this.friendWsLogger.debug('[addFriend] friend not found');
-      return;
-    }
-
-    // PENDING 상태로 FriendShip 생성 후, 친구에게 친구 요청 이벤트 전송
-    await this.friendService.addFriend(client.data.user, friend);
-    const requestFriendList = await this.friendService.getFriendRequestList(
-      friend,
-    );
-    await this.emitEventToActiveUser(
-      friend,
-      'friendRequest',
-      requestFriendList,
-    );
   }
 
-  // TODO: add dto for friendName and validation pipe
   @SubscribeMessage('acceptFriendRequest')
+  @UsePipes(ValidationPipe)
   async acceptFriendRequest(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    this.friendWsLogger.debug(
-      `[acceptFriendRequest event] friendName: ${friendName}`,
-    );
+    try {
+      const user = await this.validateClient(client);
+      const friend = await this.validateFriend(friendNameDto.friendName);
+      this.friendWsLogger.debug(
+        `[acceptFriendRequest event] friendName: ${friendNameDto.friendName}`,
+      );
 
-    const user = client.data?.user;
-    if (!user) {
-      this.friendWsLogger.debug('[acceptFriendRequest] user not found');
-      return;
+      // ACCEPT 상태로 FriendShip 변경 후, 친구와 나에게 친구목록 조회 이벤트 전송
+      await this.friendService.acceptFriendRequest(user, friend);
+      await this.emitFriendListToAll(user, friend);
+    } catch (error) {
+      this.friendWsLogger.error(`[acceptFriendRequest] ${error.message}`);
     }
-
-    const friend = await this.usersService.getUserByName(friendName);
-    if (!friend) {
-      this.friendWsLogger.debug('[acceptFriendRequest] friend not found');
-      return;
-    }
-
-    // ACCEPT 상태로 FriendShip 변경 후, 친구와 나에게 친구목록 조회 이벤트 전송
-    await this.friendService.acceptFriendRequest(user, friend);
-    await this.emitFriendListToAll(user, friend);
   }
 
   @SubscribeMessage('rejectFriendRequest')
+  @UsePipes(ValidationPipe)
   async rejectFriendRequest(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    const user = client.data?.user;
-    if (!user) {
-      return;
+    try {
+      const user = await this.validateClient(client);
+      const friend = await this.validateFriend(friendNameDto.friendName);
+      this.friendWsLogger.debug(
+        `[rejectFriendRequest event] user: ${user.name}
+		friendName: ${friendNameDto.friendName}`,
+      );
+      // 이미 수락한 친구라면, 아무것도 하지 않음
+      const isAccepted = await this.friendService.isAcceptedFriendShip(
+        user,
+        friend,
+      );
+      if (isAccepted) {
+        return;
+      }
+      // PENDING 상태인 FriendShip 삭제
+      await this.friendService.removeFriendShip(user, friend);
+      await this.emitFriendListToAll(user, friend);
+    } catch (error) {
+      this.friendWsLogger.error(`[rejectFriendRequest] ${error.message}`);
     }
-
-    const friend = await this.usersService.getUserByName(friendName);
-    if (!friend) {
-      return;
-    }
-
-    // 이미 수락한 친구라면, 아무것도 하지 않음
-    const isAccepted = await this.friendService.isAcceptedFriendShip(
-      user,
-      friend,
-    );
-    if (isAccepted) {
-      return;
-    }
-    // PENDING 상태인 FriendShip 삭제
-    await this.friendService.removeFriendShip(client.data.user, friend);
-    await this.emitFriendListToAll(user, friend);
   }
 
   @SubscribeMessage('deleteFriend')
+  @UsePipes(ValidationPipe)
   async deleteFriend(
     @ConnectedSocket() client: Socket,
-    @MessageBody('friendName') friendName: string,
+    @MessageBody() friendNameDto: FriendNameDto,
   ) {
-    this.friendWsLogger.debug(`[deleteFriend event] friendName: ${friendName}`);
+    try {
+      const user = await this.validateClient(client);
+      const friend = await this.validateFriend(friendNameDto.friendName);
+      this.friendWsLogger.debug(
+        `[deleteFriend event] user: ${user.name}
+		friendName: ${friendNameDto.friendName}`,
+      );
 
-    const user = client.data?.user;
-    if (!user) {
-      this.friendWsLogger.debug('[deleteFriend] user not found');
-      return;
+      // 친구와 나에게 친구목록 변경 이벤트 전송 후 FriendShip 삭제
+      await this.friendService.removeFriendShip(user, friend);
+      await this.emitFriendListToAll(user, friend);
+    } catch (error) {
+      this.friendWsLogger.error(`[deleteFriend] ${error.message}`);
     }
-
-    const friend = await this.usersService.getUserByName(friendName);
-    if (!friend) {
-      this.friendWsLogger.debug('[deleteFriend] friend not found');
-      return;
-    }
-
-    // 친구와 나에게 친구목록 변경 이벤트 전송 후 FriendShip 삭제
-    await this.friendService.removeFriendShip(client.data.user, friend);
-    await this.emitFriendListToAll(user, friend);
   }
 
   private async emitFriendListToAll(user: UserEntity, friend: UserEntity) {
@@ -208,7 +227,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
-      if (socket.data?.user?.name === user.name) {
+      if (socket.data?.userId === user.id) {
         this.server.to(socket.id).emit(event, data);
       }
     }

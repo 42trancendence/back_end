@@ -11,6 +11,7 @@ import {
   NotFoundException,
   UseInterceptors,
   ClassSerializerInterceptor,
+  Logger,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -39,6 +40,7 @@ import { CheckUserNameDto } from './dto/check-user-name.dto';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  private readonly logger = new Logger(UsersController.name);
   // NOTE: GET METHOD
 
   @Get('me')
@@ -46,6 +48,7 @@ export class UsersController {
   @ApiOperation({ summary: '내 정보 조회' })
   @ApiOkResponse({ description: '성공', type: UserEntity })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserEntity> {
+    this.logger.log('GET users/me');
     return user;
   }
 
@@ -59,6 +62,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Query() checkUserNameDto: CheckUserNameDto,
   ) {
+    this.logger.log('GET users/name');
     const foundUser = await this.usersService.getUserByName(
       checkUserNameDto.userName,
     );
@@ -74,6 +78,7 @@ export class UsersController {
   @ApiOkResponse({ description: '성공', type: UserEntity })
   @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
   async getUserInfo(@Param('id') userId: string): Promise<UserEntity> {
+    this.logger.log('GET users/:id');
     return await this.usersService.getUserById(userId);
   }
 
@@ -81,6 +86,7 @@ export class UsersController {
   @ApiOperation({ summary: '나와 나의 친구를 제외한 모든 유저 정보 조회' })
   @ApiOkResponse({ description: '성공', type: Array<UserEntity> })
   async getAllUserInfo(@getUser() user: UserEntity): Promise<UserEntity[]> {
+    this.logger.log('GET users/');
     return await this.usersService.getAllUserExceptMeAndFriend(user);
   }
 
@@ -97,7 +103,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
   ) {
-    // console.log(updateUserDto);
+    this.logger.log('PUT users/me');
     await this.usersService.updateUserInfo(updateUserDto, user);
   }
 }
