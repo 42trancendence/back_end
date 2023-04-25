@@ -8,6 +8,7 @@ import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
 import { DirectMessageRepository } from './repository/directMessage.repository';
 import { DirectMessageEntity } from './entities/directMessage.entity';
+import { WsException } from '@nestjs/websockets';
 
 @Injectable()
 export class ChatRoomService {
@@ -56,11 +57,15 @@ export class ChatRoomService {
     return await this.chatRoomRepository.toggleBanUser(chatRoom, user);
   }
 
-  async toggleMuteUser(
+  async setAdminUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
-  ): Promise<boolean> {
-    return await this.chatRoomRepository.toggleMuteUser(chatRoom, user);
+  ): Promise<void> {
+    return await this.chatRoomRepository.setAdminUser(chatRoom, user);
+  }
+
+  async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
+    return await this.chatRoomRepository.setMuteUser(chatRoom, user);
   }
 
   async getDirectMessage(
@@ -99,6 +104,19 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
     payload: string,
   ): Promise<MessageEntity> {
+    const mutedUser = await this.chatRoomRepository.getMutedUser(
+      chatRoom,
+      user,
+    );
+    if (mutedUser) {
+      const now = new Date();
+      // NOTE: 5 minutes
+      if (now.getTime() <= mutedUser.date.getTime() + 1000 * 60 * 5) {
+        throw new WsException('You are muted in this chat room');
+      }
+      await this.chatRoomRepository.deleteMutedUser(mutedUser);
+    }
+
     const message = new MessageEntity();
     message.user = user;
     message.message = payload;

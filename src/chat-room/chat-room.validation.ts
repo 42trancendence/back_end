@@ -76,6 +76,15 @@ export class ChatRoomValidation {
     return chatRoom;
   }
 
+  async validateChatRoomAdmin(client: Socket): Promise<ChatRoomEntity> {
+    const chatRoom = await this.validateUserInChatRoom(client);
+
+    if (!chatRoom.admin.includes(client.data.user)) {
+      throw new WsException('User is not admin of chat room');
+    }
+    return chatRoom;
+  }
+
   async validateCreateChatRoom(client: Socket, chatRoomName: string) {
     await this.validateUserInLobby(client);
     const isDuplicatedName = await this.chatRoomService.getChatRoomByName(

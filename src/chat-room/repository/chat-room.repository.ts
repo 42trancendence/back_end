@@ -1,13 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { DataSource, Repository } from 'typeorm';
 import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
+import { MuteUserEntity } from '../entities/muteUser.entity';
 import { ChatRoomEntity } from '../entities/chatRoom.entity';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
+import { WsException } from '@nestjs/websockets';
 
 @Injectable()
 export class ChatRoomRepository extends Repository<ChatRoomEntity> {
-  constructor(dataSource: DataSource) {
+  constructor(
+    dataSource: DataSource,
+    @InjectRepository(MuteUserEntity)
+    private muteUserRepository: Repository<MuteUserEntity>,
+  ) {
     super(ChatRoomEntity, dataSource.createEntityManager());
   }
 
@@ -20,9 +27,19 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     newChatRoom.name = createChatRoomDto.name;
     newChatRoom.type = createChatRoomDto.type;
     newChatRoom.owner = user;
+    newChatRoom.admin.push(user);
     newChatRoom.password = createChatRoomDto.password;
     await this.save(newChatRoom);
     return newChatRoom;
+  }
+
+  async getMutedUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<MuteUserEntity> {
+    return await this.muteUserRepository.findOne({
+      where: { chatRoom: chatRoom, user: user },
+    });
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
@@ -59,18 +76,31 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
     return false;
   }
 
-  async toggleMuteUser(
+  async deleteMutedUser(muteUser: MuteUserEntity): Promise<void> {
+    await this.muteUserRepository.remove(muteUser);
+  }
+
+  async setAdminUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
-  ): Promise<boolean> {
-    if (chatRoom.mutedUsers.includes(user)) {
-      const index = chatRoom.bannedUsers.indexOf(user);
-      chatRoom.mutedUsers.splice(index, 1);
-      await this.save(chatRoom);
-      return true;
+  ): Promise<void> {
+    if (chatRoom.admin.includes(user)) {
+      throw new WsException('User is already admin');
     }
-    chatRoom.mutedUsers.push(user);
+    chatRoom.admin.push(user);
     await this.save(chatRoom);
-    return false;
+  }
+
+  async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
+    const muteUser = await this.getMutedUser(chatRoom, user);
+    if (muteUser) {
+      throw new WsException('User is already muted');
+    }
+
+    const newMuteUser = new MuteUserEntity();
+    newMuteUser.chatRoom = chatRoom;
+    newMuteUser.user = user;
+    newMuteUser.date = new Date();
+    await this.muteUserRepository.save(newMuteUser);
   }
 }

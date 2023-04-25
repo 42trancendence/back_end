@@ -13,10 +13,10 @@ export class DirectMessageEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id)
+  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
   user1: UserEntity;
 
-  @ManyToOne(() => UserEntity, (user) => user.id)
+  @ManyToOne(() => UserEntity, (user) => user.id, { eager: true })
   user2: UserEntity;
 
   @OneToMany(() => MessageEntity, (message) => message.directMessage)
