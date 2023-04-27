@@ -220,7 +220,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 처음 게임방을 나가는 경우 게임방을 삭제한다.
     // 게임방에 입장해 있는 유저들에게 게임방을 나가라고 알린다.
     const game = this.gameManager.getGameByRoomId(roomId);
-    if (game != null) {
+    if (game && !game.isWatcher(client.data.user.id)) {
       this.gameManager.deleteGameByRoomId(roomId);
       if (game.getGameStatus() == GameStatus.Wait) {
         await this.gameService.deleteGameByRoomId(game.getRoomId());
@@ -234,6 +234,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join('lobby');
     client.data.roomId = 'lobby';
     client.emit('postLeaveGame', 'leave');
+    if (game && game.isWatcher(client.data.user.id)) {
+      game.deleteWatcher(client.data.user.id);
+      client.to(roomId).emit('getWatcher', game.getWatcherList());
+    }
     this.WsLogger.log(`User [${data.user.name}] left game [${roomId}]`);
   }
 
@@ -300,26 +304,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('postWatching')
   async postWatching(
     @ConnectedSocket() client: Socket,
-    @MessageBody() title: string,
+    @MessageBody() roomId: string,
   ) {
     if (!client.data?.user) {
       client.disconnect();
       client.emit('postKey', 'disconnected');
       throw new WsException('Unauthorized');
     }
-    const roomId = await this.gameService.getRoomIdByTitle(title);
-    if (!roomId) {
-      client.emit('postWatching', 'disconnected');
-      this.WsLogger.log(`User ${client.data.name} not in game`);
-    }
-    client.join(roomId);
     // 3. 게임방에 있는 유저들에게 새로운 유저가 입장했다고 알린다.
     const game = this.gameManager.getGameByRoomId(roomId);
     if (game) {
       this.WsLogger.log(`Not exist game [${roomId}]`);
     }
-    game.addWatcher(client.data.user.id);
-    this.server.to(roomId).emit('getWatching', game.getWatcher());
+    if (game.getWatcherList().length > 5) {
+      this.WsLogger.log(`Game [${roomId}] is full`);
+      return;
+    }
+    client.leave('lobby');
+    client.join(roomId);
+    game.addWatcher(client.data.user);
+    this.server.to(roomId).emit('getWatching', game.getWatcherList());
   }
 
   @SubscribeMessage('postKey')

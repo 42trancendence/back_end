@@ -16,7 +16,7 @@ export class Game {
   private score_: Array<number> = [0, 0];
   private setReady_: Array<string> = [];
   private setDifficulty_: Array<string> = [];
-  private watcher_: Array<string> = [];
+  private watcher_: Array<any> = [];
 
   constructor(private roomId: string, private title: string) {
     this.roomId_ = roomId;
@@ -73,7 +73,7 @@ export class Game {
     return this.ball_;
   }
 
-  public getWatcher(): Array<string> {
+  public getWatcherList(): Array<string> {
     return this.watcher_;
   }
 
@@ -89,8 +89,8 @@ export class Game {
     this.setDifficulty_.push(userId);
   }
 
-  public addWatcher(userId: string): void {
-    this.watcher_.push(userId);
+  public addWatcher(user: string): void {
+    this.watcher_.push(user);
   }
 
   public isReady(): boolean {
@@ -103,6 +103,17 @@ export class Game {
 
   public isDifficulty(): boolean {
     return this.setDifficulty_.length == 2;
+  }
+
+  public isWatcher(userId): boolean {
+    let flag = false;
+    this.watcher_.map((user) => {
+      if (user.id == userId) {
+        flag = true;
+        return;
+      }
+    });
+    return flag;
   }
 
   public cancelReady(userId: string): void {
