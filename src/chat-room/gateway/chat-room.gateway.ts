@@ -9,7 +9,7 @@ import {
   ConnectedSocket,
   WsException,
 } from '@nestjs/websockets';
-import { RemoteSocket, Server, Socket } from 'socket.io';
+import { Namespace, RemoteSocket, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { ChatRoomService } from '../chat-room.service';
 import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
@@ -30,7 +30,7 @@ import { ChatRoomRole } from '../enum/chat-room-role.enum';
 export class ChatRoomGateway
   implements OnGatewayConnection, OnGatewayDisconnect
 {
-  @WebSocketServer() server: Server;
+  @WebSocketServer() server: Namespace;
   private readonly ChatRoomLogger = new Logger('ChatRoomLogger');
 
   constructor(
@@ -371,6 +371,7 @@ export class ChatRoomGateway
     client.data.chatRoomId = 'lobby';
     client.leave(client.id);
     await this.clinetJoinLobby(client);
+    // console.log(this.server['server']._nsps.get('/friend').sockets);
   }
 
   async handleDisconnect() {

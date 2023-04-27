@@ -8,7 +8,10 @@ export class ChatRoomUserEntity {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @ManyToOne(() => UserEntity, (user) => user.id, { onDelete: 'CASCADE' })
+  @ManyToOne(() => UserEntity, (user) => user.id, {
+    onDelete: 'CASCADE',
+    eager: true,
+  })
   user: UserEntity;
 
   @ManyToOne(() => ChatRoomEntity, (chatRoom) => chatRoom.users, {
