@@ -1,10 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-import { GameSessionEntity } from 'src/game/entities/game-session.entity';
 import { Column, Entity, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
 import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from 'src/friend/entities/friendship.entity';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Entity('User')
 export class UserEntity {
@@ -40,8 +40,8 @@ export class UserEntity {
   @Column({ default: Status.OFFLINE })
   status: Status;
 
-  @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
-  wonGames: GameSessionEntity[];
+  @OneToMany(() => GameStatsEntity, (game) => game.roomId)
+  gameStats: GameStatsEntity[];
 
   // @OneToMany(() => FriendShipEntity, (friendship) => friendship.user)
   // friendships: FriendShipEntity[];

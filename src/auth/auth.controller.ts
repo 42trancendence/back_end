@@ -41,6 +41,7 @@ export class AuthController {
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
   ) {
+    this.authLogger.verbose('[POST] /signup');
     if (!user.isVerified) {
       throw new UnauthorizedException('2차 인증이 되지 않았습니다.');
     }
