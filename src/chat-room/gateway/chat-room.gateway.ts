@@ -356,10 +356,28 @@ export class ChatRoomGateway
   @SubscribeMessage('leaveChatRoom')
   async leaveChatRoom(@ConnectedSocket() client: Socket) {
     try {
-      await this.chatRoomValidation.validateUserInChatRoom(client);
-
-      // TODO: 만약 나가는 유저가 방장이라면 방장을 위임해야함
+      const chatRoom = await this.chatRoomValidation.validateUserInChatRoom(
+        client,
+      );
+      this.ChatRoomLogger.debug(
+        `[leaveChatRoom] ${client.data.user.name} leave chat room`,
+      );
+      // NOTE: 만약 해당 방에 같은 아이디로 로그인된 유저가 있다면
+      // chatRoomUser를 삭제하면 안됨
+      client.leave(client.data.chatRoomId);
+      const isLastUser = await this.chatRoomService.isLastUserInChatRoom(
+        client,
+      );
+      if (isLastUser) {
+        await this.chatRoomService.deleteChatRoomUser(
+          chatRoom,
+          client.data.user,
+        );
+      }
       await this.clinetJoinLobby(client);
+      this.server
+        .to('lobby')
+        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
     } catch (error) {
       this.ChatRoomLogger.error(`[leaveChatRoom] ${error.message}`);
     }
@@ -381,6 +399,7 @@ export class ChatRoomGateway
 
   async handleDisconnect() {
     //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
+    // deleteChatRoomUser 사용
     this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 
@@ -440,9 +459,9 @@ export class ChatRoomGateway
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
-    if (client.data?.chatRoomId !== 'lobby') {
-      client.leave(client.data.chatRoomId);
-    }
+    // if (client.data?.chatRoomId !== 'lobby') {
+    //   client.leave(client.data.chatRoomId);
+    // }
 
     client.data.chatRoomId = 'lobby';
     client.join('lobby');

@@ -62,4 +62,8 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     await this.delete(chatRoomUser);
     return false;
   }
+
+  async deleteChatRoomUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
+    await this.delete({ id: chatRoomUser.id });
+  }
 }

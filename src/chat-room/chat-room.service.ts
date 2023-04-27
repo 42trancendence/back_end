@@ -12,6 +12,7 @@ import { WsException } from '@nestjs/websockets';
 import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
 import { ChatRoomRole } from './enum/chat-room-role.enum';
 import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
+import {Socket} from 'socket.io';
 
 @Injectable()
 export class ChatRoomService {
@@ -221,8 +222,35 @@ export class ChatRoomService {
     return message;
   }
 
+  async isLastUserInChatRoom(client: Socket): Promise<boolean> {
+    const sockets = await client.to(client.data.chatRoomId).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === client.data.user.id) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   async deleteChatRoom(chatRoom: ChatRoomEntity) {
     await this.chatRoomRepository.deleteChatRoom(chatRoom);
+  }
+
+  async deleteChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
+    // TODO: 만약 나가는 유저가 방장이라면 방장을 위임해야함
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      return;
+    }
+    await this.chatRoomUserRepository.deleteChatRoomUser(chatRoomUser);
+    const chatRoomUsers = await this.getChatRoomUsers(chatRoom);
+    // NOTE: 만약 나가는 유저가 그방의 마지막 유저면 방을 삭제해야함
+    if (chatRoomUsers.length === 0) {
+      await this.deleteChatRoom(chatRoom);
+    }
   }
 
   async updateChatRoom(
