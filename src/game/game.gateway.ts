@@ -158,6 +158,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.leave('lobby');
     client.join('matching');
+    this.WsLogger.log(`User ${client.id}: matching`);
   }
 
   @SubscribeMessage('postCancelMatching')
@@ -170,9 +171,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.leave('matching');
     client.join('lobby');
-    client.emit('getCancelMatching');
     const playerName = client.data.user.name;
-    this.WsLogger.log(`${playerName} is leave wait`);
+    this.WsLogger.log(`${playerName} is leave match`);
   }
 
   @SubscribeMessage('joinSpectatorGame')
