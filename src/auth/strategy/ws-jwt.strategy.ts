@@ -1,10 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { PassportStrategy } from '@nestjs/passport';
 
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UserRepository } from 'src/users/repository/user.repository';
 import { UserEntity } from 'src/users/entities/user.entity';
+import { WsException } from '@nestjs/websockets';
 
 @Injectable()
 export class WsJwtStrategy extends PassportStrategy(Strategy, 'wsjwt') {
@@ -13,7 +14,6 @@ export class WsJwtStrategy extends PassportStrategy(Strategy, 'wsjwt') {
     private readonly userRepository: UserRepository,
   ) {
     super({
-      // jwtFromRequest: ExtractJwt.fromUrlQueryParameter('bearerToken'),
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: 'secret',
     });
@@ -24,13 +24,8 @@ export class WsJwtStrategy extends PassportStrategy(Strategy, 'wsjwt') {
 
     const userEntity: UserEntity = await this.userRepository.findUserById(id);
     if (!userEntity) {
-      throw new UnauthorizedException();
+      throw new WsException('user not found');
     }
-    // return userEntity;
-    // try {
-    //   return this.userRepository.findUserById(id);
-    // } catch (error) {
-    //   throw new WsException('Unauthorized access');
-    // }
+    return userEntity;
   }
 }

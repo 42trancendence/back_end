@@ -26,6 +26,7 @@ import { PostgreConfigProvider } from './config/postgre-config.provider';
     }),
     UsersModule,
     AuthModule,
+    FriendModule,
     ChatRoomModule,
     TwoFactorAuthModule,
     FriendModule,
