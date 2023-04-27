@@ -22,8 +22,8 @@ import { FriendNameDto } from 'src/users/dto/friend-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Status } from 'src/users/enum/status.enum';
 import { UsersService } from 'src/users/users.service';
-import { getUserBySocket } from '../decorator/get-user-socket.decorator';
-import { WsExceptionFilter } from '../filter/ws-exception.filter';
+import { getUserBySocket } from 'src/util/decorator/get-user-socket.decorator';
+import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 import { FriendService } from '../friend.service';
 
 @UseFilters(new WsExceptionFilter())

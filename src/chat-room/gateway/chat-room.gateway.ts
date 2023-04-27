@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UseFilters, UseGuards } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -22,7 +22,11 @@ import { ChatRoomValidation } from '../chat-room.validation';
 import { ChatRoomType } from '../enum/chat-room-type.enum';
 import { DirectMessageEntity } from '../entities/directMessage.entity';
 import { ChatRoomRole } from '../enum/chat-room-role.enum';
+import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
+import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 
+@UseFilters(new WsExceptionFilter())
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
   namespace: 'chat-room',
   cors: { origin: 'http://localhost:4000', credentials: true },
@@ -165,7 +169,7 @@ export class ChatRoomGateway
         .to(client.data.chatRoomId)
         .emit(
           'getChatRoomUsers',
-          await this.getChatRoomUsers(client.data.chatRoomId),
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
@@ -178,7 +182,9 @@ export class ChatRoomGateway
     @MessageBody('userId') userId: string,
   ) {
     try {
-      await this.chatRoomValidation.validateChatRoomAdmin(client);
+      const chatRoom = await this.chatRoomValidation.validateChatRoomAdmin(
+        client,
+      );
 
       //TODO: delete chatRoomUser
       await this.emitEventToChatRoomUser(
@@ -193,7 +199,7 @@ export class ChatRoomGateway
         .to(client.data.chatRoomId)
         .emit(
           'getChatRoomUsers',
-          await this.getChatRoomUsers(client.data.chatRoomId),
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[kickUser] ${error.message}`);
@@ -299,9 +305,9 @@ export class ChatRoomGateway
         createChatRoomDto.password,
       );
 
-      this.server
-        .to('lobby')
-        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+      // this.server
+      //   .to('lobby')
+      //   .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
     } catch (error) {
       this.ChatRoomLogger.error(`[createChatRoom] ${error.message}`);
     }
@@ -371,7 +377,6 @@ export class ChatRoomGateway
     client.data.chatRoomId = 'lobby';
     client.leave(client.id);
     await this.clinetJoinLobby(client);
-    // console.log(this.server['server']._nsps.get('/friend').sockets);
   }
 
   async handleDisconnect() {
@@ -420,18 +425,22 @@ export class ChatRoomGateway
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
     client.join(client.data.chatRoomId);
+
     this.server
       .to(client.data.chatRoomId)
       .emit(
         'getChatRoomUsers',
-        await this.getChatRoomUsers(client.data.chatRoomId),
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
       );
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
+    this.server
+      .to('lobby')
+      .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
-    if (client.data.chatRoomId !== 'lobby') {
+    if (client.data?.chatRoomId !== 'lobby') {
       client.leave(client.data.chatRoomId);
     }
 
@@ -448,17 +457,17 @@ export class ChatRoomGateway
     );
   }
 
-  async getChatRoomUsers(chatRoomId: string) {
-    const allSockets = await this.server.in(chatRoomId).fetchSockets();
-    const chatRoomUsers = new Set<string>();
-    for (const socket of allSockets) {
-      socket.data?.user && chatRoomUsers.add(socket.data.user.name);
-    }
-
-    const serializedSet = [...chatRoomUsers.keys()];
-    this.ChatRoomLogger.debug(`[getChatRoomUsers] ${serializedSet}`);
-    return serializedSet;
-  }
+  // async getChatRoomUsers(chatRoomId: string) {
+  //   const allSockets = await this.server.in(chatRoomId).fetchSockets();
+  //   const chatRoomUsers = new Set<string>();
+  //   for (const socket of allSockets) {
+  //     socket.data?.user && chatRoomUsers.add(socket.data.user.name);
+  //   }
+  //
+  //   const serializedSet = [...chatRoomUsers.keys()];
+  //   this.ChatRoomLogger.debug(`[getChatRoomUsers] ${serializedSet}`);
+  //   return serializedSet;
+  // }
 
   async emitEventToChatRoomUser(
     chatRoomId: string,

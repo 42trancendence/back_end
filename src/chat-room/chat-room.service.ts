@@ -11,6 +11,7 @@ import { DirectMessageEntity } from './entities/directMessage.entity';
 import { WsException } from '@nestjs/websockets';
 import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
 import { ChatRoomRole } from './enum/chat-room-role.enum';
+import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
 
 @Injectable()
 export class ChatRoomService {
@@ -41,7 +42,6 @@ export class ChatRoomService {
       chatRoom,
       user,
     );
-
     if (chatRoomUser) {
       if (chatRoomUser.isBanned) {
         throw new WsException('You are banned from this chat room');
@@ -53,6 +53,12 @@ export class ChatRoomService {
 
   async getChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
     return await this.chatRoomUserRepository.getChatRoomUser(chatRoom, user);
+  }
+
+  async getChatRoomUsers(
+    chatRoom: ChatRoomEntity,
+  ): Promise<ChatRoomUserEntity[]> {
+    return await this.chatRoomUserRepository.getChatRoomUsers(chatRoom);
   }
 
   async createDirectMessage(
