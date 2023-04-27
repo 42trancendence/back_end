@@ -1,18 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
 import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-<<<<<<< HEAD
-import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
-import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
-import { Status } from '../enum/status.enum';
-import { FriendShipEntity } from './friendship.entity';
-import { Exclude } from 'class-transformer';
-=======
-import { GameSessionEntity } from 'src/game/entities/game-session.entity';
 import { Column, Entity, ManyToMany, OneToMany, PrimaryColumn } from 'typeorm';
 import { Status } from '../enum/status.enum';
 import { FriendShipEntity } from 'src/friend/entities/friendship.entity';
->>>>>>> dev
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Entity('User')
 export class UserEntity {
@@ -44,38 +36,16 @@ export class UserEntity {
   @Column()
   isVerified: boolean;
 
-<<<<<<< HEAD
-  @OneToMany(() => GameStatsEntity, (game) => game.roomId)
-  gameStats: GameStatsEntity[];
-
-  @Column({ default: Status.OFFLINE })
-  status: Status;
-
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.user, {
-    eager: true,
-  })
-  friendships: FriendShipEntity[];
-
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend, {
-    eager: true,
-  })
-  friendOf: FriendShipEntity[];
-
-  @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
-  chatRooms: ChatRoomEntity[];
-  username: any;
-=======
   @ApiProperty({ description: '유저 상태' })
   @Column({ default: Status.OFFLINE })
   status: Status;
 
-  @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
-  wonGames: GameSessionEntity[];
+  @OneToMany(() => GameStatsEntity, (game) => game.roomId)
+  gameStats: GameStatsEntity[];
 
   // @OneToMany(() => FriendShipEntity, (friendship) => friendship.user)
   // friendships: FriendShipEntity[];
   //
   // @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
   // friendOf: FriendShipEntity[];
->>>>>>> dev
 }

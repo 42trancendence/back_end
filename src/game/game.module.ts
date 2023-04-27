@@ -8,15 +8,8 @@ import { GameRepository } from './repository/game.repository';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([GameStatsEntity]),
-    AuthModule,
-  ],
+  imports: [TypeOrmModule.forFeature([GameStatsEntity]), AuthModule],
   controllers: [GameController],
-  providers: [
-    GameService,
-    GameRepository,
-    GameGateway
-  ],
+  providers: [GameService, GameRepository, GameGateway],
 })
 export class GameModule {}
