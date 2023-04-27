@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import { Socket } from 'socket.io';
@@ -13,15 +13,12 @@ export class AuthService {
     private userRepository: UserRepository,
   ) {}
 
+  private AuthServiceLogger = new Logger('AuthService');
+
   async createAccessToken(ftUser: FtUserDto, res: Response) {
     const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
     res.header('Authorization', 'Bearer ' + token);
-    res.cookie('accessToken', token, {
-      domain: '	localhost',
-      path: '/',
-      httpOnly: true,
-    });
     console.log(token);
     return token;
   }
@@ -36,7 +33,6 @@ export class AuthService {
   }
 
   async logout(res: Response) {
-    res.cookie('accessToken', '');
     res.cookie('refreshToken', '');
     return res.redirect('http://localhost:4000/login');
   }
@@ -48,7 +44,10 @@ export class AuthService {
   }
 
   isVerifiedToken(socket: Socket) {
-    const auth = socket.handshake.headers.authorization;
+    const auth = socket.handshake.headers?.authorization;
+    if (!auth) {
+      throw new UnauthorizedException('Unauthorized jwt');
+    }
     const token = auth.split(' ')[1];
     return this.jwtService.verify(token);
   }
@@ -61,6 +60,8 @@ export class AuthService {
         throw new UnauthorizedException('Unauthorized jwt');
       }
       return await this.userRepository.findUserById(payload.id);
-    } catch (e) {}
+    } catch (e) {
+      this.AuthServiceLogger.error('Unauthorized jwt');
+    }
   }
 }

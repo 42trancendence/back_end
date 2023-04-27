@@ -1,53 +1,161 @@
 import { Injectable } from '@nestjs/common';
 import { UserEntity } from 'src/users/entities/user.entity';
-import { ChatRoomInfo } from './chat-room-info';
 import { ChatRoomRepository } from './repository/chat-room.repository';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
 import { UpdateChatRoomDto } from './dto/update-chat-room.dto';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
 import { MessageEntity } from './entities/message.entity';
 import { MessageRepository } from './repository/message.repository';
-import { Socket } from 'socket.io';
-import {WsException} from '@nestjs/websockets';
+import { DirectMessageRepository } from './repository/directMessage.repository';
+import { DirectMessageEntity } from './entities/directMessage.entity';
+import { WsException } from '@nestjs/websockets';
+import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
+import { ChatRoomRole } from './enum/chat-room-role.enum';
 
 @Injectable()
 export class ChatRoomService {
   constructor(
     private chatRoomRepository: ChatRoomRepository,
+    private directMessageRepository: DirectMessageRepository,
     private messageRepository: MessageRepository,
+
+    private chatRoomUserRepository: ChatRoomUserRepository,
   ) {}
 
   async createChatRoom(
     createChatRoomDto: CreateChatRoomDto,
     user: UserEntity,
-  ): Promise<ChatRoomInfo> {
+  ): Promise<void> {
     const chatRoom = await this.chatRoomRepository.createNewChatRoom(
       createChatRoomDto,
+    );
+    await this.createChatRoomUser(chatRoom, user, ChatRoomRole.ADMIN);
+  }
+
+  async createChatRoomUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+    role: ChatRoomRole,
+  ): Promise<void> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
       user,
     );
-    const chatRoomInfo = new ChatRoomInfo();
 
-    chatRoomInfo.name = chatRoom.name;
-    chatRoomInfo.owner = chatRoom.owner.name;
-    chatRoomInfo.isPrivate = chatRoom.isPrivate;
-    return chatRoomInfo;
+    if (chatRoomUser) {
+      if (chatRoomUser.isBanned) {
+        throw new WsException('You are banned from this chat room');
+      }
+      return;
+    }
+    await this.chatRoomUserRepository.createChatRoomUser(chatRoom, user, role);
   }
 
-  async getAllChatRooms(): Promise<ChatRoomInfo[]> {
-    const found = await this.chatRoomRepository.getAllChatRooms();
-    const chatRoomArr: ChatRoomInfo[] = new Array<ChatRoomInfo>();
-    found.forEach((value) => {
-      chatRoomArr.push({
-        name: value.name,
-        owner: value.owner.name,
-        isPrivate: value.isPrivate,
-      });
-    });
-    return chatRoomArr;
+  async getChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
+    return await this.chatRoomUserRepository.getChatRoomUser(chatRoom, user);
   }
 
-  async getChatRoomById(chatRoomId: number): Promise<ChatRoomEntity> {
-    return await this.chatRoomRepository.getChatRoom(chatRoomId);
+  async createDirectMessage(
+    sender: UserEntity,
+    receiver: UserEntity,
+  ): Promise<DirectMessageEntity> {
+    const directMessage = await this.directMessageRepository.getDirectMessage(
+      sender,
+      receiver,
+    );
+
+    if (!directMessage) {
+      return await this.directMessageRepository.createDirectMessage(
+        sender,
+        receiver,
+      );
+    }
+    return directMessage;
+  }
+
+  async toggleBlockUser(
+    directMessage: DirectMessageEntity,
+    user: UserEntity,
+  ): Promise<void> {
+    await this.directMessageRepository.toggleBlockUser(directMessage, user);
+  }
+
+  async toggleBanUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<boolean> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    return await this.chatRoomUserRepository.toggleBanUser(chatRoomUser);
+  }
+
+  async setAdminUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<void> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    await this.chatRoomUserRepository.setUserRole(
+      chatRoomUser,
+      ChatRoomRole.ADMIN,
+    );
+  }
+
+  async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('User is not in this chat room');
+    }
+    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
+      throw new WsException('User is not an normal');
+    }
+    await this.chatRoomUserRepository.setMuteUser(chatRoomUser, true);
+  }
+
+  async getDirectMessage(
+    user1: UserEntity,
+    user2: UserEntity,
+  ): Promise<DirectMessageEntity> {
+    return await this.directMessageRepository.getDirectMessage(user1, user2);
+  }
+
+  async getDirectMessageById(
+    directMessageId: string,
+  ): Promise<DirectMessageEntity> {
+    return await this.directMessageRepository.getDirectMessageById(
+      directMessageId,
+    );
+  }
+
+  async getDirectMessages(user: UserEntity): Promise<DirectMessageEntity[]> {
+    return await this.directMessageRepository.getDirectMessages(user);
+  }
+
+  async getAllChatRooms(): Promise<ChatRoomEntity[]> {
+    return await this.chatRoomRepository.getAllChatRooms();
+  }
+
+  async getChatRoomById(chatRoomId: string): Promise<ChatRoomEntity> {
+    return await this.chatRoomRepository.getChatRoomById(chatRoomId);
   }
 
   async getChatRoomByName(chatRoomName: string): Promise<ChatRoomEntity> {
@@ -58,14 +166,51 @@ export class ChatRoomService {
     user: UserEntity,
     chatRoom: ChatRoomEntity,
     payload: string,
-  ) {
-    const message = new MessageEntity();
+  ): Promise<MessageEntity> {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      throw new WsException('You are not a member of this chat room');
+    }
 
+    if (chatRoomUser.isMuted) {
+      const now = new Date();
+      // NOTE: 5 minutes
+      if (now.getTime() <= chatRoomUser?.mutedUntil.getTime() + 1000 * 60 * 5) {
+        throw new WsException('You are muted in this chat room');
+      }
+      await this.chatRoomUserRepository.setMuteUser(chatRoomUser, false);
+    }
+
+    const message = new MessageEntity();
     message.user = user;
     message.message = payload;
-    message.timestamp = new Date();
     message.chatRoom = chatRoom;
+    message.directMessage = null;
+    await this.messageRepository.saveMessage(message);
+    return message;
+  }
 
+  async saveDirectMessage(
+    user: UserEntity,
+    directMessage: DirectMessageEntity,
+    payload: string,
+  ): Promise<MessageEntity> {
+    if (directMessage.user1 === user && directMessage.isBlockedByUser2) {
+      return;
+    }
+
+    if (directMessage.user2 === user && directMessage.isBlockedByUser1) {
+      return;
+    }
+
+    const message = new MessageEntity();
+    message.user = user;
+    message.message = payload;
+    message.directMessage = directMessage;
+    message.chatRoom = null;
     await this.messageRepository.saveMessage(message);
     return message;
   }
@@ -79,9 +224,8 @@ export class ChatRoomService {
     updateChatRoomDto: UpdateChatRoomDto,
   ) {
     chatRoom.name = updateChatRoomDto.name;
-    chatRoom.isPrivate = updateChatRoomDto.isPrivate;
+    chatRoom.type = updateChatRoomDto.type;
     chatRoom.password = updateChatRoomDto.password;
-
     await this.chatRoomRepository.save(chatRoom);
   }
 }

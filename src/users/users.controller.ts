@@ -7,13 +7,13 @@ import {
   ValidationPipe,
   UseGuards,
   Put,
-  Post,
-  Delete,
   Query,
   NotFoundException,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+  Logger,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { UserInfoDto } from './dto/user-info.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdateUserDto } from './dto/update-user.dto';
 import {
@@ -27,10 +27,10 @@ import {
   ApiParam,
   ApiBody,
   ApiBadRequestResponse,
-  ApiCreatedResponse,
 } from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
+import { CheckUserNameDto } from './dto/check-user-name.dto';
 
 @Controller('users')
 @UseGuards(AuthGuard('access-jwt'))
@@ -40,11 +40,16 @@ import { getUser } from 'src/auth/decorator/get-user.decorator';
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
+  private readonly logger = new Logger(UsersController.name);
+  // NOTE: GET METHOD
+
   @Get('me')
+  @UseInterceptors(ClassSerializerInterceptor)
   @ApiOperation({ summary: '내 정보 조회' })
-  @ApiOkResponse({ description: '성공', type: UserInfoDto })
-  async getMyInfo(@getUser() user: UserEntity): Promise<UserInfoDto> {
-    return { id: user.id, name: user.name, email: user.email };
+  @ApiOkResponse({ description: '성공', type: UserEntity })
+  async getMyInfo(@getUser() user: UserEntity): Promise<UserEntity> {
+    this.logger.log('GET users/me');
+    return user;
   }
 
   @Get('name')
@@ -52,75 +57,40 @@ export class UsersController {
   @ApiQuery({ name: 'userName', description: '중복 확인할 이름' })
   @ApiOkResponse({ description: '성공' })
   @ApiNotFoundResponse({ description: '이미 존재하는 이름입니다.' })
-  async checkName(@Query('userName') name: string) {
-    const IsExist = await this.usersService.checkName(name);
-
-    if (IsExist) {
+  @UsePipes(ValidationPipe)
+  async checkName(
+    @getUser() user: UserEntity,
+    @Query() checkUserNameDto: CheckUserNameDto,
+  ) {
+    this.logger.log('GET users/name');
+    const foundUser = await this.usersService.getUserByName(
+      checkUserNameDto.userName,
+    );
+    if (foundUser && foundUser.id !== user.id) {
       throw new NotFoundException('이미 존재하는 이름입니다.');
     }
     return { message: '사용 가능한 이름입니다.' };
   }
 
-  @Get('friends')
-  @ApiOperation({ summary: '나의 모든 친구 정보 조회' })
-  @ApiOkResponse({
-    description: '나의 모든 친구 정보를 얻는다',
-    type: [UserInfoDto],
-  })
-  async getMyFriends(@getUser() user: UserEntity) {
-    return await this.usersService.getFriendList(user);
-  }
-
-  @Get('accept')
-  @ApiOperation({ summary: '친구 요청 수락' })
-  @ApiQuery({ name: 'id', description: '친구 요청을 수락할 유저의 id' })
-  async acceptFriend(
-    @getUser() user: UserEntity,
-    @Query('id') friendId: string,
-  ) {
-    await this.usersService.setFriendShipStatus(user, friendId, 'accept');
-  }
-
-  @Get('reject')
-  @ApiOperation({ summary: '친구 요청 거절' })
-  @ApiQuery({ name: 'id', description: '친구 요청을 거절할 유저의 id' })
-  async rejectFriend(
-    @getUser() user: UserEntity,
-    @Query('id') friendId: string,
-  ) {
-    await this.usersService.setFriendShipStatus(user, friendId, 'reject');
-  }
-
   @Get(':id')
-  @ApiOperation({ summary: '유저 정보 조회' })
+  @ApiOperation({ summary: 'ID로 유저 조회' })
   @ApiParam({ name: 'id', description: '조회할 유저 ID' })
-  @ApiOkResponse({ description: '성공', type: UserInfoDto })
+  @ApiOkResponse({ description: '성공', type: UserEntity })
   @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
-  async getUserInfo(@Param('id') userId: string): Promise<UserInfoDto> {
-    return this.usersService.getUserInfo(userId);
+  async getUserInfo(@Param('id') userId: string): Promise<UserEntity> {
+    this.logger.log('GET users/:id');
+    return await this.usersService.getUserById(userId);
   }
 
-  @Delete('friend/:id')
-  @ApiOperation({ summary: '친구 삭제' })
-  async deleteFriend(
-    @getUser() user: UserEntity,
-    @Param('id') friendId: string,
-  ) {
-    await this.usersService.deleteFriend(user, friendId);
+  @Get('/')
+  @ApiOperation({ summary: '나와 나의 친구를 제외한 모든 유저 정보 조회' })
+  @ApiOkResponse({ description: '성공', type: Array<UserEntity> })
+  async getAllUserInfo(@getUser() user: UserEntity): Promise<UserEntity[]> {
+    this.logger.log('GET users/');
+    return await this.usersService.getAllUserExceptMeAndFriend(user);
   }
 
-  @Post('friend')
-  @ApiOperation({ summary: '친구 요청' })
-  @ApiCreatedResponse({ description: '성공' })
-  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
-  @ApiBadRequestResponse({ description: '이미 친구요청을 보냈습니다.' })
-  @ApiBadRequestResponse({
-    description: '자기 자신을 친구로 추가할 수 없습니다.',
-  })
-  async addFriend(@getUser() user: UserEntity, @Body('id') friendId: string) {
-    await this.usersService.addFriend(user, friendId);
-    return { message: '성공' };
-  }
+  // NOTE: PUT METHOD
 
   @Put('me')
   @UsePipes(ValidationPipe)
@@ -133,6 +103,7 @@ export class UsersController {
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
   ) {
+    this.logger.log('PUT users/me');
     await this.usersService.updateUserInfo(updateUserDto, user);
   }
 }

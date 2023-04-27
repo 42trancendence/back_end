@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { DataSource, FindManyOptions, Repository } from 'typeorm';
+import {
+  DataSource,
+  FindManyOptions,
+  FindOneOptions,
+  Repository,
+} from 'typeorm';
 import { FriendShipEntity } from '../entities/friendship.entity';
-import { UserEntity } from '../entities/user.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { FriendShipStatus } from '../enum/friendShipStatus.enum';
 
 @Injectable()
 export class FriendShipRepository extends Repository<FriendShipEntity> {
@@ -14,8 +20,8 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
 
     friendShip.user = user;
     friendShip.friend = friend;
-    friendShip.status = 'pending';
-    this.save(friendShip);
+    friendShip.status = FriendShipStatus.PENDING;
+    await this.save(friendShip);
     return friendShip;
   }
 
@@ -26,27 +32,35 @@ export class FriendShipRepository extends Repository<FriendShipEntity> {
   }
 
   async deleteFriendShip(friendShip: FriendShipEntity) {
-    this.delete(friendShip);
+    await this.remove(friendShip);
+  }
+
+  async removeFriendShip(user: UserEntity, friend: UserEntity) {
+    const friendShip = await this.findOne({
+      where: [
+        { user: user, friend: friend },
+        { user: friend, friend: user },
+      ],
+    });
+    await this.remove(friendShip);
   }
 
   async findWithRelations(relations: FindManyOptions) {
     return await this.find(relations);
   }
 
-  async getFriendList(user: UserEntity) {
-    return await this.find({
-      where: { user },
-    });
+  async findOneWithRelations(relations: FindOneOptions) {
+    return await this.findOne(relations);
   }
 
   async setFriendShipStatus(
     user: UserEntity,
     friend: UserEntity,
-    status: string,
+    status: FriendShipStatus,
   ) {
-    const friendShip = await this.getFriendShip(user, friend);
+    const friendShip = await this.getFriendShip(friend, user);
     friendShip.status = status;
-    this.save(friendShip);
+    await this.save(friendShip);
     return friendShip;
   }
 }

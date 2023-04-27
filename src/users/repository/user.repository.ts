@@ -2,7 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { DataSource, Repository } from 'typeorm';
 import { UserEntity } from '../entities/user.entity';
-import {Status} from '../enum/status.enum';
+import { Status } from '../enum/status.enum';
+import { Not } from 'typeorm';
+import { UpdateUserDto } from '../dto/update-user.dto';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -10,6 +12,11 @@ export class UserRepository extends Repository<UserEntity> {
     super(UserEntity, dataSource.createEntityManager());
   }
 
+  async findUserExceptMeAndFriend(me: UserEntity): Promise<UserEntity[]> {
+    return await this.findBy({
+      id: Not(me.id),
+    });
+  }
   async findUserByEmail(emailAddress: string): Promise<UserEntity> {
     return await this.findOne({
       where: { email: emailAddress },
@@ -53,6 +60,13 @@ export class UserRepository extends Repository<UserEntity> {
 
   async saveUserStatus(user: UserEntity, status: Status): Promise<void> {
     user.status = status;
+    await this.save(user);
+  }
+
+  async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
+    user.name = updateUserDto.name;
+    // TODO: save avatarImageUrl
+    // user.avatarImageUrl = updateUserDto.avatarImageUrl;
     await this.save(user);
   }
 }
