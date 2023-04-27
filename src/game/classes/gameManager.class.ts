@@ -18,6 +18,14 @@ export class GameManager {
         gameService.updateGameState(game);
         this.deleteGameByRoomId(game.getRoomId());
         server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
+        server.to(game.getRoomId()).emit(
+          'setStartGame',
+          JSON.stringify({
+            player1: game.getPlayer1Name(),
+            player2: game.getPlayer2Name(),
+            score: score,
+          }),
+        );
       }
       if (game.getGameStatus() !== GameStatus.Play) return;
       game.updateGame();

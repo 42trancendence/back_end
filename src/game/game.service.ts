@@ -82,11 +82,11 @@ export class GameService {
     return null;
   }
 
-  // async deleteGameByRoomId(roomId: string) {
-  //   await this.gameRepository.deleteGameByRoomId(roomId);
-  // }
-
   async deleteGameByRoomId(roomId: string) {
     await this.gameRepository.deleteGameByRoomId(roomId);
+  }
+
+  async getRoomIdByTitle(title: string) {
+    return await this.gameRepository.getRoomIdByTitle(title);
   }
 }

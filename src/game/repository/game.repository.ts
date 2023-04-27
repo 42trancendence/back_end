@@ -73,11 +73,14 @@ export class GameRepository extends Repository<GameStatsEntity> {
     return await this.findOne({ where: { roomId: roomId } });
   }
 
-  // async deleteGameByRoomId(id: string) {
-  //   return await this.delete({ id });
-  // }
-
   async deleteGameByRoomId(roomId: string) {
     return await this.delete({ roomId });
+  }
+
+  async getRoomIdByTitle(title: string) {
+    const gameStats = await this.findOne({
+      where: { title: title },
+    });
+    return gameStats.roomId;
   }
 }
