@@ -24,6 +24,7 @@ import { DirectMessageEntity } from '../entities/directMessage.entity';
 import { ChatRoomRole } from '../enum/chat-room-role.enum';
 import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
+import { ChatRoomEntity } from '../entities/chatRoom.entity';
 
 @UseFilters(new WsExceptionFilter())
 @UseGuards(WsAuthGuard)
@@ -66,32 +67,6 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('sendDirectMessage')
-  async handleDirectMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() payload: string,
-  ) {
-    try {
-      const directMessage =
-        await this.chatRoomValidation.validateUserInDirectMessage(client);
-
-      const message = await this.chatRoomService.saveDirectMessage(
-        client.data.user,
-        directMessage,
-        payload,
-      );
-
-      if (!message) {
-        return;
-      }
-
-      client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
-      // TODO: add notification to sender
-    } catch (error) {
-      this.ChatRoomLogger.error(`[sendDirectMessage] ${error.message}`);
-    }
-  }
-
   @SubscribeMessage('setAdminUser')
   async setAdminUser(
     @ConnectedSocket() client: Socket,
@@ -108,6 +83,13 @@ export class ChatRoomGateway
       }
 
       await this.chatRoomService.setAdminUser(chatRoom, user);
+
+      this.server
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
     } catch (error) {}
   }
 
@@ -121,14 +103,14 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
 
-      const blockUser = await this.usersService.getUserById(userId);
-      if (!blockUser) {
+      const user = await this.usersService.getUserById(userId);
+      if (!user) {
         throw new WsException('User not found');
       }
 
       const directMessage = await this.chatRoomService.createDirectMessage(
         client.data.user,
-        blockUser,
+        user,
       );
 
       await this.chatRoomService.toggleBlockUser(
@@ -156,21 +138,12 @@ export class ChatRoomGateway
       }
 
       if (await this.chatRoomService.toggleBanUser(chatRoom, user)) {
-        await this.emitEventToChatRoomUser(
+        await this.emitKickUserInChatRoom(
           client.data.chatRoomId,
-          'kickUser',
-          null,
           user.id,
-          false,
+          chatRoom,
         );
       }
-
-      this.server
-        .to(client.data.chatRoomId)
-        .emit(
-          'getChatRoomUsers',
-          await this.chatRoomService.getChatRoomUsers(chatRoom),
-        );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
     }
@@ -186,21 +159,17 @@ export class ChatRoomGateway
         client,
       );
 
-      //TODO: delete chatRoomUser
-      await this.emitEventToChatRoomUser(
-        client.data.chatRoomId,
-        'kickUser',
-        null,
-        userId,
-        false,
-      );
+      const user = await this.usersService.getUserById(userId);
+      if (!user) {
+        throw new WsException('User not found');
+      }
 
-      this.server
-        .to(client.data.chatRoomId)
-        .emit(
-          'getChatRoomUsers',
-          await this.chatRoomService.getChatRoomUsers(chatRoom),
-        );
+      await this.chatRoomService.setKickUser(chatRoom, user);
+      await this.emitKickUserInChatRoom(
+        client.data.chatRoomId,
+        userId,
+        chatRoom,
+      );
     } catch (error) {
       this.ChatRoomLogger.error(`[kickUser] ${error.message}`);
     }
@@ -304,10 +273,6 @@ export class ChatRoomGateway
         createChatRoomDto.name,
         createChatRoomDto.password,
       );
-
-      // this.server
-      //   .to('lobby')
-      //   .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
     } catch (error) {
       this.ChatRoomLogger.error(`[createChatRoom] ${error.message}`);
     }
@@ -365,21 +330,48 @@ export class ChatRoomGateway
       // NOTE: 만약 해당 방에 같은 아이디로 로그인된 유저가 있다면
       // chatRoomUser를 삭제하면 안됨
       client.leave(client.data.chatRoomId);
-      const isLastUser = await this.chatRoomService.isLastUserInChatRoom(
-        client,
-      );
-      if (isLastUser) {
+      const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
+      if (!isUserIn) {
         await this.chatRoomService.deleteChatRoomUser(
           chatRoom,
           client.data.user,
         );
+        this.server
+          .to('lobby')
+          .emit(
+            'showChatRoomList',
+            await this.chatRoomService.getAllChatRooms(),
+          );
       }
       await this.clinetJoinLobby(client);
-      this.server
-        .to('lobby')
-        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
     } catch (error) {
       this.ChatRoomLogger.error(`[leaveChatRoom] ${error.message}`);
+    }
+  }
+
+  @SubscribeMessage('sendDirectMessage')
+  async handleDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: string,
+  ) {
+    try {
+      const directMessage =
+        await this.chatRoomValidation.validateUserInDirectMessage(client);
+
+      const message = await this.chatRoomService.saveDirectMessage(
+        client.data.user,
+        directMessage,
+        payload,
+      );
+
+      if (!message) {
+        return;
+      }
+
+      client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
+      // TODO: add notification to sender
+    } catch (error) {
+      this.ChatRoomLogger.error(`[sendDirectMessage] ${error.message}`);
     }
   }
 
@@ -444,15 +436,23 @@ export class ChatRoomGateway
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
     client.join(client.data.chatRoomId);
-
-    this.server
-      .to(client.data.chatRoomId)
-      .emit(
-        'getChatRoomUsers',
-        await this.chatRoomService.getChatRoomUsers(chatRoom),
-      );
-    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
+
+    // const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
+    // if (isUserIn) {
+    //   client.emit(
+    //     'getChatRoomUsers',
+    //     await this.chatRoomService.getChatRoomUsers(chatRoom),
+    //   );
+    //   return;
+    // }
+    // this.server
+    //   .to(client.data.chatRoomId)
+    //   .emit(
+    //     'getChatRoomUsers',
+    //     await this.chatRoomService.getChatRoomUsers(chatRoom),
+    //   );
+    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     this.server
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
@@ -476,33 +476,23 @@ export class ChatRoomGateway
     );
   }
 
-  // async getChatRoomUsers(chatRoomId: string) {
-  //   const allSockets = await this.server.in(chatRoomId).fetchSockets();
-  //   const chatRoomUsers = new Set<string>();
-  //   for (const socket of allSockets) {
-  //     socket.data?.user && chatRoomUsers.add(socket.data.user.name);
-  //   }
-  //
-  //   const serializedSet = [...chatRoomUsers.keys()];
-  //   this.ChatRoomLogger.debug(`[getChatRoomUsers] ${serializedSet}`);
-  //   return serializedSet;
-  // }
-
-  async emitEventToChatRoomUser(
+  async emitKickUserInChatRoom(
     chatRoomId: string,
-    event: string,
-    data: any,
     userId: string,
-    all: boolean,
+    chatRoom: ChatRoomEntity,
   ) {
     const sockets = await this.server.in(chatRoomId).fetchSockets();
     for (const socket of sockets) {
-      if (all || socket.data?.user?.id === userId) {
-        socket.emit(event, data);
-        if (event === 'kickUser') {
-          await this.clinetJoinLobby(socket);
-        }
+      if (socket.data?.user?.id === userId) {
+        socket.emit('kickUser');
+        await this.clinetJoinLobby(socket);
       }
     }
+    this.server
+      .to(chatRoomId)
+      .emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
+      );
   }
 }
