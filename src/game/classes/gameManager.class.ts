@@ -14,8 +14,8 @@ export class GameManager {
         score[1] >= GameVariable.maxScore
       ) {
         // 게임 종료 뒤 결과 저장하고 방 폭파
-        game.setGameStatus(GameStatus.End);
-        gameService.updateGameState(game);
+        game.setGameStatus(GameStatus.END);
+        gameService.updateGameStatus(game.getRoomId(), GameStatus.END);
         this.deleteGameByRoomId(game.getRoomId());
         server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
         server.to(game.getRoomId()).emit(
@@ -27,7 +27,7 @@ export class GameManager {
           }),
         );
       }
-      if (game.getGameStatus() !== GameStatus.Play) return;
+      if (game.getGameStatus() !== GameStatus.PLAY) return;
       game.updateGame();
       server.to(game.getRoomId()).emit('updateGame', game);
     });

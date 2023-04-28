@@ -27,35 +27,19 @@ export class GameRepository extends Repository<GameStatsEntity> {
     newGameState.winnerName = '';
     newGameState.loserName = '';
     newGameState.createAt = new Date();
-    newGameState.status = GameStatus.Wait;
+    newGameState.status = GameStatus.WAIT;
 
     return await this.save(newGameState);
   }
 
-  async updateGameState(game: Game) {
-    const score = game.getScore();
-
-    let winnerName = '';
-    let loserName = '';
-    if (score[0] > score[1]) {
-      winnerName = game.getPlayer1Name();
-      loserName = game.getPlayer2Name();
-    } else {
-      winnerName = game.getPlayer2Name();
-      loserName = game.getPlayer1Name();
-    }
-
-    return await this.update(game.getRoomId(), {
-      player1Score: score[0],
-      player2Score: score[1],
-      status: game.getGameStatus(),
-      winnerName: winnerName,
-      loserName: loserName,
-    });
+  async updateGameStatus(roomId: string, status: string) {
+    return await this.update(roomId, { status });
   }
 
   async getGameList() {
-    return await this.find();
+    return await this.createQueryBuilder('game')
+      .where('game.status != :status', { status: 'end' })
+      .getMany();
   }
 
   async getRoomIdByUserId(userId: string) {
@@ -64,7 +48,9 @@ export class GameRepository extends Repository<GameStatsEntity> {
       .leftJoin('gameStats.player1', 'player1')
       .leftJoin('gameStats.player2', 'player2')
       .where('player1.id = :userId', { userId })
+      .andWhere("gameStats.status != 'end'")
       .orWhere('player2.id = :userId', { userId })
+      .andWhere("gameStats.status != 'end'")
       .orderBy('gameStats.createAt', 'DESC') // 최근 날짜부터 정렬
       .getOne(); // 가장 최근 항목 하나만 반환
   }

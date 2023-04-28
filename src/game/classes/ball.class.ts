@@ -29,8 +29,8 @@ export class Ball {
     this.x_ = x;
     this.y_ = y;
     this.radius_ = radius;
-    this.velocityX_ = Math.random() * velocityX;
-    this.velocityY_ = Math.random() * velocityY;
+    this.velocityX_ = (Math.random() * 2 - 1) * velocityX;
+    this.velocityY_ = (Math.random() * 2 - 1) * velocityY;
     this.speed_ = speed;
     this.originSpeed_ = speed;
   }
@@ -42,8 +42,8 @@ export class Ball {
     // TODO
     // 1. 공의 방향을 랜덤으로 설정
     // 2. 공의 속도를 랜덤으로 설정
-    this.velocityX_ = -1 * Math.random() * this.speed_;
-    this.velocityY_ = Math.random() * this.speed_;
+    this.velocityX_ = (Math.random() * 2 - 1) * this.speed_;
+    this.velocityY_ = (Math.random() * 2 - 1) * this.speed_;
   }
 
   public move(paddle: Paddle, score: Array<number>): void {
@@ -108,8 +108,8 @@ export class Ball {
   }
 
   public setSpeed(speed: number): void {
-    this.velocityX_ = Math.random() * speed;
-    this.velocityY_ = Math.random() * speed;
+    this.velocityX_ = (Math.random() * 2 - 1) * speed;
+    this.velocityY_ = (Math.random() * 2 - 1) * speed;
     this.speed_ = speed;
     this.originSpeed_ = speed;
   }

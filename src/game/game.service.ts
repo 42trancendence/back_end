@@ -8,6 +8,7 @@ import { Logger } from '@nestjs/common';
 import { PlayerList } from './classes/playerList.class';
 import { WsException } from '@nestjs/websockets';
 import * as uuid from 'uuid';
+import { GameStatus } from './constants/gameVariable';
 
 @Injectable()
 export class GameService {
@@ -18,7 +19,7 @@ export class GameService {
   private readonly WsLogger = new Logger('GameWsLogger');
 
   async createGame(server: Server, gameManager: GameManager) {
-    const allSockets = await server.in('matching').fetchSockets();
+    const allSockets = await server.in(GameStatus.MATCHING).fetchSockets();
     if (allSockets.length >= 2) {
       const client1 = allSockets.shift();
       const client2 = allSockets.shift();
@@ -27,11 +28,11 @@ export class GameService {
       const title = `${player1.name}-${player2.name}`;
       const newRoomId = uuid.v4();
 
-      client1.leave('matching');
+      client1.leave(GameStatus.MATCHING);
       client1.join(newRoomId);
       client1.data.roomId = newRoomId;
       client1.emit('startGame');
-      client2.leave('matching');
+      client2.leave(GameStatus.MATCHING);
       client2.join(newRoomId);
       client2.data.roomId = newRoomId;
       client2.emit('startGame');
@@ -44,8 +45,8 @@ export class GameService {
         player2,
       );
       if (newGame) {
-        client1.emit('getMatching', newGame);
-        client2.emit('getMatching', newGame);
+        client1.emit('getMatching', 'matching', newGame);
+        client2.emit('getMatching', 'matching', newGame);
       }
     }
   }
@@ -55,8 +56,8 @@ export class GameService {
     return gameList;
   }
 
-  async updateGameState(game: Game) {
-    return await this.gameRepository.updateGameState(game);
+  async updateGameStatus(roomId: string, status: string) {
+    return await this.gameRepository.updateGameStatus(roomId, status);
   }
 
   async getPlayerBySocket(client: Socket, players: PlayerList) {

@@ -1,7 +1,10 @@
 export enum GameStatus {
-  Wait = 'WAIT',
-  Play = 'PLAY',
-  End = 'END',
+  WAIT = 'wait',
+  PLAY = 'play',
+  END = 'end',
+  LOBBY = 'lobby',
+  MATCHING = 'matching',
+  WATCH = 'watch',
 }
 
 export class GameVariable {
@@ -9,7 +12,7 @@ export class GameVariable {
   public static readonly matchPlyers = 2;
   public static readonly maxGame = 100;
   public static readonly maxWatchers = 5;
-  public static readonly maxScore = 2;
+  public static readonly maxScore = 5;
 
   public static readonly canvasWidth = 500;
   public static readonly canvasHeight = 500;

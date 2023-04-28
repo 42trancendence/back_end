@@ -5,7 +5,7 @@ import { Paddle } from './paddle.class';
 export class Game {
   private roomId_: string;
   private title_: string;
-  private gameStatus_: string = GameStatus.Wait;
+  private gameStatus_: string = GameStatus.WAIT;
   private ball_: Ball = new Ball();
   private player1Name_: string;
   private player2Name_: string;
@@ -135,6 +135,6 @@ export class Game {
     this.ball_.reset();
     this.paddles_[0].reset();
     this.paddles_[1].reset();
-    this.gameStatus_ = GameStatus.Wait;
+    this.gameStatus_ = GameStatus.WAIT;
   }
 }
