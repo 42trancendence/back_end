@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { TwoFactorAuthModule } from './two-factor-auth/two-factor-auth.module';
 import { FriendModule } from './friend/friend.module';
 import { PostgreConfigProvider } from './config/postgre-config.provider';
+import { EventsModule } from './events/events.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PostgreConfigProvider } from './config/postgre-config.provider';
     TwoFactorAuthModule,
     FriendModule,
     GameModule,
+    EventsModule
   ],
   controllers: [],
   providers: [],
