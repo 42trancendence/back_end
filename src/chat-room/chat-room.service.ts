@@ -201,11 +201,11 @@ export class ChatRoomService {
     payload: string,
   ): Promise<MessageEntity> {
     if (directMessage.user1 === user && directMessage.isBlockedByUser2) {
-      return;
+      throw new WsException('You are blocked by this user');
     }
 
     if (directMessage.user2 === user && directMessage.isBlockedByUser1) {
-      return;
+      throw new WsException('You are blocked by this user');
     }
 
     const message = new MessageEntity();

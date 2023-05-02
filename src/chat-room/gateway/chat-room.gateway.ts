@@ -25,11 +25,14 @@ import { ChatRoomRole } from '../enum/chat-room-role.enum';
 import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 import { ChatRoomEntity } from '../entities/chatRoom.entity';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { MessageEntity } from '../entities/message.entity';
+import { UserWhere } from '../enum/user-where.enum';
 
 @UseFilters(new WsExceptionFilter())
 @UseGuards(WsAuthGuard)
 @WebSocketGateway({
-  namespace: 'chat-room',
+  namespace: '/chat-room',
   cors: { origin: 'http://localhost:4000', credentials: true },
 })
 export class ChatRoomGateway
@@ -90,7 +93,9 @@ export class ChatRoomGateway
           'getChatRoomUsers',
           await this.chatRoomService.getChatRoomUsers(chatRoom),
         );
-    } catch (error) {}
+    } catch (error) {
+      this.ChatRoomLogger.error(`[setAdminUser] ${error.message}`);
+    }
   }
 
   @SubscribeMessage('toggleBlockUser')
@@ -99,6 +104,7 @@ export class ChatRoomGateway
     @MessageBody('userId') userId: string,
   ) {
     try {
+      // NOTE: direct message room 안에서만 동작?
       if (!client.data?.user) {
         throw new WsException('User not found');
       }
@@ -216,42 +222,6 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('createDirectMessage')
-  async createDirectMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() receiverId: string,
-  ) {
-    try {
-      await this.chatRoomValidation.validateUserInLobby(client);
-
-      const receiver = await this.usersService.getUserById(receiverId);
-      if (!receiver) {
-        throw new WsException('User not found');
-      }
-
-      const directMessage = await this.chatRoomService.createDirectMessage(
-        client.data.user,
-        receiver,
-      );
-
-      await this.clientJoinDirectMessage(client, directMessage);
-
-      const sockets = await this.server.fetchSockets();
-      for (const socket of sockets) {
-        if (socket.data.user.id === receiverId) {
-          this.server
-            .to(socket.id)
-            .emit(
-              'showDirectMessageList',
-              await this.chatRoomService.getDirectMessages(receiver),
-            );
-        }
-      }
-    } catch (error) {
-      this.ChatRoomLogger.error(`[createDirectMessage] ${error.message}`);
-    }
-  }
-
   @SubscribeMessage('createChatRoom')
   async createChatRoom(
     @ConnectedSocket() client: Socket,
@@ -278,28 +248,6 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('enterDirectMessage')
-  async enterDirectMessage(
-    @ConnectedSocket() client: Socket,
-    @MessageBody('directMessageId') directMessageId: string,
-  ) {
-    try {
-      await this.chatRoomValidation.validateUserInLobby(client);
-
-      const directMessage = await this.chatRoomService.getDirectMessageById(
-        directMessageId,
-      );
-
-      if (!directMessage) {
-        throw new WsException('Direct message not found');
-      }
-
-      await this.clientJoinDirectMessage(client, directMessage);
-    } catch (error) {
-      this.ChatRoomLogger.error(`[enterDirectMessage] ${error.message}`);
-    }
-  }
-
   @SubscribeMessage('enterChatRoom')
   async enterChatRoom(
     @ConnectedSocket() client: Socket,
@@ -318,35 +266,66 @@ export class ChatRoomGateway
     }
   }
 
-  @SubscribeMessage('leaveChatRoom')
-  async leaveChatRoom(@ConnectedSocket() client: Socket) {
+  // NOTE: chat 페이지 접속시
+  @SubscribeMessage('enterChatLobby')
+  async enterChatLobby(@ConnectedSocket() client: Socket) {
     try {
-      const chatRoom = await this.chatRoomValidation.validateUserInChatRoom(
-        client,
-      );
-      this.ChatRoomLogger.debug(
-        `[leaveChatRoom] ${client.data.user.name} leave chat room`,
-      );
-      // NOTE: 만약 해당 방에 같은 아이디로 로그인된 유저가 있다면
-      // chatRoomUser를 삭제하면 안됨
-      client.leave(client.data.chatRoomId);
-      const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
-      if (!isUserIn) {
-        await this.chatRoomService.deleteChatRoomUser(
-          chatRoom,
-          client.data.user,
-        );
-        this.server
-          .to('lobby')
-          .emit(
-            'showChatRoomList',
-            await this.chatRoomService.getAllChatRooms(),
-          );
+      if (!client.data?.user) {
+        throw new WsException('User not found');
       }
+      // NOTE: 현재 유저가 속해있던 곳에서 퇴장
+      await this.leaveCurrentPosition(client);
       await this.clinetJoinLobby(client);
     } catch (error) {
-      this.ChatRoomLogger.error(`[leaveChatRoom] ${error.message}`);
+      this.ChatRoomLogger.error(`[enterChatLobby] ${error.message}`);
     }
+  }
+
+  // NOTE: 아예 chat 페이지에서 나감 -> overview 페이지로 이동
+  @SubscribeMessage('leaveChatPage')
+  async leaveChatPage(@ConnectedSocket() client: Socket) {
+    try {
+      if (!client.data?.user) {
+        throw new WsException('User not found');
+      }
+      await this.leaveCurrentPosition(client);
+    } catch (error) {
+      this.ChatRoomLogger.error(`[leaveChatPage] ${error.message}`);
+    }
+  }
+
+  @SubscribeMessage('enterDirectMessage')
+  async enterDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('directMessageId') directMessageId: string,
+  ) {
+    try {
+      if (!client.data?.user) {
+        throw new WsException('User not found');
+      }
+
+      const directMessage = await this.chatRoomService.getDirectMessageById(
+        directMessageId,
+      );
+
+      if (!directMessage) {
+        throw new WsException('Direct message not found');
+      }
+
+      await this.clientJoinDirectMessage(client, directMessage);
+    } catch (error) {
+      this.ChatRoomLogger.error(`[enterDirectMessage] ${error.message}`);
+    }
+  }
+
+  async leaveDirectMessage(client: Socket) {
+    await this.chatRoomValidation.validateUserInDirectMessage(client);
+
+    this.ChatRoomLogger.debug(
+      `[leaveDirectMessage] ${client.data.user.name} leave direct message`,
+    );
+
+    client.leave(client.data.chatRoomId);
   }
 
   @SubscribeMessage('sendDirectMessage')
@@ -364,34 +343,72 @@ export class ChatRoomGateway
         payload,
       );
 
-      if (!message) {
-        return;
-      }
+      const receiver =
+        directMessage.user1.id === client.data.user.id
+          ? directMessage.user2
+          : directMessage.user1;
 
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
-      // TODO: add notification to sender
+      await this.emitDirectMessageList(receiver);
+
+      const sockets = await this.server
+        .in(client.data.chatRoomId)
+        .fetchSockets();
+      for (const socket of sockets) {
+        if (socket.data?.user?.id === receiver.id) {
+          return;
+        }
+      }
+      // NOTE: 이미 같은 채팅방에 접속되어 있으면 dm 알림을 보내지 않는다.
+      await this.emitNotification(receiver, message);
     } catch (error) {
       this.ChatRoomLogger.error(`[sendDirectMessage] ${error.message}`);
+    }
+  }
+
+  @SubscribeMessage('createDirectMessage')
+  async createDirectMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('receiverId') receiverId: string,
+  ) {
+    try {
+      if (!client.data?.user) {
+        throw new WsException('User not found');
+      }
+
+      const receiver = await this.usersService.getUserById(receiverId);
+      if (!receiver) {
+        throw new WsException('User not found');
+      }
+
+      const directMessage = await this.chatRoomService.createDirectMessage(
+        client.data.user,
+        receiver,
+      );
+
+      await this.clientJoinDirectMessage(client, directMessage);
+    } catch (error) {
+      this.ChatRoomLogger.error(`[createDirectMessage] ${error.message}`);
     }
   }
 
   async handleConnection(client: Socket) {
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
-      this.ChatRoomLogger.debug('[handleConnection] user not found');
+      this.ChatRoomLogger.error('[handleConnection] user not found');
       client.disconnect();
       return;
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
-    client.data.chatRoomId = 'lobby';
+    client.data.where = UserWhere.NONE;
     client.leave(client.id);
+    // TODO: after delete it
     await this.clinetJoinLobby(client);
   }
 
-  async handleDisconnect() {
-    //TODO: user가 속해있던 chat-room에서 user를 퇴장 시켜야함
-    // deleteChatRoomUser 사용
+  async handleDisconnect(client: Socket) {
+    //TODO: user가 속해있던 chat-room에서 나가기? 리프레쉬는 어떻게 처리?
     this.ChatRoomLogger.log(`chat-room disconnected`);
   }
 
@@ -402,10 +419,12 @@ export class ChatRoomGateway
     if (!directMessage) {
       throw new WsException('Direct Message not found');
     }
+    await this.leaveCurrentPosition(client);
 
-    client.leave('lobby');
     client.data.chatRoomId = 'DM' + directMessage.id;
+    client.data.where = UserWhere.DM;
     client.join(client.data.chatRoomId);
+    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', directMessage.messages);
   }
 
@@ -435,35 +454,33 @@ export class ChatRoomGateway
 
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
+    client.data.where = UserWhere.CHATROOM;
     client.join(client.data.chatRoomId);
+    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
 
-    // const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
-    // if (isUserIn) {
-    //   client.emit(
-    //     'getChatRoomUsers',
-    //     await this.chatRoomService.getChatRoomUsers(chatRoom),
-    //   );
-    //   return;
-    // }
-    // this.server
-    //   .to(client.data.chatRoomId)
-    //   .emit(
-    //     'getChatRoomUsers',
-    //     await this.chatRoomService.getChatRoomUsers(chatRoom),
-    //   );
-    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
+    const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
+    if (isUserIn) {
+      client.emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
+      );
+      return;
+    }
+    this.server
+      .to(client.data.chatRoomId)
+      .emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
+      );
     this.server
       .to('lobby')
       .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
-    // if (client.data?.chatRoomId !== 'lobby') {
-    //   client.leave(client.data.chatRoomId);
-    // }
-
     client.data.chatRoomId = 'lobby';
+    client.data.where = UserWhere.LOBBY;
     client.join('lobby');
     client.emit(
       'showChatRoomList',
@@ -485,6 +502,7 @@ export class ChatRoomGateway
     for (const socket of sockets) {
       if (socket.data?.user?.id === userId) {
         socket.emit('kickUser');
+        socket.leave(chatRoomId);
         await this.clinetJoinLobby(socket);
       }
     }
@@ -494,5 +512,60 @@ export class ChatRoomGateway
         'getChatRoomUsers',
         await this.chatRoomService.getChatRoomUsers(chatRoom),
       );
+  }
+
+  async emitNotification(receiver: UserEntity, message: MessageEntity) {
+    const sockets = await this.server.fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.userId === receiver.id) {
+        socket.emit('newDirectMessage', {
+          name: message.user.name,
+          message: message.message,
+        });
+      }
+    }
+  }
+
+  async emitDirectMessageList(receiver: UserEntity) {
+    const sockets = await this.server.fetchSockets();
+    for (const socket of sockets) {
+      if (
+        socket.data.user.id === receiver.id &&
+        socket.data?.where === UserWhere.LOBBY
+      ) {
+        socket.emit(
+          'showDirectMessageList',
+          await this.chatRoomService.getDirectMessages(receiver),
+        );
+      }
+    }
+  }
+
+  async leaveCurrentPosition(client: Socket) {
+    if (client.data.where === UserWhere.LOBBY) {
+      client.leave('lobby');
+    } else if (client.data.where === UserWhere.CHATROOM) {
+      await this.leaveChatRoom(client);
+    } else if (client.data.where === UserWhere.DM) {
+      await this.leaveDirectMessage(client);
+    }
+    client.data.where = UserWhere.NONE;
+    client.data.chatRoomId = null;
+  }
+
+  async leaveChatRoom(client: Socket) {
+    const chatRoom = await this.chatRoomValidation.validateUserInChatRoom(
+      client,
+    );
+    // NOTE: 만약 해당 방에 같은 아이디로 로그인된 유저가 있다면
+    // chatRoomUser를 삭제하면 안됨
+    client.leave(client.data.chatRoomId);
+    const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
+    if (!isUserIn) {
+      await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+      this.server
+        .to('lobby')
+        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+    }
   }
 }

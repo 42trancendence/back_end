@@ -5,10 +5,16 @@ import { FriendShipEntity } from './entities/friendship.entity';
 import { FriendService } from './friend.service';
 import { UsersModule } from 'src/users/users.module';
 import { FriendGateway } from './gateway/friend.gateway';
+import { DefaultGateway } from './gateway/default.gateway';
 
 @Module({
   imports: [TypeOrmModule.forFeature([FriendShipEntity]), UsersModule],
-  providers: [FriendService, FriendShipRepository, FriendGateway],
+  providers: [
+    FriendService,
+    FriendShipRepository,
+    DefaultGateway,
+    FriendGateway,
+  ],
   exports: [FriendShipRepository],
 })
 export class FriendModule {}

@@ -10,12 +10,14 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { Namespace, Socket } from 'socket.io';
+import { instrument } from '@socket.io/admin-ui';
+import { Namespace, Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 import { FriendNameDto } from 'src/users/dto/friend-name.dto';
@@ -29,14 +31,14 @@ import { FriendService } from '../friend.service';
 @UseFilters(new WsExceptionFilter())
 @UseGuards(WsAuthGuard)
 @WebSocketGateway({
-  namespace: 'friend',
+  namespace: '/friend',
   cors: {
     origin: 'http://localhost:4000',
     methods: ['GET', 'POST'],
     credentials: true,
   },
 })
-export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class FriendGateway implements OnGatewayDisconnect, OnGatewayConnection {
   @WebSocketServer() server: Namespace;
   private readonly friendWsLogger = new Logger('FriendGateway');
   constructor(
@@ -105,6 +107,7 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @getUserBySocket() user: UserEntity,
   ) {
     try {
+      console.log(client.data);
       this.friendWsLogger.debug(
         `[updateActiveStatus event] client: ${user.name} status: ${status}`,
       );
