@@ -9,9 +9,6 @@ export class WsExceptionFilter implements ExceptionFilter {
     const message = exception.message;
     console.log(message);
 
-    client.emit('exception', {
-      message,
-    });
-    client.disconnect();
+    client.emit('tokenError', 401, message);
   }
 }

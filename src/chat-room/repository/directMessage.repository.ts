@@ -48,8 +48,8 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
   ): Promise<DirectMessageEntity> {
     const directMessage = await this.findOne({
       where: [
-        { user1: user1, user2: user2 },
-        { user1: user2, user2: user1 },
+        { user1: { id: user1.id }, user2: { id: user2.id } },
+        { user1: { id: user2.id }, user2: { id: user1.id } },
       ],
     });
     return directMessage;

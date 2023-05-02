@@ -9,6 +9,17 @@ import { ChatRoomRole } from './enum/chat-room-role.enum';
 @Injectable()
 export class ChatRoomValidation {
   constructor(private chatRoomService: ChatRoomService) {}
+
+  async validateUser(client: Socket) {
+    if (!client.data?.user) {
+      throw new WsException('User not found');
+    }
+
+    if (!client.data?.chatRoomId || !client.rooms.has(client.data.chatRoomId)) {
+      throw new WsException('User not in chat');
+    }
+  }
+
   async validateUserInLobby(client: Socket) {
     if (!client.data?.user) {
       throw new WsException('User not found');
@@ -38,7 +49,7 @@ export class ChatRoomValidation {
     }
 
     const directMessage = await this.chatRoomService.getDirectMessageById(
-      client.data.ChatRoomId,
+      client.data.chatRoomId,
     );
     if (!directMessage) {
       throw new WsException('Direct message not found');

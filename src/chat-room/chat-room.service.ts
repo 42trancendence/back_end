@@ -11,6 +11,8 @@ import { DirectMessageEntity } from './entities/directMessage.entity';
 import { WsException } from '@nestjs/websockets';
 import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
 import { ChatRoomRole } from './enum/chat-room-role.enum';
+import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
+import { Socket } from 'socket.io';
 
 @Injectable()
 export class ChatRoomService {
@@ -41,7 +43,6 @@ export class ChatRoomService {
       chatRoom,
       user,
     );
-
     if (chatRoomUser) {
       if (chatRoomUser.isBanned) {
         throw new WsException('You are banned from this chat room');
@@ -53,6 +54,12 @@ export class ChatRoomService {
 
   async getChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
     return await this.chatRoomUserRepository.getChatRoomUser(chatRoom, user);
+  }
+
+  async getChatRoomUsers(
+    chatRoom: ChatRoomEntity,
+  ): Promise<ChatRoomUserEntity[]> {
+    return await this.chatRoomUserRepository.getChatRoomUsers(chatRoom);
   }
 
   async createDirectMessage(
@@ -80,10 +87,10 @@ export class ChatRoomService {
     await this.directMessageRepository.toggleBlockUser(directMessage, user);
   }
 
-  async toggleBanUser(
+  async validationIsNormalUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
-  ): Promise<boolean> {
+  ): Promise<ChatRoomUserEntity> {
     const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
       chatRoom,
       user,
@@ -92,8 +99,16 @@ export class ChatRoomService {
       throw new WsException('User is not in this chat room');
     }
     if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
-      throw new WsException('User is not an normal');
+      throw new WsException('User is not an admin');
     }
+    return chatRoomUser;
+  }
+
+  async toggleBanUser(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+  ): Promise<boolean> {
+    const chatRoomUser = await this.validationIsNormalUser(chatRoom, user);
     return await this.chatRoomUserRepository.toggleBanUser(chatRoomUser);
   }
 
@@ -101,16 +116,7 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<void> {
-    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
-      chatRoom,
-      user,
-    );
-    if (!chatRoomUser) {
-      throw new WsException('User is not in this chat room');
-    }
-    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
-      throw new WsException('User is not an normal');
-    }
+    const chatRoomUser = await this.validationIsNormalUser(chatRoom, user);
     await this.chatRoomUserRepository.setUserRole(
       chatRoomUser,
       ChatRoomRole.ADMIN,
@@ -118,17 +124,13 @@ export class ChatRoomService {
   }
 
   async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
-    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
-      chatRoom,
-      user,
-    );
-    if (!chatRoomUser) {
-      throw new WsException('User is not in this chat room');
-    }
-    if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
-      throw new WsException('User is not an normal');
-    }
+    const chatRoomUser = await this.validationIsNormalUser(chatRoom, user);
     await this.chatRoomUserRepository.setMuteUser(chatRoomUser, true);
+  }
+
+  async setKickUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
+    const chatRoomUser = await this.validationIsNormalUser(chatRoom, user);
+    await this.chatRoomUserRepository.deleteChatRoomUser(chatRoomUser);
   }
 
   async getDirectMessage(
@@ -199,11 +201,11 @@ export class ChatRoomService {
     payload: string,
   ): Promise<MessageEntity> {
     if (directMessage.user1 === user && directMessage.isBlockedByUser2) {
-      return;
+      throw new WsException('You are blocked by this user');
     }
 
     if (directMessage.user2 === user && directMessage.isBlockedByUser1) {
-      return;
+      throw new WsException('You are blocked by this user');
     }
 
     const message = new MessageEntity();
@@ -215,15 +217,50 @@ export class ChatRoomService {
     return message;
   }
 
+  async isUserInChatRoom(client: Socket): Promise<boolean> {
+    const sockets = await client.to(client.data.chatRoomId).fetchSockets();
+    for (const socket of sockets) {
+      if (socket.data?.user?.id === client.data.user.id) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   async deleteChatRoom(chatRoom: ChatRoomEntity) {
     await this.chatRoomRepository.deleteChatRoom(chatRoom);
+  }
+
+  async deleteChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      return;
+    }
+    await this.chatRoomUserRepository.deleteChatRoomUser(chatRoomUser);
+    const chatRoomUsers = await this.getChatRoomUsers(chatRoom);
+
+    // NOTE: 만약 나가는 유저가 그방의 마지막 유저면 방을 삭제해야함
+    if (chatRoomUsers.length === 0) {
+      await this.deleteChatRoom(chatRoom);
+      return;
+    }
+
+    // NOTE: 만약 나가는 유저가 방장이라면 방장을 위임해야함
+    if (chatRoomUser.role === ChatRoomRole.ADMIN) {
+      await this.chatRoomUserRepository.setUserRole(
+        chatRoomUsers[0],
+        ChatRoomRole.ADMIN,
+      );
+    }
   }
 
   async updateChatRoom(
     chatRoom: ChatRoomEntity,
     updateChatRoomDto: UpdateChatRoomDto,
   ) {
-    chatRoom.name = updateChatRoomDto.name;
     chatRoom.type = updateChatRoomDto.type;
     chatRoom.password = updateChatRoomDto.password;
     await this.chatRoomRepository.save(chatRoom);
