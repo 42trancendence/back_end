@@ -15,7 +15,7 @@ export class GameManager {
       ) {
         // 게임 종료 뒤 결과 저장하고 방 폭파
         game.setGameStatus(GameStatus.END);
-        gameService.updateGameStatus(game.getRoomId(), GameStatus.END);
+        gameService.updateGameStats(game);
         this.deleteGameByRoomId(game.getRoomId());
         server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
         server.to(game.getRoomId()).emit(

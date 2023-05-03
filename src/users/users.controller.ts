@@ -31,6 +31,7 @@ import {
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { CheckUserNameDto } from './dto/check-user-name.dto';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Controller('users')
 @UseGuards(AuthGuard('access-jwt'))
@@ -48,8 +49,20 @@ export class UsersController {
   @ApiOperation({ summary: '내 정보 조회' })
   @ApiOkResponse({ description: '성공', type: UserEntity })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserEntity> {
+    // async getMyInfo(): Promise<UserEntity> {
     this.logger.log('GET users/me');
     return user;
+    // return this.usersService.getGameHistory(user.id);
+  }
+
+  @Get('game-history')
+  @ApiOperation({ summary: '내 게임 기록 조회' })
+  @ApiOkResponse({ description: '성공', type: [UserEntity] })
+  async getMyGameHistory(
+    @getUser() user: UserEntity,
+  ): Promise<GameStatsEntity[]> {
+    this.logger.log('GET users/game-history');
+    return this.usersService.getGameHistory(user.id);
   }
 
   @Get('name')

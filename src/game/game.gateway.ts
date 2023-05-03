@@ -11,6 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
+import { UsersService } from 'src/users/users.service';
 import { GameService } from './game.service';
 import { GameManager } from './classes/gameManager.class';
 import {
@@ -23,7 +24,7 @@ import { GameStatus, GameVariable } from './constants/gameVariable';
 @WebSocketGateway({
   namespace: 'game',
   cors: {
-    origin: 'http://localhost:4000/lobby/game',
+    origin: 'http://localhost:4000/lobby/overview',
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -35,6 +36,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private gameService: GameService,
     private authService: AuthService,
+    private usersService: UsersService,
   ) {}
 
   private gameManager: GameManager = new GameManager();
@@ -52,7 +54,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    this.WsLogger.debug(`handleConnection: ${client.id}`);
+    this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
+    console.log(`복구: ${client.recovered}`);
+
+    // TODO
+    // 1. 이전에 로그인한 유저인지 확인한다.
+    if (client.data?.user) {
+      this.WsLogger.debug(
+        `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
+      );
+      return;
+    }
+
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
@@ -62,6 +75,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 이미 접속한 유저라면
     const roomId = await this.gameService.getRoomIdByUserId(user.id);
     if (roomId) {
+      // TODO
+      // 1. 이미 접속한 유저라면, overview로 보낸다.
+
       client.join(roomId);
       // REFACTOR
       // 1. user 로 바로 받는다 (@exclude 사용)
@@ -112,37 +128,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('getLeaveGame', 'delete');
     client.emit('getLeaveGame', 'leave');
 
+    // client.emit('kickUser');
+
     this.WsLogger.debug(`client disconnected: : ${client.id}`);
   }
 
-  // @SubscribeMessage('check')
-  // checkAll(@ConnectedSocket() client: Socket) {
-  //   console.log('rooms', this.server.adapter['rooms']);
-  //   console.log('socketId', client.id);
-  //   client.emit(
-  //     'check',
-  //     `
-  //     gameAll: ${JSON.stringify(this.gameManager)},
-  //     `,
+  // @SubscribeMessage('getGameHistory')
+  // async getGameHistory(@ConnectedSocket() client: Socket) {
+  //   // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
+  //   // if (!client.data?.user) {
+  //   //   client.disconnect();
+  //   //   client.emit('getGameList', 'disconnected');
+  //   //   throw new WsException('Unauthorized');
+  //   // }
+  //   const gameHistory = await this.usersService.getGameHistory(
+  //     client.data.user.id,
   //   );
-  // }
 
-  @SubscribeMessage('getGameList')
-  async getGameList(@ConnectedSocket() client: Socket) {
-    // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
-    // if (!client.data?.user) {
-    //   client.disconnect();
-    //   client.emit('getGameList', 'disconnected');
-    //   throw new WsException('Unauthorized');
-    // }
-    const gameList = await this.gameService.getGameList();
-    if (!gameList) {
-      this.WsLogger.error('gameList is null');
-      return;
-    }
-    client.emit('getGameList', gameList);
-    this.WsLogger.log(`User ${client.id}: get gameList`);
-  }
+  //   console.log('gameHistory', gameHistory);
+
+  //   if (!gameHistory) {
+  //     this.WsLogger.error('gameGameHistory is null');
+  //     return;
+  //   }
+  //   client.emit('getGameHistory', gameHistory);
+  //   this.WsLogger.log(`User ${client.id}: get gameList`);
+  // }
 
   @SubscribeMessage('postMatching')
   async postMatching(@ConnectedSocket() client: Socket) {
@@ -212,7 +223,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 처음 게임방을 나가는 경우 게임방을 삭제한다.
     // 게임방에 입장해 있는 유저들에게 게임방을 나가라고 알린다.
     const game = this.gameManager.getGameByRoomId(roomId);
-    if (game && !game.isWatcher(client.data.user.id)) {
+    if (game) {
       this.gameManager.deleteGameByRoomId(roomId);
       if (game.getGameStatus() == GameStatus.WAIT) {
         await this.gameService.deleteGameByRoomId(game.getRoomId());
@@ -226,10 +237,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
     client.emit('postLeaveGame', 'leave');
-    if (game && game.isWatcher(client.data.user.id)) {
-      game.deleteWatcher(client.data.user.id);
-      client.to(roomId).emit('getWatcher', game.getWatcherList());
-    }
     this.WsLogger.log(`User [${data.user.name}] left game [${roomId}]`);
   }
 
@@ -292,39 +299,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } else if (!game.isDifficulty()) {
       ball.setSpeed(GameVariable.normalBallSpeed);
     }
-  }
-
-  @SubscribeMessage('postWatching')
-  async postWatching(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() roomId: string,
-  ) {
-    if (!client.data?.user) {
-      client.disconnect();
-      client.emit('getWatching', 'disconnected');
-      throw new WsException('Unauthorized');
-    }
-
-    // 이미 게임에 참여하고 있는 유저인지 확인
-    // if (client.data.roomId != GameStatus.LOBBY) {
-    //   this.WsLogger.log(`User ${client.id} already in game`);
-    //   client.emit('getWatching', 'already');
-    //   return;
-    // }
-    // 3. 게임방에 있는 유저들에게 새로운 유저가 입장했다고 알린다.
-    const game = this.gameManager.getGameByRoomId(roomId);
-    if (game) {
-      this.WsLogger.log(`Not exist game [${roomId}]`);
-    }
-    if (game.getWatcherList().length > 5) {
-      this.WsLogger.log(`Game [${roomId}] is full`);
-      return;
-    }
-    client.leave(GameStatus.LOBBY);
-    client.join(roomId);
-    client.data.roomId = roomId;
-    game.addWatcher(client.data.user);
-    this.server.to(roomId).emit('getWatching', game.getWatcherList());
   }
 
   @SubscribeMessage('postKey')

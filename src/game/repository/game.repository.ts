@@ -32,14 +32,30 @@ export class GameRepository extends Repository<GameStatsEntity> {
     return await this.save(newGameState);
   }
 
-  async updateGameStatus(roomId: string, status: string) {
-    return await this.update(roomId, { status });
+  async saveGameStats(game: Game) {
+    const score = game.getScore();
+
+    let winnerName = '';
+    let loserName = '';
+    if (score[0] > score[1]) {
+      winnerName = game.getPlayer1Name();
+      loserName = game.getPlayer2Name();
+    } else {
+      winnerName = game.getPlayer2Name();
+      loserName = game.getPlayer1Name();
+    }
+
+    return await this.update(game.getRoomId(), {
+      player1Score: score[0],
+      player2Score: score[1],
+      status: game.getGameStatus(),
+      winnerName: winnerName,
+      loserName: loserName,
+    });
   }
 
-  async getGameList() {
-    return await this.createQueryBuilder('game')
-      .where('game.status != :status', { status: 'end' })
-      .getMany();
+  async updateGameStatus(roomId: string, status: string) {
+    return await this.update(roomId, { status });
   }
 
   async getRoomIdByUserId(userId: string) {
@@ -55,12 +71,8 @@ export class GameRepository extends Repository<GameStatsEntity> {
       .getOne(); // 가장 최근 항목 하나만 반환
   }
 
-  async getGameStateById(roomId: string) {
+  async getGameStateById(roomId: string): Promise<GameStatsEntity> {
     return await this.findOne({ where: { roomId: roomId } });
-  }
-
-  async deleteGameByRoomId(roomId: string) {
-    return await this.delete({ roomId });
   }
 
   async getRoomIdByTitle(title: string) {
@@ -68,5 +80,9 @@ export class GameRepository extends Repository<GameStatsEntity> {
       where: { title: title },
     });
     return gameStats.roomId;
+  }
+
+  async deleteGameByRoomId(roomId: string) {
+    return await this.delete({ roomId });
   }
 }

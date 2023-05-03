@@ -2,18 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { GameRepository } from './repository/game.repository';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
-import { Game } from './classes/game.class';
 import { GameManager } from './classes/gameManager.class';
 import { Logger } from '@nestjs/common';
 import { PlayerList } from './classes/playerList.class';
 import { WsException } from '@nestjs/websockets';
 import * as uuid from 'uuid';
 import { GameStatus } from './constants/gameVariable';
+import { UserRepository } from 'src/users/repository/user.repository';
+import { Game } from './classes/game.class';
 
 @Injectable()
 export class GameService {
   constructor(
     private gameRepository: GameRepository,
+    private userRepository: UserRepository,
     private authService: AuthService,
   ) {}
   private readonly WsLogger = new Logger('GameWsLogger');
@@ -51,14 +53,10 @@ export class GameService {
     }
   }
 
-  async getGameList() {
-    const gameList = await this.gameRepository.getGameList();
-    return gameList;
-  }
-
-  async updateGameStatus(roomId: string, status: string) {
-    return await this.gameRepository.updateGameStatus(roomId, status);
-  }
+  // async getGameHistory(userId: string) {
+  //   const gameHistory = await this.userRepository.getGameHistory(userId);
+  //   return gameHistory;
+  // }
 
   async getPlayerBySocket(client: Socket, players: PlayerList) {
     const user = await this.authService.getUserBySocket(client);
@@ -83,11 +81,15 @@ export class GameService {
     return null;
   }
 
-  async deleteGameByRoomId(roomId: string) {
-    await this.gameRepository.deleteGameByRoomId(roomId);
+  async updateGameStats(game: Game) {
+    return await this.gameRepository.saveGameStats(game);
   }
 
-  async getRoomIdByTitle(title: string) {
-    return await this.gameRepository.getRoomIdByTitle(title);
+  async updateGameStatus(roomId: string, status: GameStatus) {
+    return await this.gameRepository.updateGameStatus(roomId, status);
+  }
+
+  async deleteGameByRoomId(roomId: string) {
+    await this.gameRepository.deleteGameByRoomId(roomId);
   }
 }
