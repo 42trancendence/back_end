@@ -113,8 +113,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(client.id);
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
+    client.emit('getGameHistory');
     // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
-    this.server.to(GameStatus.LOBBY).emit('connectUser', client.data.user.name);
+    // this.server.to(GameStatus.LOBBY).emit('connectUser', client.data.user.name);
     this.WsLogger.log(`User [${user.name}] connected`);
   }
 
