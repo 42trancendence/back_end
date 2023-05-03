@@ -33,7 +33,9 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
   async getChatRoomUsers(
     chatRoom: ChatRoomEntity,
   ): Promise<ChatRoomUserEntity[]> {
-    return await this.find({ where: { chatRoom, isBanned: false } });
+    return await this.find({
+      where: { chatRoom: { id: chatRoom.id }, isBanned: false },
+    });
   }
 
   async setMuteUser(

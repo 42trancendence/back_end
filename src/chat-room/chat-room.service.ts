@@ -31,7 +31,7 @@ export class ChatRoomService {
     const chatRoom = await this.chatRoomRepository.createNewChatRoom(
       createChatRoomDto,
     );
-    await this.createChatRoomUser(chatRoom, user, ChatRoomRole.ADMIN);
+    await this.createChatRoomUser(chatRoom, user, ChatRoomRole.OWNER);
   }
 
   async createChatRoomUser(
@@ -249,10 +249,10 @@ export class ChatRoomService {
     }
 
     // NOTE: 만약 나가는 유저가 방장이라면 방장을 위임해야함
-    if (chatRoomUser.role === ChatRoomRole.ADMIN) {
+    if (chatRoomUser.role === ChatRoomRole.OWNER) {
       await this.chatRoomUserRepository.setUserRole(
         chatRoomUsers[0],
-        ChatRoomRole.ADMIN,
+        ChatRoomRole.OWNER,
       );
     }
   }

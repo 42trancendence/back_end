@@ -32,7 +32,7 @@ import { EventsModule } from './events/events.module';
     TwoFactorAuthModule,
     FriendModule,
     GameModule,
-    EventsModule
+    EventsModule,
   ],
   controllers: [],
   providers: [],
