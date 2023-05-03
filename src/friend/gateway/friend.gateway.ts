@@ -107,7 +107,6 @@ export class FriendGateway implements OnGatewayDisconnect, OnGatewayConnection {
     @getUserBySocket() user: UserEntity,
   ) {
     try {
-      console.log(client.data);
       this.friendWsLogger.debug(
         `[updateActiveStatus event] client: ${user.name} status: ${status}`,
       );

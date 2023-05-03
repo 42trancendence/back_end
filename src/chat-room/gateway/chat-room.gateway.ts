@@ -228,6 +228,7 @@ export class ChatRoomGateway
     @MessageBody(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
   ) {
     try {
+      this.ChatRoomLogger.debug(`[createChatRoom]`);
       await this.chatRoomValidation.validateCreateChatRoom(
         client,
         createChatRoomDto.name,
@@ -238,11 +239,11 @@ export class ChatRoomGateway
         client.data.user,
       );
 
-      await this.clientJoinChatRoom(
-        client,
-        createChatRoomDto.name,
-        createChatRoomDto.password,
-      );
+      // await this.clientJoinChatRoom(
+      //   client,
+      //   createChatRoomDto.name,
+      //   createChatRoomDto.password,
+      // );
     } catch (error) {
       this.ChatRoomLogger.error(`[createChatRoom] ${error.message}`);
     }
@@ -270,6 +271,7 @@ export class ChatRoomGateway
   @SubscribeMessage('enterChatLobby')
   async enterChatLobby(@ConnectedSocket() client: Socket) {
     try {
+      this.ChatRoomLogger.debug(`[enterChatLobby]`);
       if (!client.data?.user) {
         throw new WsException('User not found');
       }
@@ -285,6 +287,7 @@ export class ChatRoomGateway
   @SubscribeMessage('leaveChatPage')
   async leaveChatPage(@ConnectedSocket() client: Socket) {
     try {
+      this.ChatRoomLogger.debug(`[leaveChatPage]`);
       if (!client.data?.user) {
         throw new WsException('User not found');
       }
@@ -305,7 +308,7 @@ export class ChatRoomGateway
       }
 
       const directMessage = await this.chatRoomService.getDirectMessageById(
-        directMessageId,
+        `DM` + directMessageId,
       );
 
       if (!directMessage) {
@@ -336,6 +339,10 @@ export class ChatRoomGateway
     try {
       const directMessage =
         await this.chatRoomValidation.validateUserInDirectMessage(client);
+
+      this.ChatRoomLogger.debug(
+        `[sendDirectMessage] ${client.data.user.name} send direct message`,
+      );
 
       const message = await this.chatRoomService.saveDirectMessage(
         client.data.user,
@@ -403,8 +410,6 @@ export class ChatRoomGateway
     client.data.user = user;
     client.data.where = UserWhere.NONE;
     client.leave(client.id);
-    // TODO: after delete it
-    await this.clinetJoinLobby(client);
   }
 
   async handleDisconnect(client: Socket) {
@@ -455,7 +460,6 @@ export class ChatRoomGateway
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
     client.data.where = UserWhere.CHATROOM;
-    client.join(client.data.chatRoomId);
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit('getChatRoomMessages', chatRoom.messages);
 
@@ -465,17 +469,19 @@ export class ChatRoomGateway
         'getChatRoomUsers',
         await this.chatRoomService.getChatRoomUsers(chatRoom),
       );
-      return;
+      client.join(client.data.chatRoomId);
+    } else {
+      client.join(client.data.chatRoomId);
+      this.server
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
+      this.server
+        .to('lobby')
+        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
     }
-    this.server
-      .to(client.data.chatRoomId)
-      .emit(
-        'getChatRoomUsers',
-        await this.chatRoomService.getChatRoomUsers(chatRoom),
-      );
-    this.server
-      .to('lobby')
-      .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
   }
 
   async clinetJoinLobby(client: Socket | RemoteSocket<DefaultEventsMap, any>) {
@@ -517,8 +523,9 @@ export class ChatRoomGateway
   async emitNotification(receiver: UserEntity, message: MessageEntity) {
     const sockets = await this.server.fetchSockets();
     for (const socket of sockets) {
-      if (socket.data?.userId === receiver.id) {
+      if (socket.data?.user?.id === receiver.id) {
         socket.emit('newDirectMessage', {
+          id: message.directMessage.id,
           name: message.user.name,
           message: message.message,
         });
@@ -550,7 +557,7 @@ export class ChatRoomGateway
       await this.leaveDirectMessage(client);
     }
     client.data.where = UserWhere.NONE;
-    client.data.chatRoomId = null;
+    client.data.chatRoomId = '';
   }
 
   async leaveChatRoom(client: Socket) {
@@ -563,6 +570,12 @@ export class ChatRoomGateway
     const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
     if (!isUserIn) {
       await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+      this.server
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
       this.server
         .to('lobby')
         .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());

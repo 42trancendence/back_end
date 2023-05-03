@@ -3,7 +3,6 @@ import { AppModule } from './app.module';
 import * as session from 'express-session';
 import * as cookieParser from 'cookie-parser';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { SocketIoAdapter } from './util/adapter/socket-io.adapter';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -38,7 +37,6 @@ async function bootstrap() {
     }),
   );
   app.use(cookieParser());
-  app.useWebSocketAdapter(new SocketIoAdapter(app));
   await app.listen(3000);
 }
 bootstrap();
