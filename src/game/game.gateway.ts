@@ -179,6 +179,20 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
 
+    // console.log('client.data.roomId', client.data.roomId);
+    let flag = false;
+    allSockets.forEach((socket) => {
+      console.log('socket.data.roomId', socket.data.roomId);
+      if (socket.data.user.id == client.data.user.id) {
+        flag = true;
+        return;
+      }
+    });
+    if (flag != false) {
+      client.emit('getMatching', 'already');
+      return;
+    }
+
     client.leave(GameStatus.LOBBY);
     client.join(GameStatus.MATCHING);
     client.data.roomId = GameStatus.MATCHING;

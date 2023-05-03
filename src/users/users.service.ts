@@ -53,8 +53,8 @@ export class UsersService {
       ...user.gameStatsAsPlayer1,
       ...user.gameStatsAsPlayer2,
     ].sort((a, b) => {
-      // 날짜 순으로 정렬 (빠른 날짜부터 최근 날짜)
-      return a.createAt.getTime() - b.createAt.getTime();
+      // 날짜 순으로 정렬 (최근날짜부터)
+      return b.createAt.getTime() - a.createAt.getTime();
     });
     return combinedGameStats;
   }
