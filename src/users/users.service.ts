@@ -4,6 +4,7 @@ import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { Status } from './enum/status.enum';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Injectable()
 export class UsersService {
@@ -43,5 +44,18 @@ export class UsersService {
 
   async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
     return await this.userRepository.updateUserInfo(updateUserDto, user);
+  }
+
+  async getGameHistory(userId: string): Promise<GameStatsEntity[]> {
+    const user = await this.userRepository.getGameHistory(userId);
+
+    const combinedGameStats = [
+      ...user.gameStatsAsPlayer1,
+      ...user.gameStatsAsPlayer2,
+    ].sort((a, b) => {
+      // 날짜 순으로 정렬 (최근날짜부터)
+      return b.createAt.getTime() - a.createAt.getTime();
+    });
+    return combinedGameStats;
   }
 }

@@ -11,6 +11,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
+import { UsersService } from 'src/users/users.service';
 import { GameService } from './game.service';
 import { GameManager } from './classes/gameManager.class';
 import {
@@ -25,7 +26,7 @@ import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 @WebSocketGateway({
   namespace: 'game',
   cors: {
-    origin: 'http://localhost:4000/lobby/game',
+    origin: 'http://localhost:4000/lobby/overview',
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -37,6 +38,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(
     private gameService: GameService,
     private authService: AuthService,
+    private usersService: UsersService,
   ) {}
 
   private gameManager: GameManager = new GameManager();
@@ -54,7 +56,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   async handleConnection(client: Socket) {
-    this.WsLogger.debug(`Client connected: ${client.id}`);
+    this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
+    console.log(`복구: ${client.recovered}`);
+
+    // TODO
+    // 1. 이전에 로그인한 유저인지 확인한다.
+    if (client.data?.user) {
+      this.WsLogger.debug(
+        `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
+      );
+      return;
+    }
+
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
@@ -64,9 +77,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 이미 접속한 유저라면
     const roomId = await this.gameService.getRoomIdByUserId(user.id);
     if (roomId) {
+      // TODO
+      // 1. 이미 접속한 유저라면, overview로 보낸다.
+
       client.join(roomId);
       // REFACTOR
-      // 1. user 로 바로 받는다 (@exlude 사용)
+      // 1. user 로 바로 받는다 (@exclude 사용)
       client.data.user = {
         id: user.id,
         name: user.name,
@@ -81,13 +97,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       // client.emit('startGame', roomId);
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
-
+    // socketio 에서 재접속 설정을 했을 경우. (설정하고 확인해보기)
     if (client.data?.user) {
       this.WsLogger.debug(
         `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
       );
       return;
     }
+
     client.data.user = {
       id: user.id,
       name: user.name,
@@ -96,53 +113,50 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     };
 
     client.leave(client.id);
-    client.join('lobby');
+    client.join(GameStatus.LOBBY);
+    client.data.roomId = GameStatus.LOBBY;
+    client.emit('getGameHistory');
     // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
-    this.server.to('lobby').emit(`connectUser: ${client.data.user.id}`);
+    // this.server.to(GameStatus.LOBBY).emit('connectUser', client.data.user.name);
     this.WsLogger.log(`User [${user.name}] connected`);
   }
 
   async handleDisconnect(client: Socket) {
     //TODO
     // 1. 자동 매칭 신청한 유저 처리
-    client.leave('matching');
+    client.leave(GameStatus.MATCHING);
     client.emit('getCancelMatching');
     // 2. 게임 방에서 대기중인 유저 처리
     client.leave(client.data.roomId);
     client.emit('getLeaveGame', 'delete');
     client.emit('getLeaveGame', 'leave');
 
+    // client.emit('kickUser');
+
     this.WsLogger.debug(`client disconnected: : ${client.id}`);
   }
 
-  @SubscribeMessage('check')
-  checkAll(@ConnectedSocket() client: Socket) {
-    console.log('rooms', this.server.adapter['rooms']);
-    console.log('socketId', client.id);
-    client.emit(
-      'check',
-      `
-      gameAll: ${JSON.stringify(this.gameManager)},
-      `,
-    );
-  }
+  // @SubscribeMessage('getGameHistory')
+  // async getGameHistory(@ConnectedSocket() client: Socket) {
+  //   // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
+  //   // if (!client.data?.user) {
+  //   //   client.disconnect();
+  //   //   client.emit('getGameList', 'disconnected');
+  //   //   throw new WsException('Unauthorized');
+  //   // }
+  //   const gameHistory = await this.usersService.getGameHistory(
+  //     client.data.user.id,
+  //   );
 
-  @SubscribeMessage('getGameList')
-  async getGameList(@ConnectedSocket() client: Socket) {
-    // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
-    // if (!client.data?.user) {
-    //   client.disconnect();
-    //   client.emit('getGameList', 'disconnected');
-    //   throw new WsException('Unauthorized');
-    // }
-    const gameList = await this.gameService.getGameList();
-    if (!gameList) {
-      this.WsLogger.error('gameList is null');
-      return;
-    }
-    client.emit('getGameList', gameList);
-    this.WsLogger.log(`User ${client.id}: get gameList`);
-  }
+  //   console.log('gameHistory', gameHistory);
+
+  //   if (!gameHistory) {
+  //     this.WsLogger.error('gameGameHistory is null');
+  //     return;
+  //   }
+  //   client.emit('getGameHistory', gameHistory);
+  //   this.WsLogger.log(`User ${client.id}: get gameList`);
+  // }
 
   @SubscribeMessage('postMatching')
   async postMatching(@ConnectedSocket() client: Socket) {
@@ -152,14 +166,39 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new WsException('Unauthorized');
     }
 
-    const allSockets = await this.server.in('matching').fetchSockets();
+    // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
+    if (client.data.roomId != GameStatus.LOBBY) {
+      console.log('client.data.roomId', client.data.roomId);
+
+      client.emit('getMatching', 'already');
+      this.WsLogger.log(`User ${client.id}: already matching`);
+      return;
+    }
+
+    const allSockets = await this.server.in(GameStatus.MATCHING).fetchSockets();
     if (allSockets.length >= MAX_QUEUE_SIZE) {
       client.emit('getMatching', 'full');
       return;
     }
 
-    client.leave('lobby');
-    client.join('matching');
+    // console.log('client.data.roomId', client.data.roomId);
+    let flag = false;
+    allSockets.forEach((socket) => {
+      console.log('socket.data.roomId', socket.data.roomId);
+      if (socket.data.user.id == client.data.user.id) {
+        flag = true;
+        return;
+      }
+    });
+    if (flag != false) {
+      client.emit('getMatching', 'already');
+      return;
+    }
+
+    client.leave(GameStatus.LOBBY);
+    client.join(GameStatus.MATCHING);
+    client.data.roomId = GameStatus.MATCHING;
+    this.WsLogger.log(`User ${client.id}: matching`);
   }
 
   @SubscribeMessage('postCancelMatching')
@@ -170,32 +209,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       throw new WsException('Unauthorized');
     }
 
-    client.leave('matching');
-    client.join('lobby');
-    client.emit('getCancelMatching');
+    client.leave(GameStatus.MATCHING);
+    client.join(GameStatus.LOBBY);
+    client.data.roomId = GameStatus.LOBBY;
     const playerName = client.data.user.name;
-    this.WsLogger.log(`${playerName} is leave wait`);
-  }
-
-  @SubscribeMessage('joinSpectatorGame')
-  async joinSpectatorGame(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() roomId: string,
-  ) {
-    if (!client.data?.user) {
-      client.disconnect();
-      client.emit('postKey', 'disconnected');
-      throw new WsException('Unauthorized');
-    }
-
-    this.server.to(roomId).emit('joinGame', client.data.user);
-    client.leave('lobby');
-    client.join(roomId);
-    client.data.roomId = roomId;
-
-    // 게임에 참여하고 있는 유저들에게 새로운 유저가 입장했다고 알린다.
-    // 해당 유저는 게임에 참여해야 한다.
-    client.emit('joinSpectatorGame');
+    this.WsLogger.log(`${playerName} is leave match`);
   }
 
   @SubscribeMessage('postLeaveGame')
@@ -207,13 +225,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     if (!client.data?.user) {
       client.disconnect();
-      client.emit('postKey', 'disconnected');
+      client.emit('postLeaveGame', 'disconnected');
       throw new WsException('Unauthorized');
     }
     const data = client.data;
 
     const roomId = data.roomId;
-    if (client.data.roomId == 'lobby') {
+    if (client.data.roomId == GameStatus.LOBBY) {
       this.WsLogger.log(`User ${client.id} not in game`);
       client.emit('postLeaveGame', 'not in game');
       return;
@@ -222,9 +240,9 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 처음 게임방을 나가는 경우 게임방을 삭제한다.
     // 게임방에 입장해 있는 유저들에게 게임방을 나가라고 알린다.
     const game = this.gameManager.getGameByRoomId(roomId);
-    if (game != null) {
+    if (game) {
       this.gameManager.deleteGameByRoomId(roomId);
-      if (game.getGameStatus() == GameStatus.Wait) {
+      if (game.getGameStatus() == GameStatus.WAIT) {
         await this.gameService.deleteGameByRoomId(game.getRoomId());
       }
       this.server.to(roomId).emit('postLeaveGame', 'delete');
@@ -233,8 +251,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // 게임방에 입장해 있는 경우
     client.leave(roomId);
-    client.join('lobby');
-    client.data.roomId = 'lobby';
+    client.join(GameStatus.LOBBY);
+    client.data.roomId = GameStatus.LOBBY;
     client.emit('postLeaveGame', 'leave');
     this.WsLogger.log(`User [${data.user.name}] left game [${roomId}]`);
   }
@@ -243,7 +261,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async postReady(@ConnectedSocket() client: Socket) {
     if (!client.data?.user) {
       client.disconnect();
-      client.emit('postKey', 'disconnected');
+      client.emit('setStartGame', 'disconnected');
       throw new WsException('Unauthorized');
     }
     const data = client.data;
@@ -265,7 +283,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       this.WsLogger.log(`User ${data.user.name} is ready`);
     }
     if (game.isReady()) {
-      game.setGameStatus(GameStatus.Play);
+      game.setGameStatus(GameStatus.PLAY);
+      this.gameService.updateGameStatus(roomId, GameStatus.PLAY);
       this.server.to(roomId).emit('setStartGame', 'start');
       this.WsLogger.log(`Game ${roomId} started`);
     }
@@ -278,7 +297,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {
     if (!client.data?.user) {
       client.disconnect();
-      client.emit('postKey', 'disconnected');
+      client.emit('setStartGame', 'disconnected');
       throw new WsException('Unauthorized');
     }
 
@@ -297,31 +316,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     } else if (!game.isDifficulty()) {
       ball.setSpeed(GameVariable.normalBallSpeed);
     }
-  }
-
-  @SubscribeMessage('postWatching')
-  async postWatching(
-    @ConnectedSocket() client: Socket,
-    @MessageBody() title: string,
-  ) {
-    if (!client.data?.user) {
-      client.disconnect();
-      client.emit('postKey', 'disconnected');
-      throw new WsException('Unauthorized');
-    }
-    const roomId = await this.gameService.getRoomIdByTitle(title);
-    if (!roomId) {
-      client.emit('postWatching', 'disconnected');
-      this.WsLogger.log(`User ${client.data.name} not in game`);
-    }
-    client.join(roomId);
-    // 3. 게임방에 있는 유저들에게 새로운 유저가 입장했다고 알린다.
-    const game = this.gameManager.getGameByRoomId(roomId);
-    if (game) {
-      this.WsLogger.log(`Not exist game [${roomId}]`);
-    }
-    game.addWatcher(client.data.user.id);
-    this.server.to(roomId).emit('getWatching', game.getWatcher());
   }
 
   @SubscribeMessage('postKey')

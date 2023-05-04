@@ -5,6 +5,7 @@ import { UserEntity } from '../entities/user.entity';
 import { Status } from '../enum/status.enum';
 import { Not } from 'typeorm';
 import { UpdateUserDto } from '../dto/update-user.dto';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -68,5 +69,14 @@ export class UserRepository extends Repository<UserEntity> {
     // TODO: save avatarImageUrl
     // user.avatarImageUrl = updateUserDto.avatarImageUrl;
     await this.save(user);
+  }
+
+  async getGameHistory(userId: string): Promise<UserEntity> {
+    const user = await this.findOne({
+      where: { id: userId },
+      relations: ['gameStatsAsPlayer1', 'gameStatsAsPlayer2'],
+    });
+
+    return user;
   }
 }

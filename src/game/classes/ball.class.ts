@@ -16,6 +16,7 @@ export class Ball {
   private velocityY_: number;
   private velocityX_: number;
   private speed_: number;
+  private originSpeed_: number;
 
   constructor(
     x: number = GameVariable.canvasWidth / 2,
@@ -28,19 +29,21 @@ export class Ball {
     this.x_ = x;
     this.y_ = y;
     this.radius_ = radius;
-    this.velocityX_ = Math.random() * velocityX;
-    this.velocityY_ = Math.random() * velocityY;
+    this.velocityX_ = (Math.random() * 2 - 1) * velocityX;
+    this.velocityY_ = (Math.random() * 2 - 1) * velocityY;
     this.speed_ = speed;
+    this.originSpeed_ = speed;
   }
 
   public reset(): void {
     this.x_ = GameVariable.canvasWidth / 2;
     this.y_ = GameVariable.canvasHeight / 2;
-    this.speed_ = GameVariable.normalBallSpeed;
+    this.speed_ = this.originSpeed_;
     // TODO
     // 1. 공의 방향을 랜덤으로 설정
     // 2. 공의 속도를 랜덤으로 설정
-    this.velocityX_ = Math.random() * GameVariable.normalBallSpeed;
+    this.velocityX_ = (Math.random() * 2 - 1) * this.speed_;
+    this.velocityY_ = (Math.random() * 2 - 1) * this.speed_;
   }
 
   public move(paddle: Paddle, score: Array<number>): void {
@@ -62,10 +65,9 @@ export class Ball {
       const angle = collidePoint * (Math.PI / 4);
       const direction = this.x_ < GameVariable.canvasWidth / 2 ? 1 : -1;
 
+      this.speed_ += 1;
       this.velocityX_ = direction * this.speed_ * Math.cos(angle);
       this.velocityY_ = this.speed_ * Math.sin(angle);
-
-      this.speed_ += 0.1;
     }
 
     // Score update
@@ -106,6 +108,9 @@ export class Ball {
   }
 
   public setSpeed(speed: number): void {
+    this.velocityX_ = (Math.random() * 2 - 1) * speed;
+    this.velocityY_ = (Math.random() * 2 - 1) * speed;
     this.speed_ = speed;
+    this.originSpeed_ = speed;
   }
 }
