@@ -60,4 +60,40 @@ export class UsersService {
       .slice(0, 10);
     return combinedGameStats;
   }
+
+  async updateUserRating(
+    player1Name: string,
+    player2Name: string,
+    score: number[],
+  ) {
+    const [player1, player2] = await Promise.all([
+      this.getUserByName(player1Name),
+      this.getUserByName(player2Name),
+    ]);
+
+    if (score[0] === score[1]) return;
+
+    const isPlayer1Winner = score[0] > score[1];
+    const ratingChange = 10;
+
+    player1.rating = Math.max(
+      0,
+      Math.min(
+        10000,
+        player1.rating + (isPlayer1Winner ? ratingChange : -ratingChange),
+      ),
+    );
+    player2.rating = Math.max(
+      0,
+      Math.min(
+        10000,
+        player2.rating + (isPlayer1Winner ? -ratingChange : ratingChange),
+      ),
+    );
+
+    await Promise.all([
+      this.userRepository.updateUserRating(player1),
+      this.userRepository.updateUserRating(player2),
+    ]);
+  }
 }
