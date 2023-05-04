@@ -67,6 +67,7 @@ export class ChatRoomGateway
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
     } catch (error) {
       this.ChatRoomLogger.error(`[sendMessage] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -95,6 +96,7 @@ export class ChatRoomGateway
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[setAdminUser] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -238,14 +240,9 @@ export class ChatRoomGateway
         createChatRoomDto,
         client.data.user,
       );
-
-      // await this.clientJoinChatRoom(
-      //   client,
-      //   createChatRoomDto.name,
-      //   createChatRoomDto.password,
-      // );
     } catch (error) {
       this.ChatRoomLogger.error(`[createChatRoom] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -264,6 +261,7 @@ export class ChatRoomGateway
       await this.clientJoinChatRoom(client, roomName, password);
     } catch (error) {
       this.ChatRoomLogger.error(`[enterChatRoom] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -280,6 +278,7 @@ export class ChatRoomGateway
       await this.clinetJoinLobby(client);
     } catch (error) {
       this.ChatRoomLogger.error(`[enterChatLobby] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -318,6 +317,7 @@ export class ChatRoomGateway
       await this.clientJoinDirectMessage(client, directMessage);
     } catch (error) {
       this.ChatRoomLogger.error(`[enterDirectMessage] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -370,6 +370,7 @@ export class ChatRoomGateway
       await this.emitNotification(receiver, message);
     } catch (error) {
       this.ChatRoomLogger.error(`[sendDirectMessage] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -396,6 +397,7 @@ export class ChatRoomGateway
       await this.clientJoinDirectMessage(client, directMessage);
     } catch (error) {
       this.ChatRoomLogger.error(`[createDirectMessage] ${error.message}`);
+      return { error: error.message };
     }
   }
 
@@ -403,8 +405,9 @@ export class ChatRoomGateway
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       this.ChatRoomLogger.error('[handleConnection] user not found');
-      client.disconnect();
-      return;
+      throw new WsException('Unauthorized');
+      // client.disconnect();
+      // return;
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
