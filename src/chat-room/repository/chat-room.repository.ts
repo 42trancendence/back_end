@@ -25,6 +25,15 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
     return await this.find({
       where: [{ type: ChatRoomType.PUBLIC }, { type: ChatRoomType.PROTECTED }],
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        users: {
+          id: true,
+        },
+      },
+      relations: ['users'],
     });
   }
 

@@ -10,7 +10,6 @@ export class ChatRoomUserEntity {
 
   @ManyToOne(() => UserEntity, (user) => user.id, {
     onDelete: 'CASCADE',
-    eager: true,
   })
   user: UserEntity;
 

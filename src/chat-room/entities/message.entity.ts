@@ -16,7 +16,6 @@ export class MessageEntity {
 
   @ManyToOne(() => UserEntity, (user) => user.id, {
     onDelete: 'CASCADE',
-    eager: true,
   })
   user: UserEntity;
 

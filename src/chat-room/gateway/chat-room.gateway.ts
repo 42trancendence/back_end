@@ -64,6 +64,7 @@ export class ChatRoomGateway
         payload,
       );
 
+      //TODO: change message entity to message dto
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
     } catch (error) {
       this.ChatRoomLogger.error(`[sendMessage] ${error.message}`);
@@ -464,7 +465,11 @@ export class ChatRoomGateway
     client.data.chatRoomId = chatRoom.id.toString();
     client.data.where = UserWhere.CHATROOM;
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
-    client.emit('getChatRoomMessages', chatRoom.messages);
+    // client.emit('getChatRoomMessages', chatRoom.messages);
+    client.emit(
+      'getChatRoomMessages',
+      await this.chatRoomService.getChatRoomMessages(chatRoom),
+    );
 
     const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
     if (isUserIn) {
