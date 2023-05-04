@@ -79,4 +79,8 @@ export class UserRepository extends Repository<UserEntity> {
 
     return user;
   }
+
+  async updateUserRating(player: UserEntity) {
+    await this.save(player);
+  }
 }

@@ -46,6 +46,11 @@ export class UserEntity {
   @Column({ default: Status.OFFLINE })
   status: Status;
 
+  @ApiProperty({ description: '유저 랭킹 점수' })
+  @Exclude()
+  @Column({ default: 1000 })
+  rating: number;
+
   @OneToMany(() => GameStatsEntity, (game) => game.player1)
   gameStatsAsPlayer1: GameStatsEntity[];
 

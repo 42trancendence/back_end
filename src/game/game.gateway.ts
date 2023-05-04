@@ -51,7 +51,11 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }, SET_INTERVAL_TIME);
 
     setInterval(async () => {
-      this.gameManager.sendGame(this.server, this.gameService);
+      this.gameManager.sendGame(
+        this.server,
+        this.gameService,
+        this.usersService,
+      );
     }, GAME_FRAME);
   }
 
