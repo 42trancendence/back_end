@@ -11,4 +11,28 @@ export class MessageRepository extends Repository<MessageEntity> {
   async saveMessage(message: MessageEntity) {
     this.save(message);
   }
+
+  async getChatRoomMessages(chatRoomId: number): Promise<MessageEntity[]> {
+    return await this.find({
+      where: { chatRoom: { id: chatRoomId } },
+      select: {
+        user: {
+          name: true,
+        },
+      },
+      relations: ['user'],
+    });
+  }
+
+  async getDmMessages(dmId: number): Promise<MessageEntity[]> {
+    return await this.find({
+      where: { directMessage: { id: dmId } },
+      select: {
+        user: {
+          name: true,
+        },
+      },
+      relations: ['user'],
+    });
+  }
 }

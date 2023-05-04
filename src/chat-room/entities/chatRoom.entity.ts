@@ -22,10 +22,6 @@ export class ChatRoomEntity {
   @OneToMany(() => MessageEntity, (message) => message.chatRoom)
   messages: MessageEntity[];
 
-  @OneToMany(
-    () => ChatRoomUserEntity,
-    (chatRoomUser) => chatRoomUser.chatRoom,
-    { eager: true },
-  )
+  @OneToMany(() => ChatRoomUserEntity, (chatRoomUser) => chatRoomUser.chatRoom)
   users: ChatRoomUserEntity[];
 }

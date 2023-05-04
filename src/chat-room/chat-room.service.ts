@@ -257,6 +257,14 @@ export class ChatRoomService {
     }
   }
 
+  async getChatRoomMessages(chatRoom: ChatRoomEntity) {
+    return await this.messageRepository.getChatRoomMessages(chatRoom.id);
+  }
+
+  async getDmMessages(directMessage: DirectMessageEntity) {
+    return await this.messageRepository.getDmMessages(directMessage.id);
+  }
+
   async updateChatRoom(
     chatRoom: ChatRoomEntity,
     updateChatRoomDto: UpdateChatRoomDto,
