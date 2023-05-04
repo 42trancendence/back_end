@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UseFilters } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -20,7 +20,9 @@ import {
   SET_INTERVAL_TIME,
 } from './constants/game.constant';
 import { GameStatus, GameVariable } from './constants/gameVariable';
+import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 
+@UseFilters(new WsExceptionFilter())
 @WebSocketGateway({
   namespace: 'game',
   cors: {

@@ -38,7 +38,7 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   }
 
   async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
-    await this.remove(chatRoom);
+    await this.delete({ id: chatRoom.id });
   }
 
   // async toggleBanUser(

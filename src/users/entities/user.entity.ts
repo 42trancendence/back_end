@@ -10,7 +10,6 @@ import {
   PrimaryColumn,
 } from 'typeorm';
 import { Status } from '../enum/status.enum';
-import { FriendShipEntity } from 'src/friend/entities/friendship.entity';
 import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Entity('User')

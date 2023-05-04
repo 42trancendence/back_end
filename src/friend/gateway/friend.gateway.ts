@@ -1,32 +1,45 @@
-import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Logger,
+  UseFilters,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { instrument } from '@socket.io/admin-ui';
+import { Namespace, Server, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
+import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 import { FriendNameDto } from 'src/users/dto/friend-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { Status } from 'src/users/enum/status.enum';
 import { UsersService } from 'src/users/users.service';
+import { getUserBySocket } from 'src/util/decorator/get-user-socket.decorator';
+import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 import { FriendService } from '../friend.service';
 
+@UseFilters(new WsExceptionFilter())
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
-  namespace: 'friend',
+  namespace: '/friend',
   cors: {
     origin: 'http://localhost:4000',
     methods: ['GET', 'POST'],
     credentials: true,
   },
 })
-export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  @WebSocketServer() server: Server;
+export class FriendGateway implements OnGatewayDisconnect, OnGatewayConnection {
+  @WebSocketServer() server: Namespace;
   private readonly friendWsLogger = new Logger('FriendGateway');
   constructor(
     private authService: AuthService,
@@ -88,9 +101,12 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('updateActiveStatus')
-  async updateActiveStatus(client: Socket, status: Status) {
+  async updateActiveStatus(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() status: Status,
+    @getUserBySocket() user: UserEntity,
+  ) {
     try {
-      const user = await this.validateClient(client);
       this.friendWsLogger.debug(
         `[updateActiveStatus event] client: ${user.name} status: ${status}`,
       );
@@ -101,14 +117,14 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('addFriend')
   @UsePipes(ValidationPipe)
+  @SubscribeMessage('addFriend')
   async addFriend(
     @ConnectedSocket() client: Socket,
     @MessageBody() friendNameDto: FriendNameDto,
+    @getUserBySocket() user: UserEntity,
   ) {
     try {
-      const user = await this.validateClient(client);
       const friend = await this.validateFriend(friendNameDto.friendName);
 
       this.friendWsLogger.debug(
@@ -131,14 +147,14 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
   }
 
-  @SubscribeMessage('acceptFriendRequest')
   @UsePipes(ValidationPipe)
+  @SubscribeMessage('acceptFriendRequest')
   async acceptFriendRequest(
     @ConnectedSocket() client: Socket,
     @MessageBody() friendNameDto: FriendNameDto,
+    @getUserBySocket() user: UserEntity,
   ) {
     try {
-      const user = await this.validateClient(client);
       const friend = await this.validateFriend(friendNameDto.friendName);
       this.friendWsLogger.debug(
         `[acceptFriendRequest event] friendName: ${friendNameDto.friendName}`,
@@ -157,9 +173,9 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async rejectFriendRequest(
     @ConnectedSocket() client: Socket,
     @MessageBody() friendNameDto: FriendNameDto,
+    @getUserBySocket() user: UserEntity,
   ) {
     try {
-      const user = await this.validateClient(client);
       const friend = await this.validateFriend(friendNameDto.friendName);
       this.friendWsLogger.debug(
         `[rejectFriendRequest event] user: ${user.name}
@@ -186,9 +202,9 @@ export class FriendGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async deleteFriend(
     @ConnectedSocket() client: Socket,
     @MessageBody() friendNameDto: FriendNameDto,
+    @getUserBySocket() user: UserEntity,
   ) {
     try {
-      const user = await this.validateClient(client);
       const friend = await this.validateFriend(friendNameDto.friendName);
       this.friendWsLogger.debug(
         `[deleteFriend event] user: ${user.name}
