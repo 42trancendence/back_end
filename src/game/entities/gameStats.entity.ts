@@ -1,5 +1,5 @@
 import { UserEntity } from 'src/users/entities/user.entity';
-import { Entity, Column, ManyToOne, PrimaryColumn } from 'typeorm';
+import { Entity, Column, ManyToOne, PrimaryColumn, JoinColumn } from 'typeorm';
 
 @Entity({ name: 'gameStats' })
 export class GameStatsEntity {
@@ -9,10 +9,12 @@ export class GameStatsEntity {
   @Column()
   title: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.gameStats, { eager: true })
+  @ManyToOne(() => UserEntity, (user) => user.gameStatsAsPlayer1)
+  // @JoinColumn({ name: 'userId' })
   player1: UserEntity;
 
-  @ManyToOne(() => UserEntity, (user) => user.gameStats, { eager: true })
+  @ManyToOne(() => UserEntity, (user) => user.gameStatsAsPlayer2)
+  // @JoinColumn({ name: 'userId' })
   player2: UserEntity;
 
   @Column()
