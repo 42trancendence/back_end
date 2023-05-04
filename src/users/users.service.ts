@@ -52,10 +52,12 @@ export class UsersService {
     const combinedGameStats = [
       ...user.gameStatsAsPlayer1,
       ...user.gameStatsAsPlayer2,
-    ].sort((a, b) => {
-      // 날짜 순으로 정렬 (최근날짜부터)
-      return b.createAt.getTime() - a.createAt.getTime();
-    });
+    ]
+      .sort((a, b) => {
+        // 날짜 순으로 정렬 (최근날짜부터)
+        return b.createAt.getTime() - a.createAt.getTime();
+      })
+      .slice(0, 10);
     return combinedGameStats;
   }
 }
