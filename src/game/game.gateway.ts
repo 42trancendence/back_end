@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -20,6 +20,8 @@ import {
   SET_INTERVAL_TIME,
 } from './constants/game.constant';
 import { GameStatus, GameVariable } from './constants/gameVariable';
+import { InviteUserNameDto } from './dto/invite-user-name.dto';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @WebSocketGateway({
   namespace: 'game',
@@ -40,6 +42,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   private gameManager: GameManager = new GameManager();
+
+  async validateClient(client: Socket): Promise<UserEntity> {
+    if (!client.data?.userId) {
+      throw new WsException('user not found');
+    }
+
+    const user = await this.usersService.getUserById(client.data.userId);
+    if (!user) {
+      throw new WsException('user not found');
+    }
+    return user;
+  }
+
+  async validateInviteUser(userName: string): Promise<UserEntity> {
+    const friend = await this.usersService.getUserByName(userName);
+    if (!friend) {
+      throw new WsException('friend not found');
+    }
+    return friend;
+  }
 
   afterInit() {
     this.WsLogger.log('afterInit');
@@ -337,6 +359,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       paddle.setKeyUp();
     } else if (key === 'down') {
       paddle.setKeyDown();
+    }
+  }
+
+  @SubscribeMessage('inviteUserForGame')
+  @UsePipes(ValidationPipe)
+  async inviteUserForGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() inviteUserNameDto: InviteUserNameDto,
+  ) {
+    try {
+      const user = await this.validateClient(client);
+      const inviteUser = await this.validateInviteUser(
+        inviteUserNameDto.inviteUserName,
+      );
+
+      this.WsLogger.debug(
+        `[inviteUserForGame] ${user.name} invite ${inviteUser.name}`,
+      );
+    } catch (error) {
+      this.WsLogger.error(`[inviteUserForGame] ${error.message}`);
     }
   }
 }
