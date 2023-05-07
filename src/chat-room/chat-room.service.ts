@@ -99,7 +99,7 @@ export class ChatRoomService {
       throw new WsException('User is not in this chat room');
     }
     if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
-      throw new WsException('User is not an admin');
+      throw new WsException('User is not an normal');
     }
     return chatRoomUser;
   }
@@ -148,8 +148,22 @@ export class ChatRoomService {
     );
   }
 
-  async getDirectMessages(user: UserEntity): Promise<DirectMessageEntity[]> {
-    return await this.directMessageRepository.getDirectMessages(user);
+  async getDirectMessages(user: UserEntity): Promise<any> {
+    const directMessages = await this.directMessageRepository.getDirectMessages(
+      user,
+    );
+    const directChatRooms = await Promise.all(
+      directMessages.map(async (dm) => {
+        const otherUser = dm.user1.id === user.id ? dm.user2 : dm.user1;
+        return {
+          id: dm.id,
+          otherUserId: otherUser.id,
+          otherUserName: otherUser.name,
+          otherUserAvatarImageUrl: otherUser.avatarImageUrl,
+        };
+      }),
+    );
+    return directChatRooms;
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
