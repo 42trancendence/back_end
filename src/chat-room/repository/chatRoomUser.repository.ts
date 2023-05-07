@@ -38,6 +38,7 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
       select: {
         role: true,
         user: {
+          id: true,
           name: true,
         },
       },

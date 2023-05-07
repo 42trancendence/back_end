@@ -99,7 +99,6 @@ export class ChatRoomValidation {
       chatRoom,
       client.data.user,
     );
-
     if (!chatRoomUser || chatRoomUser.role === ChatRoomRole.NORMAL) {
       throw new WsException('User is not admin of chat room');
     }
