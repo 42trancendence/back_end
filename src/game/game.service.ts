@@ -33,19 +33,14 @@ export class GameService {
       client1.leave(GameStatus.MATCHING);
       client1.join(newRoomId);
       client1.data.roomId = newRoomId;
-      client1.emit('startGame');
+      // client1.emit('startGame'); // 이거 필요 없어서 삭제해도 될 듯
       client2.leave(GameStatus.MATCHING);
       client2.join(newRoomId);
       client2.data.roomId = newRoomId;
-      client2.emit('startGame');
+      // client2.emit('startGame');
 
       gameManager.createGame(newRoomId, title);
-      const newGame = await this.gameRepository.saveGameState(
-        newRoomId,
-        title,
-        player1,
-        player2,
-      );
+      const newGame = this.saveGameState(newRoomId, title, player1, player2);
       if (newGame) {
         client1.emit('getMatching', 'matching', newGame);
         client2.emit('getMatching', 'matching', newGame);
@@ -53,10 +48,14 @@ export class GameService {
     }
   }
 
-  // async getGameHistory(userId: string) {
-  //   const gameHistory = await this.userRepository.getGameHistory(userId);
-  //   return gameHistory;
-  // }
+  async saveGameState(newRoomId, title, player1, player2) {
+    return await this.gameRepository.saveGameState(
+      newRoomId,
+      title,
+      player1,
+      player2,
+    );
+  }
 
   async getPlayerBySocket(client: Socket, players: PlayerList) {
     const user = await this.authService.getUserBySocket(client);
