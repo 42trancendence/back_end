@@ -1,16 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Exclude } from 'class-transformer';
-import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToMany,
-  OneToMany,
-  PrimaryColumn,
-} from 'typeorm';
+import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
 import { Status } from '../enum/status.enum';
-import { FriendShipEntity } from 'src/friend/entities/friendship.entity';
 import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Entity('User')

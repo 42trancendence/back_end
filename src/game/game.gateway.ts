@@ -23,7 +23,9 @@ import { GameStatus, GameVariable } from './constants/gameVariable';
 import { InviteUserNameDto } from './dto/invite-user-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import * as uuid from 'uuid';
+import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 
+@UseFilters(new WsExceptionFilter())
 @WebSocketGateway({
   namespace: 'game',
   cors: {
