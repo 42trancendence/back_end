@@ -22,7 +22,7 @@ export class ChatRoomValidation {
 
   async validateUserInLobby(client: Socket) {
     if (!client.data?.user) {
-      throw new WsException('User not found');
+      throw new WsException('존재하지 않는 유저입니다.');
     }
 
     if (
@@ -30,7 +30,7 @@ export class ChatRoomValidation {
       client.data.chatRoomId !== 'lobby' ||
       !client.rooms.has(client.data.chatRoomId)
     ) {
-      throw new WsException('User not in lobby');
+      throw new WsException('해당 유저가 대기실에 있지 않습니다.');
     }
   }
 
@@ -111,7 +111,7 @@ export class ChatRoomValidation {
       chatRoomName,
     );
     if (isDuplicatedName) {
-      throw new WsException('Chat room name is duplicated');
+      throw new WsException('이미 존재하는 채팅방 이름입니다.');
     }
   }
 }

@@ -9,7 +9,7 @@ export class MessageRepository extends Repository<MessageEntity> {
   }
 
   async saveMessage(message: MessageEntity) {
-    this.save(message);
+    await this.save(message);
   }
 
   async getChatRoomMessages(chatRoomId: number): Promise<MessageEntity[]> {
