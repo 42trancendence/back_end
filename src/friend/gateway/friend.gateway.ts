@@ -144,6 +144,7 @@ export class FriendGateway implements OnGatewayDisconnect, OnGatewayConnection {
       );
     } catch (error) {
       this.friendWsLogger.error(`[addFriend] ${error.message}`);
+      return { status: false, message: error.message };
     }
   }
 
