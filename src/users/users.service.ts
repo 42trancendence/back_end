@@ -46,6 +46,10 @@ export class UsersService {
     return await this.userRepository.updateUserInfo(updateUserDto, user);
   }
 
+  async update2FA(user: UserEntity) {
+    return await this.userRepository.update2FA(user);
+  }
+
   async getGameHistory(userId: string): Promise<GameStatsEntity[]> {
     const user = await this.userRepository.getGameHistory(userId);
 
