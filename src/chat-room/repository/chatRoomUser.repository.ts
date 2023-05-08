@@ -27,7 +27,10 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<ChatRoomUserEntity> {
-    return await this.findOne({ where: { user: { id: user.id }, chatRoom } });
+    return await this.findOne({
+      where: { user: { id: user.id }, chatRoom },
+      relations: ['user'],
+    });
   }
 
   async getChatRoomUsers(

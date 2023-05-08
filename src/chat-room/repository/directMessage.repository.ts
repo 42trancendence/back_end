@@ -47,6 +47,7 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
         { user1: { id: user1.id }, user2: { id: user2.id } },
         { user1: { id: user2.id }, user2: { id: user1.id } },
       ],
+      relations: ['user1', 'user2'],
     });
     return directMessage;
   }
