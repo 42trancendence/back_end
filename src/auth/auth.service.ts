@@ -1,7 +1,14 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Response } from 'express';
 import { Socket } from 'socket.io';
+import authConfig from 'src/config/authConfig';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { UserRepository } from 'src/users/repository/user.repository';
 import { FtUserDto } from './dto/ft-user.dto';
@@ -11,20 +18,36 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private userRepository: UserRepository,
+    @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {}
 
   private AuthServiceLogger = new Logger('AuthService');
 
-  async createAccessToken(ftUser: FtUserDto, res: Response) {
+  async create2faToken(ftUser: FtUserDto, res: Response) {
     const payload = { id: ftUser.id };
-    const token = await this.jwtService.signAsync(payload, { expiresIn: '2h' });
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.twoFactorSecret,
+      expiresIn: '3m',
+    });
+    res.header('Authorization', 'Bearer ' + token);
+    return token;
+  }
+  async createAccessToken(user: UserEntity, res: Response) {
+    const payload = { id: user.id };
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.jwtSecret,
+      expiresIn: '2h',
+    });
     res.header('Authorization', 'Bearer ' + token);
     console.log(token);
     return token;
   }
   async createRefreshToken(user: UserEntity, res: Response) {
     const payload = { id: user.id };
-    const token = await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.jwtSecret,
+      expiresIn: '7d',
+    });
     res.cookie('refreshToken', token, {
       domain: 'localhost',
       path: '/',
@@ -37,7 +60,8 @@ export class AuthService {
     return res.redirect('http://localhost:4000/login');
   }
 
-  async login(user: UserEntity, res: Response, token: string) {
+  async login(user: UserEntity, res: Response) {
+    const token = await this.createAccessToken(user, res);
     await this.createRefreshToken(user, res);
     const url = 'http://localhost:4000/auth/callback';
     return res.redirect(301, url + '?token=' + token);

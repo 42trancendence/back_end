@@ -431,7 +431,8 @@ export class ChatRoomGateway
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       this.ChatRoomLogger.error('[handleConnection] user not found');
-      throw new WsException('Unauthorized');
+      client.disconnect();
+      return;
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;

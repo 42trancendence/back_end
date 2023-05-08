@@ -68,15 +68,24 @@ export class AuthController {
     this.authLogger.debug(ftUser);
 
     const user = await this.usersService.getUserByEmail(ftUser.email);
-    const token = await this.authService.createAccessToken(ftUser, res);
-
-    if (!user || !user.isVerified) {
-      this.authLogger.log('회원가입이 되어있지 않습니다.');
-      await this.usersService.createUser(ftUser);
-      const url = 'http://localhost:4000/auth/callback';
+    const url = 'http://localhost:4000/auth/callback';
+    if (!user || user.isVerified === true) {
+      if (!user) {
+        this.authLogger.log('회원가입이 되어있지 않습니다.');
+        await this.usersService.createUser(ftUser);
+      }
+      const token = await this.authService.create2faToken(ftUser, res);
       return res.redirect(301, url + '?token=' + token);
     }
-    return this.authService.login(user, res, token);
+    return this.authService.login(user, res);
+
+    // if (!user || !user.isVerified) {
+    // this.authLogger.log('회원가입이 되어있지 않습니다.');
+    // await this.usersService.createUser(ftUser);
+    // const url = 'http://localhost:4000/auth/callback';
+    // return res.redirect(301, url + '?token=' + token);
+    // }
+    // return this.authService.login(user, res, token);
   }
 
   @Get('/logout')

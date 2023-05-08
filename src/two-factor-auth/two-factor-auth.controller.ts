@@ -16,12 +16,16 @@ import { Response } from 'express';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { ApiTags } from '@nestjs/swagger';
+import { AuthService } from 'src/auth/auth.service';
 
 @UseGuards(AuthGuard('2fa'))
 @ApiTags('2fa API')
 @Controller('2fa')
 export class TwoFactorAuthController {
-  constructor(private readonly twoFactorAuthService: TwoFactorAuthService) {}
+  constructor(
+    private readonly twoFactorAuthService: TwoFactorAuthService,
+    private readonly authService: AuthService,
+  ) {}
 
   private readonly twoFactorLogger = new Logger(TwoFactorAuthController.name);
 
@@ -30,8 +34,14 @@ export class TwoFactorAuthController {
     summary: '2fa 인증확인 API',
     description: '2fa 인증확인 API',
   })
-  async checkIs2faEnabled() {
-    return true;
+  async checkIs2faEnabled(@getUser() user: UserEntity, @Res() res: Response) {
+    this.twoFactorLogger.verbose('[GET] /2fa');
+    if (user.isVerified) {
+      return res.status(200).json({ token: '' });
+    }
+    await this.authService.createRefreshToken(user, res);
+    const token = await this.authService.createAccessToken(user, res);
+    return res.status(200).json({ token });
   }
 
   @Post('qrcode')
@@ -72,6 +82,7 @@ export class TwoFactorAuthController {
   async turnOn2faQRCode(
     @getUser() user: UserEntity,
     @Body('code') code: string,
+    @Res() res: Response,
   ) {
     this.twoFactorLogger.verbose(`[POST] /2fa/qrcode/turn-on: ${user.email}`);
 
@@ -82,7 +93,11 @@ export class TwoFactorAuthController {
     if (!isCodeValid) {
       throw new UnauthorizedException('2fa code is not valid');
     }
-    await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
+
+    await this.authService.createRefreshToken(user, res);
+    const token = await this.authService.createAccessToken(user, res);
+    return res.status(201).json({ token });
+    // await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
 
   @Post('email')
@@ -104,6 +119,7 @@ export class TwoFactorAuthController {
   async turnOn2faEmail(
     @Body('code') code: string,
     @getUser() user: UserEntity,
+    @Res() res: Response,
   ) {
     this.twoFactorLogger.verbose(`[POST] /2fa/email/turn-on: ${code}`);
     const isCodeValid = await this.twoFactorAuthService.isVerifyEmailCode(
@@ -113,6 +129,11 @@ export class TwoFactorAuthController {
     if (!isCodeValid) {
       throw new NotFoundException('2fa code is not valid');
     }
-    await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
+
+    await this.authService.createRefreshToken(user, res);
+    const token = await this.authService.createAccessToken(user, res);
+    return res.status(201).json({ token });
+
+    // await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
 }

@@ -1,9 +1,4 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,7 +16,7 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, '2fa') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: config.jwtSecret,
+      secretOrKey: config.twoFactorSecret,
     });
   }
 
@@ -30,9 +25,6 @@ export class TwoFactorStrategy extends PassportStrategy(Strategy, '2fa') {
     const user: UserEntity = await this.userRepository.findUserById(id);
     if (!user) {
       throw new NotFoundException('유저가 존재하지 않습니다.');
-    }
-    if (user.isVerified) {
-      throw new ConflictException('이미 인증된 유저입니다.');
     }
     return user;
   }
