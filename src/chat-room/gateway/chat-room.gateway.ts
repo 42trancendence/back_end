@@ -164,6 +164,12 @@ export class ChatRoomGateway
           chatRoom,
         );
       }
+      client
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
     }
