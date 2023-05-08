@@ -1,4 +1,4 @@
-import { Logger, UseFilters } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -20,6 +20,9 @@ import {
   SET_INTERVAL_TIME,
 } from './constants/game.constant';
 import { GameStatus, GameVariable } from './constants/gameVariable';
+import { InviteUserNameDto } from './dto/invite-user-name.dto';
+import { UserEntity } from 'src/users/entities/user.entity';
+import * as uuid from 'uuid';
 import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 
 @UseFilters(new WsExceptionFilter())
@@ -42,6 +45,26 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   ) {}
 
   private gameManager: GameManager = new GameManager();
+
+  async validateClient(client: Socket): Promise<UserEntity> {
+    if (!client.data?.user.id) {
+      throw new WsException('user not found in socket');
+    }
+
+    const user = await this.usersService.getUserById(client.data.user.id);
+    if (!user) {
+      throw new WsException('user not found in database');
+    }
+    return user;
+  }
+
+  async validateInvitedUser(userName: string): Promise<UserEntity> {
+    const invitedUser = await this.usersService.getUserByName(userName);
+    if (!invitedUser) {
+      throw new WsException('invitedUser not found');
+    }
+    return invitedUser;
+  }
 
   afterInit() {
     this.WsLogger.log('afterInit');
@@ -139,28 +162,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     this.WsLogger.debug(`client disconnected: : ${client.id}`);
   }
-
-  // @SubscribeMessage('getGameHistory')
-  // async getGameHistory(@ConnectedSocket() client: Socket) {
-  //   // 여기서 에러가 난다. (클라이언트가 연결 되었다가 비동기로 여기로 들어와서 data.user 가 없는것을 확인하고 연결이 끊기는 것 같다. 다른 에러 처리가 필요할듯?)
-  //   // if (!client.data?.user) {
-  //   //   client.disconnect();
-  //   //   client.emit('getGameList', 'disconnected');
-  //   //   throw new WsException('Unauthorized');
-  //   // }
-  //   const gameHistory = await this.usersService.getGameHistory(
-  //     client.data.user.id,
-  //   );
-
-  //   console.log('gameHistory', gameHistory);
-
-  //   if (!gameHistory) {
-  //     this.WsLogger.error('gameGameHistory is null');
-  //     return;
-  //   }
-  //   client.emit('getGameHistory', gameHistory);
-  //   this.WsLogger.log(`User ${client.id}: get gameList`);
-  // }
 
   @SubscribeMessage('postMatching')
   async postMatching(@ConnectedSocket() client: Socket) {
@@ -339,6 +340,86 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       paddle.setKeyUp();
     } else if (key === 'down') {
       paddle.setKeyDown();
+    }
+  }
+
+  @SubscribeMessage('inviteUserForGame')
+  // @UsePipes(ValidationPipe) // 이거 왜함?
+  async inviteUserForGame(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() inviteUserNameDto: InviteUserNameDto,
+  ) {
+    try {
+      const senderUser = await this.validateClient(client);
+
+      console.log(inviteUserNameDto);
+
+      const receiverUser = await this.validateInvitedUser(
+        inviteUserNameDto.inviteUserName,
+      );
+
+      this.WsLogger.debug(
+        `[inviteUserForGame] ${senderUser.name} invite ${receiverUser.name}`,
+      );
+
+      const title = `${senderUser.name}-${receiverUser.name}`;
+      const newRoomId = uuid.v4();
+
+      client.leave(GameStatus.LOBBY);
+      client.join(newRoomId);
+      client.data.roomId = newRoomId;
+      // client.emit('startGame');
+
+      this.gameManager.createGame(newRoomId, title);
+      const newGame = await this.gameService.saveGameState(
+        newRoomId,
+        title,
+        senderUser,
+        receiverUser,
+      );
+      if (newGame) {
+        client.emit('getMatching', 'matching', newGame);
+        await this.emitEventToActiveUser(
+          receiverUser,
+          'requestMatching',
+          receiverUser,
+        );
+      }
+    } catch (error) {
+      this.WsLogger.error(`[inviteUserForGame] ${error.message}`);
+    }
+  }
+
+  @SubscribeMessage('acceptMatchingRequest')
+  async acceptMatchingRequest(@ConnectedSocket() client: Socket) {
+    try {
+      const roomId = await this.gameService.getRoomIdByUserId(
+        client.data.user.id,
+      );
+      if (!roomId) {
+        throw new WsException('Not found room id');
+      }
+      client.leave(GameStatus.LOBBY);
+      client.join(roomId);
+      client.data.roomId = roomId;
+    } catch (error) {
+      // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
+      this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
+    }
+  }
+
+  private async emitEventToActiveUser(
+    user: UserEntity,
+    event: string,
+    data: any,
+  ) {
+    // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
+    const allSockets = await this.server.fetchSockets();
+    for (const socket of allSockets) {
+      if (socket.data?.user.id === user.id) {
+        console.log(socket.data?.user.id, socket.id);
+        this.server.to(socket.id).emit(event, data);
+      }
     }
   }
 }
