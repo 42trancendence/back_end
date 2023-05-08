@@ -61,6 +61,7 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
     } else {
       directMessage.isBlockedByUser2 = !directMessage.isBlockedByUser2;
     }
+    await this.save(directMessage);
   }
   // async saveMessage(
   //   user: UserEntity,
