@@ -30,7 +30,6 @@ export class UserEntity {
   @Column({ name: 'registration_date' })
   registrationDate: Date;
 
-  @Exclude()
   @Column({ default: true })
   isVerified: boolean;
 
