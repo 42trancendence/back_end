@@ -129,6 +129,6 @@ export class UsersController {
   async update2FA(@getUser() user: UserEntity) {
     this.logger.log('PUT users/me/2fa');
     await this.usersService.update2FA(user);
-    return { is2FAEnabled: !user.isVerified };
+    return { is2FAEnabled: user.isVerified };
   }
 }
