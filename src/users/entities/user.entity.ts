@@ -31,7 +31,7 @@ export class UserEntity {
   registrationDate: Date;
 
   @Exclude()
-  @Column()
+  @Column({ default: true })
   isVerified: boolean;
 
   @ApiProperty({ description: '유저 상태' })

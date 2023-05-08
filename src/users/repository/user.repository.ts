@@ -44,7 +44,6 @@ export class UserRepository extends Repository<UserEntity> {
     user.email = ftUser.email;
     user.avatarImageUrl = ftUser.avatarImageUrl;
     user.registrationDate = new Date();
-    user.isVerified = false;
     await this.save(user);
     return user;
   }
@@ -68,6 +67,11 @@ export class UserRepository extends Repository<UserEntity> {
     user.name = updateUserDto.name;
     // TODO: save avatarImageUrl
     // user.avatarImageUrl = updateUserDto.avatarImageUrl;
+    await this.save(user);
+  }
+
+  async update2FA(user: UserEntity) {
+    user.isVerified = !user.isVerified;
     await this.save(user);
   }
 

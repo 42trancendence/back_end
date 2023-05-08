@@ -119,4 +119,10 @@ export class UsersController {
     this.logger.log('PUT users/me');
     await this.usersService.updateUserInfo(updateUserDto, user);
   }
+
+  @Put('me/2fa')
+  async update2FA(@getUser() user: UserEntity) {
+    this.logger.log('PUT users/me/2fa');
+    await this.usersService.update2FA(user);
+  }
 }
