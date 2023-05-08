@@ -410,6 +410,10 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
 
+      this.ChatRoomLogger.debug(
+        `[createDirectMessage] ${client.data.user.name} create direct message`,
+      );
+
       const receiver = await this.usersService.getUserById(receiverId);
       if (!receiver) {
         throw new WsException('User not found');
@@ -420,10 +424,11 @@ export class ChatRoomGateway
         receiver,
       );
 
-      await this.clientJoinDirectMessage(client, directMessage);
+      return { status: true, directMessageId: directMessage.id };
+      // await this.clientJoinDirectMessage(client, directMessage);
     } catch (error) {
       this.ChatRoomLogger.error(`[createDirectMessage] ${error.message}`);
-      return { error: error.message };
+      return { status: false, error: error.message };
     }
   }
 
