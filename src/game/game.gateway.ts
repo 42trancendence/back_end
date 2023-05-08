@@ -84,7 +84,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
-    console.log(`복구: ${client.recovered}`);
 
     // TODO
     // 1. 이전에 로그인한 유저인지 확인한다.
@@ -98,7 +97,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
-      throw new WsException('Unauthorized');
+      return;
     }
 
     // 이미 접속한 유저라면
