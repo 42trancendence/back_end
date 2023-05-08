@@ -42,7 +42,10 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   private readonly logger = new Logger(UsersController.name);
+
+  //
   // NOTE: GET METHOD
+  //
 
   @Get('me')
   @UseInterceptors(ClassSerializerInterceptor)
@@ -103,7 +106,9 @@ export class UsersController {
     return await this.usersService.getAllUserExceptMeAndFriend(user);
   }
 
+  //
   // NOTE: PUT METHOD
+  //
 
   @Put('me')
   @UsePipes(ValidationPipe)
@@ -124,5 +129,6 @@ export class UsersController {
   async update2FA(@getUser() user: UserEntity) {
     this.logger.log('PUT users/me/2fa');
     await this.usersService.update2FA(user);
+    return { is2FAEnabled: !user.isVerified };
   }
 }
