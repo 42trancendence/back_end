@@ -37,9 +37,10 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     chatRoom: ChatRoomEntity,
   ): Promise<ChatRoomUserEntity[]> {
     return await this.find({
-      where: { chatRoom: { id: chatRoom.id }, isBanned: false },
+      where: { chatRoom: { id: chatRoom.id } },
       select: {
         role: true,
+        isBanned: true,
         user: {
           id: true,
           name: true,
@@ -72,7 +73,7 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
       await this.save(chatRoomUser);
       return chatRoomUser.isBanned;
     }
-    await this.delete(chatRoomUser);
+    await this.delete({ id: chatRoomUser.id });
     return false;
   }
 
