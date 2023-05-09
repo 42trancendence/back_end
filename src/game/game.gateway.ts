@@ -29,7 +29,6 @@ import { instrument } from '@socket.io/admin-ui';
   namespace: 'game',
   cors: {
     origin: 'http://localhost:4000/lobby/overview',
-    // origin: ['http://localhost:4000', 'https://admin.socket.io'],
     methods: ['GET', 'POST'],
     credentials: true,
   },
@@ -180,12 +179,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
-    if (client.data.roomId != GameStatus.LOBBY) {
-      console.log('client.data.roomId', client.data.roomId);
-
+    const roomId = await this.gameService.getRoomIdByUserId(
+      client.data.user.id,
+    );
+    if (roomId) {
       client.emit('getMatching', 'already');
       this.WsLogger.log(`User ${client.id}: already matching`);
-      return;
+      throw new WsException('User in room id');
     }
 
     const allSockets = await this.server.in(GameStatus.MATCHING).fetchSockets();
@@ -197,7 +197,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // console.log('client.data.roomId', client.data.roomId);
     let flag = false;
     allSockets.forEach((socket) => {
-      console.log('socket.data.roomId', socket.data.roomId);
+      // console.log('socket.data.roomId', socket.data.roomId);
       if (socket.data.user.id == client.data.user.id) {
         flag = true;
         return;
@@ -377,7 +377,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(newRoomId);
       client.data.roomId = newRoomId;
-      // client.emit('startGame');
 
       this.gameManager.createGame(newRoomId, title);
       const newGame = await this.gameService.saveGameState(
@@ -387,7 +386,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         receiverUser,
       );
       if (newGame) {
-        client.emit('getMatching', 'matching', newGame);
+        client.emit('getMatching', 'matching', newRoomId);
         await this.emitEventToActiveUser(
           receiverUser,
           'requestMatching',
@@ -411,7 +410,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(roomId);
       client.data.roomId = roomId;
-      client.emit('getMatching', 'matching');
+      client.emit('getMatching', 'matching', roomId);
     } catch (error) {
       // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
       this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
