@@ -23,13 +23,23 @@ import { GameStatus, GameVariable } from './constants/gameVariable';
 import { InviteUserNameDto } from './dto/invite-user-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import * as uuid from 'uuid';
+import { instrument } from '@socket.io/admin-ui';
 
 @WebSocketGateway({
   namespace: 'game',
   cors: {
     origin: 'http://localhost:4000/lobby/overview',
+    // origin: ['http://localhost:4000', 'https://admin.socket.io'],
     methods: ['GET', 'POST'],
     credentials: true,
+  },
+  afterInit() {
+    instrument(this.server, {
+      // readonly: true,
+      auth: false,
+      mode: 'development',
+      namespaceName: '/game',
+    });
   },
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -82,16 +92,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
-    console.log(`복구: ${client.recovered}`);
+    // console.log(`복구: ${client.recovered}`);
 
     // TODO
-    // 1. 이전에 로그인한 유저인지 확인한다.
-    if (client.data?.user) {
-      this.WsLogger.debug(
-        `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
-      );
-      return;
-    }
+    // // 1. 이전에 로그인한 유저인지 확인한다.
+    // if (client.data?.user) {
+    //   this.WsLogger.debug(
+    //     `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
+    //   );
+    //   return;
+    // }
 
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
@@ -123,12 +133,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
     // socketio 에서 재접속 설정을 했을 경우. (설정하고 확인해보기)
-    if (client.data?.user) {
-      this.WsLogger.debug(
-        `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
-      );
-      return;
-    }
+    // if (client.data?.user) {
+    //   this.WsLogger.debug(
+    //     `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
+    //   );
+    //   return;
+    // }
 
     client.data.user = {
       id: user.id,
@@ -137,7 +147,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       avatarImageUrl: user.avatarImageUrl,
     };
 
-    client.leave(client.id);
+    // client.leave(client.id);
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
     client.emit('getGameHistory');
@@ -350,14 +360,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const senderUser = await this.validateClient(client);
 
-      console.log(inviteUserNameDto);
-
+      // userName -> userId 로 변경하기
       const receiverUser = await this.validateInvitedUser(
-        inviteUserNameDto.inviteUserName,
+        inviteUserNameDto.userName,
       );
 
       this.WsLogger.debug(
-        `[inviteUserForGame] ${senderUser.name} invite ${receiverUser.name}`,
+        `[inviteUserForGame] ${senderUser.name}:${senderUser.id} invite ${receiverUser.name}:${receiverUser.id}`,
       );
 
       const title = `${senderUser.name}-${receiverUser.name}`;
@@ -412,11 +421,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: any,
   ) {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
+    // const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
     const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
+      this.WsLogger.debug(
+        `event: ${socket.data?.user.id}, ${user.id}`,
+        socket.data?.user.id === user.id,
+      );
       if (socket.data?.user.id === user.id) {
-        console.log(socket.data?.user.id, socket.id);
+        // console.log(socket.data?.user.id, socket.id);
         this.server.to(socket.id).emit(event, data);
+        // return;
       }
     }
   }
