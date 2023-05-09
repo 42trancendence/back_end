@@ -23,6 +23,7 @@ import { GameStatus, GameVariable } from './constants/gameVariable';
 import { InviteUserNameDto } from './dto/invite-user-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import * as uuid from 'uuid';
+import { instrument } from '@socket.io/admin-ui';
 import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
 
 @UseFilters(new WsExceptionFilter())
@@ -32,6 +33,14 @@ import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
     origin: 'http://localhost:4000/lobby/overview',
     methods: ['GET', 'POST'],
     credentials: true,
+  },
+  afterInit() {
+    instrument(this.server, {
+      // readonly: true,
+      auth: false,
+      mode: 'development',
+      namespaceName: '/game',
+    });
   },
 })
 export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -84,15 +93,16 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
+    // console.log(`복구: ${client.recovered}`);
 
     // TODO
-    // 1. 이전에 로그인한 유저인지 확인한다.
-    if (client.data?.user) {
-      this.WsLogger.debug(
-        `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
-      );
-      return;
-    }
+    // // 1. 이전에 로그인한 유저인지 확인한다.
+    // if (client.data?.user) {
+    //   this.WsLogger.debug(
+    //     `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
+    //   );
+    //   return;
+    // }
 
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
@@ -124,12 +134,12 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
     // socketio 에서 재접속 설정을 했을 경우. (설정하고 확인해보기)
-    if (client.data?.user) {
-      this.WsLogger.debug(
-        `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
-      );
-      return;
-    }
+    // if (client.data?.user) {
+    //   this.WsLogger.debug(
+    //     `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
+    //   );
+    //   return;
+    // }
 
     client.data.user = {
       id: user.id,
@@ -138,7 +148,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       avatarImageUrl: user.avatarImageUrl,
     };
 
-    client.leave(client.id);
+    // client.leave(client.id);
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
     client.emit('getGameHistory');
@@ -171,12 +181,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
 
     // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
-    if (client.data.roomId != GameStatus.LOBBY) {
-      console.log('client.data.roomId', client.data.roomId);
-
+    const roomId = await this.gameService.getRoomIdByUserId(
+      client.data.user.id,
+    );
+    if (roomId) {
       client.emit('getMatching', 'already');
       this.WsLogger.log(`User ${client.id}: already matching`);
-      return;
+      throw new WsException('User in room id');
     }
 
     const allSockets = await this.server.in(GameStatus.MATCHING).fetchSockets();
@@ -188,7 +199,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // console.log('client.data.roomId', client.data.roomId);
     let flag = false;
     allSockets.forEach((socket) => {
-      console.log('socket.data.roomId', socket.data.roomId);
+      // console.log('socket.data.roomId', socket.data.roomId);
       if (socket.data.user.id == client.data.user.id) {
         flag = true;
         return;
@@ -234,8 +245,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const data = client.data;
 
-    const roomId = data.roomId;
-    if (client.data.roomId == GameStatus.LOBBY) {
+    const roomId = await this.gameService.getRoomIdByUserId(
+      client.data.user.id,
+    );
+    if (roomId == GameStatus.LOBBY) {
       this.WsLogger.log(`User ${client.id} not in game`);
       client.emit('postLeaveGame', 'not in game');
       return;
@@ -351,14 +364,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const senderUser = await this.validateClient(client);
 
-      console.log(inviteUserNameDto);
-
+      // userName -> userId 로 변경하기
       const receiverUser = await this.validateInvitedUser(
-        inviteUserNameDto.inviteUserName,
+        inviteUserNameDto.userName,
       );
 
       this.WsLogger.debug(
-        `[inviteUserForGame] ${senderUser.name} invite ${receiverUser.name}`,
+        `[inviteUserForGame] ${senderUser.name}:${senderUser.id} invite ${receiverUser.name}:${receiverUser.id}`,
       );
 
       const title = `${senderUser.name}-${receiverUser.name}`;
@@ -367,7 +379,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(newRoomId);
       client.data.roomId = newRoomId;
-      // client.emit('startGame');
 
       this.gameManager.createGame(newRoomId, title);
       const newGame = await this.gameService.saveGameState(
@@ -377,7 +388,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         receiverUser,
       );
       if (newGame) {
-        client.emit('getMatching', 'matching', newGame);
+        client.emit('getMatching', 'matching', newRoomId);
         await this.emitEventToActiveUser(
           receiverUser,
           'requestMatching',
@@ -401,11 +412,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(roomId);
       client.data.roomId = roomId;
+      client.emit('getMatching', 'matching', roomId);
     } catch (error) {
       // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
       this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
     }
   }
+
+  // @SubscribeMessage('rejectMatchingRequest')
+  // async rejectMatchingRequest(@ConnectedSocket() client: Socket) {
+  //   try {
+  //     const roomId = await this.gameService.getRoomIdByUserId(
+  //       client.data.user.id,
+  //     );
+  //     if (!roomId) {
+  //       throw new WsException('Not found room id');
+  //     }
+  //     const senderUser = await this.server.in(roomId).fetchSockets();
+  //     if (!senderUser) {
+  //       throw new WsException('Not found sender user');
+  //     }
+  //     this.server.to(senderUser[0].id).emit('postLeaveGame');
+  //   } catch (error) {
+  //     // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
+  //     this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
+  //   }
+  // }
 
   private async emitEventToActiveUser(
     user: UserEntity,
@@ -413,11 +445,17 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: any,
   ) {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
-    const allSockets = await this.server.fetchSockets();
+    const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
+    // const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
+      this.WsLogger.debug(
+        `event: ${socket.data?.user.id}, ${user.id}`,
+        socket.data?.user.id === user.id,
+      );
       if (socket.data?.user.id === user.id) {
-        console.log(socket.data?.user.id, socket.id);
+        // console.log(socket.data?.user.id, socket.id);
         this.server.to(socket.id).emit(event, data);
+        // return;
       }
     }
   }
