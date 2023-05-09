@@ -7,6 +7,7 @@ import { FortyTwoStrategy } from './strategy/forty-two.strategy';
 import { AuthController } from './auth.controller';
 import { UsersModule } from 'src/users/users.module';
 import { RefreshTokenStrategy } from './strategy/refresh-token.strategy';
+import { WsJwtStrategy } from './strategy/ws-jwt.strategy';
 
 @Global()
 @Module({
@@ -25,6 +26,7 @@ import { RefreshTokenStrategy } from './strategy/refresh-token.strategy';
     AccessTokenStrategy,
     RefreshTokenStrategy,
     FortyTwoStrategy,
+    WsJwtStrategy,
   ],
   exports: [AuthService, PassportModule, JwtModule],
 })

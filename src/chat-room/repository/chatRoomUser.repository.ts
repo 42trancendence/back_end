@@ -27,7 +27,22 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<ChatRoomUserEntity> {
-    return await this.findOne({ where: { chatRoom, user } });
+    return await this.findOne({ where: { user: { id: user.id }, chatRoom } });
+  }
+
+  async getChatRoomUsers(
+    chatRoom: ChatRoomEntity,
+  ): Promise<ChatRoomUserEntity[]> {
+    return await this.find({
+      where: { chatRoom: { id: chatRoom.id }, isBanned: false },
+      select: {
+        role: true,
+        user: {
+          name: true,
+        },
+      },
+      relations: ['user'],
+    });
   }
 
   async setMuteUser(
@@ -48,8 +63,16 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
   }
 
   async toggleBanUser(chatRoomUser: ChatRoomUserEntity): Promise<boolean> {
-    chatRoomUser.isBanned = !chatRoomUser.isBanned;
-    await this.save(chatRoomUser);
-    return chatRoomUser.isBanned;
+    if (chatRoomUser.isBanned === false) {
+      chatRoomUser.isBanned = !chatRoomUser.isBanned;
+      await this.save(chatRoomUser);
+      return chatRoomUser.isBanned;
+    }
+    await this.delete(chatRoomUser);
+    return false;
+  }
+
+  async deleteChatRoomUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
+    await this.delete({ id: chatRoomUser.id });
   }
 }
