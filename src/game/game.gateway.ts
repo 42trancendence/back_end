@@ -243,8 +243,10 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     const data = client.data;
 
-    const roomId = data.roomId;
-    if (client.data.roomId == GameStatus.LOBBY) {
+    const roomId = await this.gameService.getRoomIdByUserId(
+      client.data.user.id,
+    );
+    if (roomId == GameStatus.LOBBY) {
       this.WsLogger.log(`User ${client.id} not in game`);
       client.emit('postLeaveGame', 'not in game');
       return;
@@ -409,11 +411,32 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(roomId);
       client.data.roomId = roomId;
+      client.emit('getMatching', 'matching');
     } catch (error) {
       // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
       this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
     }
   }
+
+  // @SubscribeMessage('rejectMatchingRequest')
+  // async rejectMatchingRequest(@ConnectedSocket() client: Socket) {
+  //   try {
+  //     const roomId = await this.gameService.getRoomIdByUserId(
+  //       client.data.user.id,
+  //     );
+  //     if (!roomId) {
+  //       throw new WsException('Not found room id');
+  //     }
+  //     const senderUser = await this.server.in(roomId).fetchSockets();
+  //     if (!senderUser) {
+  //       throw new WsException('Not found sender user');
+  //     }
+  //     this.server.to(senderUser[0].id).emit('postLeaveGame');
+  //   } catch (error) {
+  //     // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
+  //     this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
+  //   }
+  // }
 
   private async emitEventToActiveUser(
     user: UserEntity,
@@ -421,8 +444,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: any,
   ) {
     // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
-    // const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
-    const allSockets = await this.server.fetchSockets();
+    const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
+    // const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       this.WsLogger.debug(
         `event: ${socket.data?.user.id}, ${user.id}`,
