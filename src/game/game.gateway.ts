@@ -107,7 +107,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       client.disconnect();
-      throw new WsException('Unauthorized');
+      return;
     }
 
     // 이미 접속한 유저라면

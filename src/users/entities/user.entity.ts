@@ -30,8 +30,7 @@ export class UserEntity {
   @Column({ name: 'registration_date' })
   registrationDate: Date;
 
-  @Exclude()
-  @Column()
+  @Column({ default: true })
   isVerified: boolean;
 
   @ApiProperty({ description: '유저 상태' })

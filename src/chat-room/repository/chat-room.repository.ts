@@ -24,7 +24,10 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
     return await this.find({
-      where: [{ type: ChatRoomType.PUBLIC }, { type: ChatRoomType.PROTECTED }],
+      where: [
+        { type: ChatRoomType.PUBLIC, users: { isBanned: false } },
+        { type: ChatRoomType.PROTECTED, users: { isBanned: false } },
+      ],
       select: {
         id: true,
         name: true,
@@ -49,47 +52,4 @@ export class ChatRoomRepository extends Repository<ChatRoomEntity> {
   async deleteChatRoom(chatRoom: ChatRoomEntity): Promise<void> {
     await this.delete({ id: chatRoom.id });
   }
-
-  // async toggleBanUser(
-  //   chatRoom: ChatRoomEntity,
-  //   user: UserEntity,
-  // ): Promise<boolean> {
-  //   if (chatRoom.bannedUsers.includes(user)) {
-  //     const index = chatRoom.bannedUsers.indexOf(user);
-  //     chatRoom.bannedUsers.splice(index, 1);
-  //     await this.save(chatRoom);
-  //     return true;
-  //   }
-  //   chatRoom.bannedUsers.push(user);
-  //   await this.save(chatRoom);
-  //   return false;
-  // }
-  //
-  // async deleteMutedUser(muteUser: MuteUserEntity): Promise<void> {
-  //   await this.muteUserRepository.remove(muteUser);
-  // }
-  //
-  // async setAdminUser(
-  //   chatRoom: ChatRoomEntity,
-  //   user: UserEntity,
-  // ): Promise<void> {
-  //   if (chatRoom.admin.includes(user)) {
-  //     throw new WsException('User is already admin');
-  //   }
-  //   chatRoom.admin.push(user);
-  //   await this.save(chatRoom);
-  // }
-  //
-  // async setMuteUser(chatRoom: ChatRoomEntity, user: UserEntity): Promise<void> {
-  //   const muteUser = await this.getMutedUser(chatRoom, user);
-  //   if (muteUser) {
-  //     throw new WsException('User is already muted');
-  //   }
-  //
-  //   const newMuteUser = new MuteUserEntity();
-  //   newMuteUser.chatRoom = chatRoom;
-  //   newMuteUser.user = user;
-  //   newMuteUser.date = new Date();
-  //   await this.muteUserRepository.save(newMuteUser);
-  // }
 }

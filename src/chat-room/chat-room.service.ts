@@ -45,7 +45,7 @@ export class ChatRoomService {
     );
     if (chatRoomUser) {
       if (chatRoomUser.isBanned) {
-        throw new WsException('You are banned from this chat room');
+        throw new WsException('해당 채팅방에서 차단당한 유저입니다.');
       }
       return;
     }
@@ -99,7 +99,7 @@ export class ChatRoomService {
       throw new WsException('User is not in this chat room');
     }
     if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
-      throw new WsException('User is not an admin');
+      throw new WsException('User is not an normal');
     }
     return chatRoomUser;
   }
@@ -148,8 +148,22 @@ export class ChatRoomService {
     );
   }
 
-  async getDirectMessages(user: UserEntity): Promise<DirectMessageEntity[]> {
-    return await this.directMessageRepository.getDirectMessages(user);
+  async getDirectMessages(user: UserEntity): Promise<any> {
+    const directMessages = await this.directMessageRepository.getDirectMessages(
+      user,
+    );
+    const directChatRooms = await Promise.all(
+      directMessages.map(async (dm) => {
+        const otherUser = dm.user1.id === user.id ? dm.user2 : dm.user1;
+        return {
+          id: dm.id,
+          otherUserId: otherUser.id,
+          otherUserName: otherUser.name,
+          otherUserAvatarImageUrl: otherUser.avatarImageUrl,
+        };
+      }),
+    );
+    return directChatRooms;
   }
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
@@ -168,7 +182,7 @@ export class ChatRoomService {
     user: UserEntity,
     chatRoom: ChatRoomEntity,
     payload: string,
-  ): Promise<MessageEntity> {
+  ): Promise<any> {
     const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
       chatRoom,
       user,
@@ -192,7 +206,14 @@ export class ChatRoomService {
     message.chatRoom = chatRoom;
     message.directMessage = null;
     await this.messageRepository.saveMessage(message);
-    return message;
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+      },
+      message: payload,
+      timestamp: message.timestamp,
+    };
   }
 
   async saveDirectMessage(
@@ -249,9 +270,13 @@ export class ChatRoomService {
     }
 
     // NOTE: 만약 나가는 유저가 방장이라면 방장을 위임해야함
+    const nextOwner = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      chatRoomUsers[0].user,
+    );
     if (chatRoomUser.role === ChatRoomRole.OWNER) {
       await this.chatRoomUserRepository.setUserRole(
-        chatRoomUsers[0],
+        nextOwner,
         ChatRoomRole.OWNER,
       );
     }

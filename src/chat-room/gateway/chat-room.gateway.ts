@@ -64,15 +64,14 @@ export class ChatRoomGateway
         payload,
       );
 
-      //TODO: change message entity to message dto
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
     } catch (error) {
       this.ChatRoomLogger.error(`[sendMessage] ${error.message}`);
-      return { error: error.message };
+      return { status: false, message: error.message };
     }
   }
 
-  @SubscribeMessage('setAdminUser')
+  @SubscribeMessage('setAdmin')
   async setAdminUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
@@ -87,6 +86,10 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
 
+      this.ChatRoomLogger.debug(
+        `[setAdminUser] ${user.name} setted admin from by ${client.data.user.name}`,
+      );
+
       await this.chatRoomService.setAdminUser(chatRoom, user);
 
       this.server
@@ -97,7 +100,7 @@ export class ChatRoomGateway
         );
     } catch (error) {
       this.ChatRoomLogger.error(`[setAdminUser] ${error.message}`);
-      return { error: error.message };
+      return { status: false, message: error.message };
     }
   }
 
@@ -116,6 +119,10 @@ export class ChatRoomGateway
       if (!user) {
         throw new WsException('User not found');
       }
+
+      this.ChatRoomLogger.debug(
+        `[toggleBlockUser] ${user.name} blocked from by ${client.data.user.name}`,
+      );
 
       const directMessage = await this.chatRoomService.createDirectMessage(
         client.data.user,
@@ -146,6 +153,10 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
 
+      this.ChatRoomLogger.debug(
+        `[toggleBanUser] ${user.name} banned from ${chatRoom.name} by ${client.data.user.name}`,
+      );
+
       if (await this.chatRoomService.toggleBanUser(chatRoom, user)) {
         await this.emitKickUserInChatRoom(
           client.data.chatRoomId,
@@ -153,6 +164,12 @@ export class ChatRoomGateway
           chatRoom,
         );
       }
+      client
+        .to(client.data.chatRoomId)
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
     }
@@ -172,6 +189,10 @@ export class ChatRoomGateway
       if (!user) {
         throw new WsException('User not found');
       }
+
+      this.ChatRoomLogger.debug(
+        `[kickUser] ${user.name} kicked from ${chatRoom.name} by ${client.data.user.name}`,
+      );
 
       await this.chatRoomService.setKickUser(chatRoom, user);
       await this.emitKickUserInChatRoom(
@@ -198,6 +219,10 @@ export class ChatRoomGateway
       if (!user) {
         throw new WsException('User not found');
       }
+
+      this.ChatRoomLogger.debug(
+        `[setMuteUser] ${user.name} muted from ${chatRoom.name} by ${client.data.user.name}`,
+      );
 
       await this.chatRoomService.setMuteUser(chatRoom, user);
     } catch (error) {
@@ -241,9 +266,12 @@ export class ChatRoomGateway
         createChatRoomDto,
         client.data.user,
       );
+      return { status: true, message: 'ok' };
     } catch (error) {
-      this.ChatRoomLogger.error(`[createChatRoom] ${error.message}`);
-      return { error: error.message };
+      this.ChatRoomLogger.error(
+        `[createChatRoom] ${error.message} ${client.data.where}`,
+      );
+      return { status: false, message: error.message };
     }
   }
 
@@ -262,7 +290,7 @@ export class ChatRoomGateway
       await this.clientJoinChatRoom(client, roomName, password);
     } catch (error) {
       this.ChatRoomLogger.error(`[enterChatRoom] ${error.message}`);
-      return { error: error.message };
+      return { status: false, message: error.message };
     }
   }
 
@@ -277,9 +305,10 @@ export class ChatRoomGateway
       // NOTE: 현재 유저가 속해있던 곳에서 퇴장
       await this.leaveCurrentPosition(client);
       await this.clinetJoinLobby(client);
+      return { status: true, message: 'ok' };
     } catch (error) {
       this.ChatRoomLogger.error(`[enterChatLobby] ${error.message}`);
-      return { error: error.message };
+      return { status: false, message: error.message };
     }
   }
 
@@ -292,8 +321,10 @@ export class ChatRoomGateway
         throw new WsException('User not found');
       }
       await this.leaveCurrentPosition(client);
+      return { status: true, message: 'ok' };
     } catch (error) {
       this.ChatRoomLogger.error(`[leaveChatPage] ${error.message}`);
+      return { status: false, message: error.message };
     }
   }
 
@@ -304,32 +335,26 @@ export class ChatRoomGateway
   ) {
     try {
       if (!client.data?.user) {
-        throw new WsException('User not found');
+        throw new WsException('유저를 찾을 수 없습니다.');
       }
 
+      this.ChatRoomLogger.debug(
+        `[enterDirectMessage] ${client.data.user.name} enter direct message`,
+      );
       const directMessage = await this.chatRoomService.getDirectMessageById(
         `DM` + directMessageId,
       );
 
       if (!directMessage) {
-        throw new WsException('Direct message not found');
+        throw new WsException('존재하지 않는 DM방입니다.');
       }
 
       await this.clientJoinDirectMessage(client, directMessage);
+      return { status: true, message: 'ok' };
     } catch (error) {
       this.ChatRoomLogger.error(`[enterDirectMessage] ${error.message}`);
-      return { error: error.message };
+      return { status: false, message: error.message };
     }
-  }
-
-  async leaveDirectMessage(client: Socket) {
-    await this.chatRoomValidation.validateUserInDirectMessage(client);
-
-    this.ChatRoomLogger.debug(
-      `[leaveDirectMessage] ${client.data.user.name} leave direct message`,
-    );
-
-    client.leave(client.data.chatRoomId);
   }
 
   @SubscribeMessage('sendDirectMessage')
@@ -406,9 +431,8 @@ export class ChatRoomGateway
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
       this.ChatRoomLogger.error('[handleConnection] user not found');
-      throw new WsException('Unauthorized');
-      // client.disconnect();
-      // return;
+      client.disconnect();
+      return;
     }
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
@@ -434,7 +458,21 @@ export class ChatRoomGateway
     client.data.where = UserWhere.DM;
     client.join(client.data.chatRoomId);
     //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
-    client.emit('getChatRoomMessages', directMessage.messages);
+    client.emit(
+      'getChatRoomMessages',
+      await this.chatRoomService.getDmMessages(directMessage),
+    );
+    const users = {
+      user1: {
+        id: directMessage.user1.id,
+        name: directMessage.user1.name,
+      },
+      user2: {
+        id: directMessage.user2.id,
+        name: directMessage.user2.name,
+      },
+    };
+    client.emit('getDirectMessageUsers', users);
   }
 
   async clientJoinChatRoom(
@@ -464,8 +502,6 @@ export class ChatRoomGateway
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
     client.data.where = UserWhere.CHATROOM;
-    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
-    // client.emit('getChatRoomMessages', chatRoom.messages);
     client.emit(
       'getChatRoomMessages',
       await this.chatRoomService.getChatRoomMessages(chatRoom),
@@ -568,10 +604,24 @@ export class ChatRoomGateway
     client.data.chatRoomId = '';
   }
 
+  async leaveDirectMessage(client: Socket) {
+    await this.chatRoomValidation.validateUserInDirectMessage(client);
+
+    this.ChatRoomLogger.debug(
+      `[leaveDirectMessage] ${client.data.user.name} leave direct message`,
+    );
+
+    client.leave(client.data.chatRoomId);
+  }
+
   async leaveChatRoom(client: Socket) {
     const chatRoom = await this.chatRoomValidation.validateUserInChatRoom(
       client,
     );
+    this.ChatRoomLogger.debug(
+      `[leaveChatRoom] ${client.data.user.name} leave chat room`,
+    );
+
     // NOTE: 만약 해당 방에 같은 아이디로 로그인된 유저가 있다면
     // chatRoomUser를 삭제하면 안됨
     client.leave(client.data.chatRoomId);

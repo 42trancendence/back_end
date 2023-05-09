@@ -21,24 +21,20 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
   }
 
   async getDirectMessages(user: UserEntity): Promise<DirectMessageEntity[]> {
-    const directMessages = await this.find({
-      where: [{ user1: user }, { user2: user }],
+    return await this.find({
+      where: [{ user1: { id: user.id } }, { user2: { id: user.id } }],
+      relations: ['user1', 'user2'],
     });
-    // const directChats = directMessages.filter((dm) => {
-    //   dm.user1 === user || dm.user2 === user;
-    // });
-    // const directChatRooms = await Promise.all(directChats.map(async (dm) => {
-    //   const otherUser = dm.user1 === user ? dm.user2 : dm.user1;
-    //   const lastMessage = await this.getLastMessage(dm);
-    // }));
-    return directMessages;
   }
 
   async getDirectMessageById(
     directMessageId: string,
   ): Promise<DirectMessageEntity> {
     const dmId = parseInt(directMessageId.substring(2));
-    const directMessage = await this.findOne({ where: { id: dmId } });
+    const directMessage = await this.findOne({
+      where: { id: dmId },
+      relations: ['user1', 'user2'],
+    });
     return directMessage;
   }
 
@@ -51,6 +47,7 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
         { user1: { id: user1.id }, user2: { id: user2.id } },
         { user1: { id: user2.id }, user2: { id: user1.id } },
       ],
+      relations: ['user1', 'user2'],
     });
     return directMessage;
   }

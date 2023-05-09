@@ -27,17 +27,22 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
   ): Promise<ChatRoomUserEntity> {
-    return await this.findOne({ where: { user: { id: user.id }, chatRoom } });
+    return await this.findOne({
+      where: { user: { id: user.id }, chatRoom },
+      relations: ['user'],
+    });
   }
 
   async getChatRoomUsers(
     chatRoom: ChatRoomEntity,
   ): Promise<ChatRoomUserEntity[]> {
     return await this.find({
-      where: { chatRoom: { id: chatRoom.id }, isBanned: false },
+      where: { chatRoom: { id: chatRoom.id } },
       select: {
         role: true,
+        isBanned: true,
         user: {
+          id: true,
           name: true,
         },
       },
@@ -68,7 +73,7 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
       await this.save(chatRoomUser);
       return chatRoomUser.isBanned;
     }
-    await this.delete(chatRoomUser);
+    await this.delete({ id: chatRoomUser.id });
     return false;
   }
 
