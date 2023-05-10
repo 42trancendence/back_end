@@ -62,6 +62,28 @@ export class ChatRoomService {
     return await this.chatRoomUserRepository.getChatRoomUsers(chatRoom);
   }
 
+  async getDirectMessageUsers(
+    directMessage: DirectMessageEntity,
+    me: UserEntity,
+  ): Promise<any> {
+    const isBlocked =
+      directMessage.user1.id === me.id
+        ? directMessage.isBlockedByUser1
+        : directMessage.isBlockedByUser2;
+    const users = {
+      user1: {
+        id: directMessage.user1.id,
+        name: directMessage.user1.name,
+      },
+      user2: {
+        id: directMessage.user2.id,
+        name: directMessage.user2.name,
+      },
+      isBlocked,
+    };
+    return users;
+  }
+
   async createDirectMessage(
     sender: UserEntity,
     receiver: UserEntity,
@@ -155,11 +177,14 @@ export class ChatRoomService {
     const directChatRooms = await Promise.all(
       directMessages.map(async (dm) => {
         const otherUser = dm.user1.id === user.id ? dm.user2 : dm.user1;
+        const isBlocked =
+          dm.user1.id === user.id ? dm.isBlockedByUser1 : dm.isBlockedByUser2;
         return {
           id: dm.id,
           otherUserId: otherUser.id,
           otherUserName: otherUser.name,
           otherUserAvatarImageUrl: otherUser.avatarImageUrl,
+          isBlocked,
         };
       }),
     );

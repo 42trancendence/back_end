@@ -136,6 +136,13 @@ export class ChatRoomGateway
         directMessage,
         client.data.user,
       );
+      client.emit(
+        'getDirectMessageUsers',
+        await this.chatRoomService.getDirectMessageUsers(
+          directMessage,
+          client.data.user,
+        ),
+      );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBlockUser] ${error.message}`);
     }
@@ -499,22 +506,32 @@ export class ChatRoomGateway
     client.data.chatRoomId = 'DM' + directMessage.id;
     client.data.where = UserWhere.DM;
     client.join(client.data.chatRoomId);
-    //TODO: 가져올 메시지 개수 제한, message repository에서 가져오는 방식으로 변경
     client.emit(
       'getChatRoomMessages',
       await this.chatRoomService.getDmMessages(directMessage),
     );
-    const users = {
-      user1: {
-        id: directMessage.user1.id,
-        name: directMessage.user1.name,
-      },
-      user2: {
-        id: directMessage.user2.id,
-        name: directMessage.user2.name,
-      },
-    };
-    client.emit('getDirectMessageUsers', users);
+    // const isBlocked =
+    //   directMessage.user1.id === client.data.user.id
+    //     ? directMessage.isBlockedByUser1
+    //     : directMessage.isBlockedByUser2;
+    // const users = {
+    //   user1: {
+    //     id: directMessage.user1.id,
+    //     name: directMessage.user1.name,
+    //   },
+    //   user2: {
+    //     id: directMessage.user2.id,
+    //     name: directMessage.user2.name,
+    //   },
+    //   isBlocked,
+    // };
+    client.emit(
+      'getDirectMessageUsers',
+      await this.chatRoomService.getDirectMessageUsers(
+        directMessage,
+        client.data.user,
+      ),
+    );
   }
 
   async clientJoinChatRoom(
