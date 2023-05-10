@@ -210,6 +210,7 @@ export class ChatRoomService {
       user: {
         id: user.id,
         name: user.name,
+        avatarImageUrl: user.avatarImageUrl,
       },
       message: payload,
       timestamp: message.timestamp,
