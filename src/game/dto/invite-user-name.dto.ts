@@ -9,5 +9,5 @@ export class InviteUserNameDto {
   @Matches(/^[a-zA-Z][a-zA-Z0-9]*$/, {
     message: '유저 이름의 첫글자는 영어만 가능합니다.',
   })
-  inviteUserName: string;
+  userName: string;
 }

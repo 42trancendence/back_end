@@ -42,8 +42,8 @@ export class GameService {
       gameManager.createGame(newRoomId, title);
       const newGame = this.saveGameState(newRoomId, title, player1, player2);
       if (newGame) {
-        client1.emit('getMatching', 'matching', newGame);
-        client2.emit('getMatching', 'matching', newGame);
+        client1.emit('getMatching', 'matching', newRoomId);
+        client2.emit('getMatching', 'matching', newRoomId);
       }
     }
   }
@@ -90,5 +90,9 @@ export class GameService {
 
   async deleteGameByRoomId(roomId: string) {
     await this.gameRepository.deleteGameByRoomId(roomId);
+  }
+
+  async getGamePlayersInfo(roomId: string) {
+    return await this.gameRepository.getGamePlayersInfo(roomId);
   }
 }

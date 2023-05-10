@@ -85,4 +85,11 @@ export class GameRepository extends Repository<GameStatsEntity> {
   async deleteGameByRoomId(roomId: string) {
     return await this.delete({ roomId });
   }
+
+  async getGamePlayersInfo(roomId: string) {
+    return await this.findOne({
+      where: { roomId: roomId },
+      relations: ['player1', 'player2'],
+    });
+  }
 }
