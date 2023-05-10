@@ -18,6 +18,7 @@ export class MessageRepository extends Repository<MessageEntity> {
       select: {
         user: {
           name: true,
+          avatarImageUrl: true,
         },
       },
       relations: ['user'],
@@ -30,6 +31,7 @@ export class MessageRepository extends Repository<MessageEntity> {
       select: {
         user: {
           name: true,
+          avatarImageUrl: true,
         },
       },
       relations: ['user'],

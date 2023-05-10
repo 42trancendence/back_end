@@ -56,11 +56,12 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
     directMessage: DirectMessageEntity,
     user: UserEntity,
   ): Promise<void> {
-    if (directMessage.user1 === user) {
+    if (directMessage.user1.id === user.id) {
       directMessage.isBlockedByUser1 = !directMessage.isBlockedByUser1;
     } else {
       directMessage.isBlockedByUser2 = !directMessage.isBlockedByUser2;
     }
+    await this.save(directMessage);
   }
   // async saveMessage(
   //   user: UserEntity,

@@ -210,6 +210,7 @@ export class ChatRoomService {
       user: {
         id: user.id,
         name: user.name,
+        avatarImageUrl: user.avatarImageUrl,
       },
       message: payload,
       timestamp: message.timestamp,
@@ -220,12 +221,12 @@ export class ChatRoomService {
     user: UserEntity,
     directMessage: DirectMessageEntity,
     payload: string,
-  ): Promise<MessageEntity> {
-    if (directMessage.user1 === user && directMessage.isBlockedByUser2) {
+  ): Promise<any> {
+    if (directMessage.user1.id === user.id && directMessage.isBlockedByUser2) {
       throw new WsException('You are blocked by this user');
     }
 
-    if (directMessage.user2 === user && directMessage.isBlockedByUser1) {
+    if (directMessage.user2.id === user.id && directMessage.isBlockedByUser1) {
       throw new WsException('You are blocked by this user');
     }
 
@@ -235,7 +236,17 @@ export class ChatRoomService {
     message.directMessage = directMessage;
     message.chatRoom = null;
     await this.messageRepository.saveMessage(message);
-    return message;
+    return {
+      user: {
+        name: user.name,
+        avatarImageUrl: user.avatarImageUrl,
+      },
+      directMessage: {
+        id: directMessage.id,
+      },
+      message: payload,
+      timestamp: message.timestamp,
+    };
   }
 
   async isUserInChatRoom(client: Socket): Promise<boolean> {
