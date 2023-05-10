@@ -63,18 +63,4 @@ export class DirectMessageRepository extends Repository<DirectMessageEntity> {
     }
     await this.save(directMessage);
   }
-  // async saveMessage(
-  //   user: UserEntity,
-  //   directMessage: DirectMessageEntity,
-  //   payload: string,
-  // ): Promise<MessageEntity> {
-  //   const message = new MessageEntity();
-  //
-  //   message.user = user;
-  //   message.message = payload;
-  //   message.directMessage = directMessage;
-  //
-  //   await this.messageRepository.saveMessage(message);
-  //   return message;
-  // }
 }
