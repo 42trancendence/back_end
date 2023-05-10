@@ -1,5 +1,5 @@
 export enum ChatRoomRole {
-  OWNER = 'OWNER',
-  ADMIN = 'ADMIN',
-  NORMAL = 'NORMAL',
+  OWNER = 0,
+  ADMIN = 1,
+  NORMAL = 2,
 }

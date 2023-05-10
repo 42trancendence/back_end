@@ -28,8 +28,8 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     user: UserEntity,
   ): Promise<ChatRoomUserEntity> {
     return await this.findOne({
-      where: { user: { id: user.id }, chatRoom },
-      relations: ['user'],
+      where: { user: { id: user.id }, chatRoom: { id: chatRoom.id } },
+      relations: ['user', 'chatRoom'],
     });
   }
 
@@ -50,31 +50,8 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     });
   }
 
-  async setMuteUser(
-    chatRoomUser: ChatRoomUserEntity,
-    isMuted: boolean,
-  ): Promise<void> {
-    chatRoomUser.isMuted = isMuted;
-    chatRoomUser.mutedUntil = null;
-    if (isMuted) {
-      chatRoomUser.mutedUntil = new Date();
-    }
+  async saveChatRoomUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
     await this.save(chatRoomUser);
-  }
-
-  async setUserRole(chatRoomUser: ChatRoomUserEntity, role: ChatRoomRole) {
-    chatRoomUser.role = role;
-    await this.save(chatRoomUser);
-  }
-
-  async toggleBanUser(chatRoomUser: ChatRoomUserEntity): Promise<boolean> {
-    if (chatRoomUser.isBanned === false) {
-      chatRoomUser.isBanned = !chatRoomUser.isBanned;
-      await this.save(chatRoomUser);
-      return chatRoomUser.isBanned;
-    }
-    await this.delete({ id: chatRoomUser.id });
-    return false;
   }
 
   async deleteChatRoomUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {

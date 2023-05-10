@@ -10,14 +10,12 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
   WsException,
 } from '@nestjs/websockets';
-import { instrument } from '@socket.io/admin-ui';
-import { Namespace, Server, Socket } from 'socket.io';
+import { Namespace, Socket } from 'socket.io';
 import { AuthService } from 'src/auth/auth.service';
 import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 import { FriendNameDto } from 'src/users/dto/friend-name.dto';

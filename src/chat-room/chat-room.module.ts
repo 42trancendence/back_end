@@ -13,6 +13,7 @@ import { DirectMessageEntity } from './entities/directMessage.entity';
 import { DirectMessageRepository } from './repository/directMessage.repository';
 import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
 import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
+import { DirectMessageService } from './direct-message.service';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
     ChatRoomService,
     ChatRoomValidation,
     ChatRoomRepository,
+    DirectMessageService,
     DirectMessageRepository,
     MessageRepository,
     ChatRoomUserRepository,
