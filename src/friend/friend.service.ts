@@ -14,6 +14,20 @@ export class FriendService {
         { user: user, status: FriendShipStatus.ACCEPTED },
         { friend: user, status: FriendShipStatus.ACCEPTED },
       ],
+      select: {
+        user: {
+          id: true,
+          name: true,
+          avatarImageUrl: true,
+          status: true,
+        },
+        friend: {
+          id: true,
+          name: true,
+          avatarImageUrl: true,
+          status: true,
+        },
+      },
       relations: ['user', 'friend'],
     });
 
@@ -30,6 +44,13 @@ export class FriendService {
   async getFriendRequestList(user: UserEntity): Promise<UserEntity[]> {
     const requestFriends = await this.friendShipRepository.findWithRelations({
       where: { friend: user, status: FriendShipStatus.PENDING },
+      select: {
+        user: {
+          id: true,
+          name: true,
+          avatarImageUrl: true,
+        },
+      },
       relations: ['user', 'friend'],
     });
     const requestFriendList = requestFriends.map((friend) => {
@@ -48,6 +69,7 @@ export class FriendService {
         { user: user, friend: friend },
         { user: friend, friend: user },
       ],
+      relations: ['user', 'friend'],
     });
 
     if (friendShip) {
