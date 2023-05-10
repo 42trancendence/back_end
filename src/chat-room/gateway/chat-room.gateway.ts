@@ -66,7 +66,6 @@ export class ChatRoomGateway
   // -------- 치명적 에러 ---- -> chat lobby로 이동
   // 5. message가 비어있거나 너무 큼
   // 6. mute 당함
-
   @SubscribeMessage('sendMessage')
   async handleMessage(
     @ConnectedSocket() client: Socket,
@@ -98,7 +97,6 @@ export class ChatRoomGateway
   // -------- 치명적 에러 ---- -> chat lobby로 이동
   // 5. 권한 없음
   // 6. 상대방을 찾을수 없음, 채팅방에 없음, 일반유저가 아님
-
   @SubscribeMessage('setAdmin')
   async setAdminUser(
     @ConnectedSocket() client: Socket,
@@ -141,7 +139,6 @@ export class ChatRoomGateway
   // -------- 치명적 에러 ---- -> chat lobby로 이동
   // 5. 권한 없음
   // 6. 상대방을 찾을수 없음, 채팅방에 없음, 일반유저가 아님
-
   @SubscribeMessage('toggleBanUser')
   async toggleBanUser(
     @ConnectedSocket() client: Socket,
@@ -172,6 +169,7 @@ export class ChatRoomGateway
       this.ChatRoomLogger.error(`[toggleBanUser] ${error.message}`);
     }
   }
+
   // NOTE: error handling
   // 1. 유저 없음
   // 2. 유저가 채팅방에 없음
@@ -180,7 +178,6 @@ export class ChatRoomGateway
   // -------- 치명적 에러 ---- -> chat lobby로 이동
   // 5. 권한 없음
   // 6. 상대방을 찾을수 없음, 채팅방에 없음, 일반유저가 아님
-
   @SubscribeMessage('kickUser')
   async kickUser(
     @ConnectedSocket() client: Socket,
@@ -221,7 +218,6 @@ export class ChatRoomGateway
   // -------- 치명적 에러 ---- -> chat lobby로 이동
   // 5. 권한 없음
   // 6. 상대방을 찾을수 없음, 채팅방에 없음, 일반유저가 아님
-
   @SubscribeMessage('setMuteUser')
   async muteUser(
     @ConnectedSocket() client: Socket,
@@ -393,7 +389,7 @@ export class ChatRoomGateway
   // 2. 유저가 DM방에 없음
   // 3. DM방이 없음
   // -------- 치명적 에러 ---- -> chat lobby로 이동
-  // 6. 상대방을 찾을수 없음
+  // 4. 상대방을 찾을수 없음
 
   @SubscribeMessage('toggleBlockUser')
   async toggleBlockUser(
@@ -727,7 +723,7 @@ export class ChatRoomGateway
   }
 
   async leaveChatRoom(client: Socket) {
-    const chatRoom = await this.chatRoomValidation.validateUserInChatRoom(
+    const { chatRoom } = await this.chatRoomValidation.validateUserInChatRoom(
       client,
     );
     this.ChatRoomLogger.debug(
