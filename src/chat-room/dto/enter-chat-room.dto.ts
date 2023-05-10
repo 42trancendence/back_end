@@ -1,5 +1,8 @@
+import { IsNotEmpty } from 'class-validator';
+
 export class EnterChatRoomDto {
-  id: number;
+  @IsNotEmpty()
+  roomName: string;
 
   password: string;
 }
