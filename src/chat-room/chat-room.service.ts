@@ -34,7 +34,7 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
     role: ChatRoomRole,
-  ): Promise<void> {
+  ): Promise<ChatRoomUserEntity> {
     const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
       chatRoom,
       user,
@@ -46,9 +46,13 @@ export class ChatRoomService {
           message: '해당 채팅방에서 차단당한 유저입니다.',
         });
       }
-      return;
+      return chatRoomUser;
     }
-    await this.chatRoomUserRepository.createChatRoomUser(chatRoom, user, role);
+    return await this.chatRoomUserRepository.createChatRoomUser(
+      chatRoom,
+      user,
+      role,
+    );
   }
 
   async getChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
@@ -87,10 +91,11 @@ export class ChatRoomService {
     chatRoomUser: ChatRoomUserEntity,
     isMuted: boolean,
   ): Promise<void> {
+    const now = new Date();
     chatRoomUser.isMuted = isMuted;
     chatRoomUser.mutedUntil = null;
     if (isMuted) {
-      chatRoomUser.mutedUntil = new Date();
+      chatRoomUser.mutedUntil = new Date(now.getTime() + 1000 * 60 * 5);
     }
     await this.chatRoomUserRepository.saveChatRoomUser(chatRoomUser);
   }
@@ -126,7 +131,7 @@ export class ChatRoomService {
     if (chatRoomUser.isMuted) {
       const now = new Date();
       // NOTE: 5 minutes
-      if (now.getTime() <= chatRoomUser?.mutedUntil.getTime() + 1000 * 60 * 5) {
+      if (now.getTime() <= chatRoomUser?.mutedUntil.getTime()) {
         throw new WsException({
           status: ErrorStatus.ERROR,
           message: '관리자에 의해 mute 되었습니다.',

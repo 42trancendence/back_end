@@ -15,12 +15,13 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     chatRoom: ChatRoomEntity,
     user: UserEntity,
     role: ChatRoomRole,
-  ): Promise<void> {
+  ): Promise<ChatRoomUserEntity> {
     const chatRoomUser = new ChatRoomUserEntity();
     chatRoomUser.chatRoom = chatRoom;
     chatRoomUser.user = user;
     chatRoomUser.role = role;
     await this.save(chatRoomUser);
+    return chatRoomUser;
   }
 
   async getChatRoomUser(

@@ -35,6 +35,7 @@ import { UserWhere } from '../enum/user-where.enum';
 import { EnterChatRoomDto } from '../dto/enter-chat-room.dto';
 import { DirectMessageService } from '../direct-message.service';
 import { ErrorStatus } from '../enum/error-status.enum';
+import { ChatRoomUserEntity } from '../entities/chatRoomUser.entity';
 
 @UseFilters(new WsExceptionFilter())
 @UseGuards(WsAuthGuard)
@@ -243,6 +244,11 @@ export class ChatRoomGateway
 
       await this.chatRoomService.setMuteUser(chatRoomUser, true);
       // TODO: mute 당한 유저에게 event emit
+      await this.emitMuteUserInChatRoom(
+        client.data.chatRoomId,
+        userId,
+        chatRoomUser.mutedUntil,
+      );
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleMuteUser] ${error.message}`);
     }
@@ -334,13 +340,13 @@ export class ChatRoomGateway
       const chatRoom = await this.chatRoomValidation.validateChatRoom(
         enterChatRoomDto,
       );
-      await this.chatRoomService.createChatRoomUser(
+      const chatRoomUser = await this.chatRoomService.createChatRoomUser(
         chatRoom,
         client.data.user,
         ChatRoomRole.NORMAL,
       );
 
-      await this.clientJoinChatRoom(client, chatRoom);
+      await this.clientJoinChatRoom(client, chatRoom, chatRoomUser);
     } catch (error) {
       this.ChatRoomLogger.error(`[enterChatRoom] ${error.message}`);
       return { status: false, message: error.message };
@@ -603,7 +609,11 @@ export class ChatRoomGateway
     );
   }
 
-  async clientJoinChatRoom(client: Socket, chatRoom: ChatRoomEntity) {
+  async clientJoinChatRoom(
+    client: Socket,
+    chatRoom: ChatRoomEntity,
+    chatRoomUser: ChatRoomUserEntity,
+  ) {
     client.leave('lobby');
     client.data.chatRoomId = chatRoom.id.toString();
     client.data.where = UserWhere.CHATROOM;
@@ -611,6 +621,9 @@ export class ChatRoomGateway
       'getChatRoomMessages',
       await this.chatRoomService.getMessages(chatRoom),
     );
+    if (chatRoomUser.isMuted) {
+      client.emit('muteUser', chatRoomUser.mutedUntil);
+    }
 
     const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
     client.join(client.data.chatRoomId);
@@ -669,11 +682,11 @@ export class ChatRoomGateway
     //   );
   }
 
-  async emitMuteUserInChatRoom(chatRoomId: string, userId: string) {
+  async emitMuteUserInChatRoom(chatRoomId: string, userId: string, date: Date) {
     const sockets = await this.server.in(chatRoomId).fetchSockets();
     for (const socket of sockets) {
       if (socket.data?.user?.id === userId) {
-        socket.emit('muteUser');
+        socket.emit('muteUser', date);
       }
     }
   }
