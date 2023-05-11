@@ -50,6 +50,21 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     });
   }
 
+  async getChatRoomUsersExceptBanned(chatRoom: ChatRoomEntity) {
+    return await this.find({
+      where: { chatRoom: { id: chatRoom.id }, isBanned: false },
+      select: {
+        role: true,
+        isBanned: true,
+        user: {
+          id: true,
+          name: true,
+        },
+      },
+      relations: ['user'],
+    });
+  }
+
   async saveChatRoomUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
     await this.save(chatRoomUser);
   }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { DirectMessageEntity } from './entities/directMessage.entity';
+import { ErrorStatus } from './enum/error-status.enum';
 import { DirectMessageRepository } from './repository/directMessage.repository';
 import { MessageRepository } from './repository/message.repository';
 
@@ -16,12 +17,18 @@ export class DirectMessageService {
     directMessageId: string,
   ): Promise<DirectMessageEntity> {
     if (!directMessageId) {
-      throw new WsException('direct message Id가 유효하지 않습니다.');
+      throw new WsException({
+        status: ErrorStatus.FATAL,
+        message: 'direct message Id가 유효하지 않습니다.',
+      });
     }
     const directMessage =
       await this.directMessageRepository.getDirectMessageById(directMessageId);
     if (!directMessage) {
-      throw new WsException('존재하지 않는 direct message입니다.');
+      throw new WsException({
+        status: ErrorStatus.FATAL,
+        message: '존재하지 않는 direct message입니다.',
+      });
     }
     return directMessage;
   }
@@ -32,14 +39,23 @@ export class DirectMessageService {
     payload: string,
   ): Promise<any> {
     if (!payload || payload.length >= 1000) {
-      throw new WsException('메세지가 비어있거나 너무 큽니다.');
+      throw new WsException({
+        status: ErrorStatus.ERROR,
+        message: '메세지가 비어있거나 너무 큽니다.',
+      });
     }
     if (directMessage.user1.id === user.id && directMessage.isBlockedByUser2) {
-      throw new WsException('상대방으로 부터 차단 당했습니다.');
+      throw new WsException({
+        status: ErrorStatus.ERROR,
+        message: '상대방으로 부터 차단 당했습니다.',
+      });
     }
 
     if (directMessage.user2.id === user.id && directMessage.isBlockedByUser1) {
-      throw new WsException('상대방으로 부터 차단 당했습니다.');
+      throw new WsException({
+        status: ErrorStatus.ERROR,
+        message: '상대방으로 부터 차단 당했습니다.',
+      });
     }
 
     return await this.messageRepository.saveDmMessage(

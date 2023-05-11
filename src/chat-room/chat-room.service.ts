@@ -10,6 +10,7 @@ import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
 import { ChatRoomRole } from './enum/chat-room-role.enum';
 import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
 import { Socket } from 'socket.io';
+import { ErrorStatus } from './enum/error-status.enum';
 
 @Injectable()
 export class ChatRoomService {
@@ -40,7 +41,10 @@ export class ChatRoomService {
     );
     if (chatRoomUser) {
       if (chatRoomUser.isBanned) {
-        throw new WsException('해당 채팅방에서 차단당한 유저입니다.');
+        throw new WsException({
+          status: ErrorStatus.ERROR,
+          message: '해당 채팅방에서 차단당한 유저입니다.',
+        });
       }
       return;
     }
@@ -55,6 +59,12 @@ export class ChatRoomService {
     chatRoom: ChatRoomEntity,
   ): Promise<ChatRoomUserEntity[]> {
     return await this.chatRoomUserRepository.getChatRoomUsers(chatRoom);
+  }
+
+  async getChatRoomUsersExceptBanned(chatRoom: ChatRoomEntity) {
+    return await this.chatRoomUserRepository.getChatRoomUsersExceptBanned(
+      chatRoom,
+    );
   }
 
   async toggleBanUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
@@ -108,13 +118,19 @@ export class ChatRoomService {
     payload: string,
   ): Promise<any> {
     if (!payload || payload.length >= 1000) {
-      throw new WsException('메세지가 비어있거나 너무 큽니다.');
+      throw new WsException({
+        status: ErrorStatus.ERROR,
+        message: '메세지가 비어있거나 너무 큽니다.',
+      });
     }
     if (chatRoomUser.isMuted) {
       const now = new Date();
       // NOTE: 5 minutes
       if (now.getTime() <= chatRoomUser?.mutedUntil.getTime() + 1000 * 60 * 5) {
-        throw new WsException('관리자에 의해 mute 되었습니다.');
+        throw new WsException({
+          status: ErrorStatus.ERROR,
+          message: '관리자에 의해 mute 되었습니다.',
+        });
       }
       await this.setMuteUser(chatRoomUser, false);
     }
@@ -144,8 +160,11 @@ export class ChatRoomService {
     if (!chatRoomUser) {
       return;
     }
+    if (chatRoomUser.isBanned === true) {
+      return;
+    }
     await this.chatRoomUserRepository.deleteChatRoomUser(chatRoomUser);
-    const chatRoomUsers = await this.getChatRoomUsers(chatRoom);
+    const chatRoomUsers = await this.getChatRoomUsersExceptBanned(chatRoom);
 
     // NOTE: 만약 나가는 유저가 그방의 마지막 유저면 방을 삭제해야함
     if (chatRoomUsers.length === 0) {
