@@ -453,9 +453,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         socket.data?.user.id === user.id,
       );
       if (socket.data?.user.id === user.id) {
-        // console.log(socket.data?.user.id, socket.id);
-        this.server.to(socket.id).emit(event, data);
-        // return;
+        socket.emit(event, data);
+        return;
       }
     }
   }
