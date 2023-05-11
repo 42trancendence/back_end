@@ -397,7 +397,7 @@ export class ChatRoomGateway
     @MessageBody('userId') userId: string,
   ) {
     try {
-      const directMessage =
+      const { directMessage } =
         await this.chatRoomValidation.validateUserInDirectMessage(client);
 
       const user = await this.usersService.getUserById(userId);
@@ -414,13 +414,15 @@ export class ChatRoomGateway
         client.data.user,
       );
 
-      client.emit(
-        'getDirectMessageUsers',
-        await this.directMessageService.getDirectMessageUsers(
-          directMessage,
-          client.data.user,
-        ),
-      );
+      if (client.data.where === UserWhere.DM) {
+        client.emit(
+          'getDirectMessageUsers',
+          await this.directMessageService.getDirectMessageUsers(
+            directMessage,
+            client.data.user,
+          ),
+        );
+      }
     } catch (error) {
       this.ChatRoomLogger.error(`[toggleBlockUser] ${error.message}`);
     }
@@ -535,6 +537,7 @@ export class ChatRoomGateway
     this.ChatRoomLogger.debug(`[handleConnection] ${user?.name} connected`);
     client.data.user = user;
     client.data.where = UserWhere.NONE;
+    client.data.chatRoomId = 'none';
     client.leave(client.id);
     client.join('none');
   }
