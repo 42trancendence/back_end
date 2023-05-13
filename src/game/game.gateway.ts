@@ -373,6 +373,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `[inviteUserForGame] ${senderUser.name}:${senderUser.id} invite ${receiverUser.name}:${receiverUser.id}`,
       );
 
+      // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
+      const roomId = await this.gameService.getRoomIdByUserId(receiverUser.id);
+      if (roomId) {
+        client.emit('getMatching', 'already');
+        this.WsLogger.log(`User ${client.id}: already matching`);
+        throw new WsException('User in room id');
+      }
+
       const title = `${senderUser.name}-${receiverUser.name}`;
       const newRoomId = uuid.v4();
 

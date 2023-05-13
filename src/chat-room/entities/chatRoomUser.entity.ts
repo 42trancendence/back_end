@@ -18,7 +18,7 @@ export class ChatRoomUserEntity {
   })
   chatRoom: ChatRoomEntity;
 
-  @Column()
+  @Column({ nullable: true })
   role: ChatRoomRole;
 
   @Column({ default: false })
