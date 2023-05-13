@@ -1,10 +1,10 @@
 import { registerAs } from '@nestjs/config';
 
 export default registerAs('postgre', () => ({
-  host: process.env.DATABASE_HOST,
-  username: process.env.DATABASE_USERNAME,
-  password: process.env.DATABASE_PASSWORD,
-  name: process.env.DATABASE_NAME,
-  port: Number(process.env.DATABASE_PORT),
-  synchronize: process.env.DATABASE_SYNCHRONIZE === 'true' ? true : false,
+  host: process.env.POSTGRE_HOST,
+  username: process.env.POSTGRE_USERNAME,
+  password: process.env.POSTGRES_PASSWORD,
+  name: process.env.POSTGRES_NAME,
+  port: Number(process.env.POSTGRES_PORT),
+  synchronize: process.env.POSTGRES_SYNCHRONIZE === 'true' ? true : false,
 }));

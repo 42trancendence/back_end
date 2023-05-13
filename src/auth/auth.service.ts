@@ -55,15 +55,14 @@ export class AuthService {
     });
   }
 
-  async logout(res: Response) {
+  async logout(res: Response, url: string) {
     res.cookie('refreshToken', '');
-    return res.redirect('http://localhost:4000/login');
+    return res.redirect(url);
   }
 
-  async login(user: UserEntity, res: Response) {
+  async login(user: UserEntity, res: Response, url: string) {
     const token = await this.createAccessToken(user, res);
     await this.createRefreshToken(user, res);
-    const url = 'http://localhost:4000/auth/callback';
     return res.redirect(301, url + '?token=' + token);
   }
 

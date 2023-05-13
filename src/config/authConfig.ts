@@ -7,4 +7,6 @@ export default registerAs('auth', () => ({
   clientSecret: process.env.CLIENT_SECRET,
   callbackUri: process.env.CALLBACK_URI,
   authorizationURL: process.env.AUTHORIZATION_URI,
+  frontCallbackUri: process.env.FRONT_CALLBACK_URI,
+  serverAddress: process.env.SERVER_ADDRESS,
 }));

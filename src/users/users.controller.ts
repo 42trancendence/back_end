@@ -12,6 +12,8 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   Logger,
+  Bind,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { AuthGuard } from '@nestjs/passport';
@@ -32,6 +34,8 @@ import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { CheckUserNameDto } from './dto/check-user-name.dto';
 import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/util/multer/multerOptions';
 
 @Controller('users')
 @UseGuards(AuthGuard('access-jwt'))
@@ -112,6 +116,7 @@ export class UsersController {
 
   @Put('me')
   @UsePipes(ValidationPipe)
+  @UseInterceptors(FileInterceptor('avatarImageUrl', multerOptions))
   @ApiOperation({ summary: '유저 정보 수정' })
   @ApiBody({ type: UpdateUserDto })
   @ApiBadRequestResponse({
@@ -120,9 +125,18 @@ export class UsersController {
   async updateUserInfo(
     @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
+    @UploadedFile() avatar: Express.Multer.File,
   ) {
     this.logger.log('PUT users/me');
-    await this.usersService.updateUserInfo(updateUserDto, user);
+    console.log(avatar);
+    const newAvatarImageUrl = avatar
+      ? await this.usersService.uploadAvatarImage(avatar)
+      : null;
+    await this.usersService.updateUserInfo(
+      updateUserDto,
+      user,
+      newAvatarImageUrl,
+    );
   }
 
   @Put('me/2fa')
