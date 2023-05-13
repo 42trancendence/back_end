@@ -128,16 +128,15 @@ export class ChatRoomService {
   ): Promise<any> {
     if (!payload || payload.length >= 1000) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '메세지가 비어있거나 너무 큽니다.',
       });
     }
     if (chatRoomUser.isMuted) {
       const now = new Date();
-      // NOTE: 5 minutes
       if (now.getTime() <= chatRoomUser?.mutedUntil.getTime()) {
         throw new WsException({
-          status: ErrorStatus.ERROR,
+          status: ErrorStatus.WARNING,
           message: '관리자에 의해 mute 되었습니다.',
         });
       }

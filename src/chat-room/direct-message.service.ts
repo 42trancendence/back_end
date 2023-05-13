@@ -18,7 +18,7 @@ export class DirectMessageService {
   ): Promise<DirectMessageEntity> {
     if (!directMessageId) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: 'direct message Id가 유효하지 않습니다.',
       });
     }
@@ -26,7 +26,7 @@ export class DirectMessageService {
       await this.directMessageRepository.getDirectMessageById(directMessageId);
     if (!directMessage) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '존재하지 않는 direct message입니다.',
       });
     }
@@ -40,20 +40,20 @@ export class DirectMessageService {
   ): Promise<any> {
     if (!payload || payload.length >= 1000) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '메세지가 비어있거나 너무 큽니다.',
       });
     }
     if (directMessage.user1.id === user.id && directMessage.isBlockedByUser2) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '상대방으로 부터 차단 당했습니다.',
       });
     }
 
     if (directMessage.user2.id === user.id && directMessage.isBlockedByUser1) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '상대방으로 부터 차단 당했습니다.',
       });
     }

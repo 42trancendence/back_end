@@ -12,6 +12,7 @@ import { UserWhere } from './enum/user-where.enum';
 import * as bcrypt from 'bcrypt';
 import { EnterChatRoomDto } from './dto/enter-chat-room.dto';
 import { ErrorStatus } from './enum/error-status.enum';
+import { UserEntity } from 'src/users/entities/user.entity';
 
 @Injectable()
 export class ChatRoomValidation {
@@ -21,7 +22,7 @@ export class ChatRoomValidation {
     private directMessageService: DirectMessageService,
   ) {}
 
-  async validateUser(client: Socket) {
+  async validateSocket(client: Socket) {
     if (!client.data?.user) {
       throw new WsException({
         status: ErrorStatus.FATAL,
@@ -40,7 +41,7 @@ export class ChatRoomValidation {
   async validateChatRoom(enterChatRoomDto: EnterChatRoomDto) {
     if (!enterChatRoomDto.roomName || enterChatRoomDto.roomName.length >= 20) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.WARNING,
         message: '채팅방 이름이 유효하지 않습니다.',
       });
     }
@@ -50,7 +51,7 @@ export class ChatRoomValidation {
 
     if (!chatRoom) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.WARNING,
         message: '존재하지 않는 채팅방입니다.',
       });
     }
@@ -59,64 +60,69 @@ export class ChatRoomValidation {
       bcrypt.compareSync(enterChatRoomDto.password, chatRoom.password) === false
     ) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '비밀번호가 틀렸습니다.',
       });
     }
     return chatRoom;
   }
 
-  async validateUserIsNormal(
-    userId: string,
-    chatRoom: ChatRoomEntity,
-  ): Promise<ChatRoomUserEntity> {
+  async validateUser(userId: string): Promise<UserEntity> {
     if (!userId) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
-        message: '유저 ID가 유효하지 않습니다.',
+        status: ErrorStatus.WARNING,
+        message: '대상 유저 ID가 유효하지 않습니다.',
       });
     }
     const user = await this.usersService.getUserById(userId);
     if (!user) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
-        message: '유저를 찾을 수 없습니다.',
+        status: ErrorStatus.WARNING,
+        message: '대상 유저를 찾을 수 없습니다.',
       });
     }
+    return user;
+  }
+
+  async validateUserIsNormal(
+    userId: string,
+    chatRoom: ChatRoomEntity,
+  ): Promise<ChatRoomUserEntity> {
+    const user = await this.validateUser(userId);
     const chatRoomUser = await this.chatRoomService.getChatRoomUser(
       chatRoom,
       user,
     );
     if (!chatRoomUser) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
-        message: '채팅방에 속해있지 않습니다.',
+        status: ErrorStatus.WARNING,
+        message: '대상 유저가 채팅방에 속해있지 않습니다.',
       });
     }
     if (chatRoomUser.role !== ChatRoomRole.NORMAL) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
-        message: '일반 유저가 아닙니다.',
+        status: ErrorStatus.WARNING,
+        message: '대상 유저가 일반 유저가 아닙니다.',
       });
     }
     return chatRoomUser;
   }
 
   async validateUserInLobby(client: Socket) {
-    await this.validateUser(client);
+    await this.validateSocket(client);
     if (client.data?.where !== UserWhere.LOBBY) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '유저가 로비에 있지 않습니다.',
       });
     }
   }
 
   async validateUserInDirectMessage(client: Socket): Promise<any> {
-    await this.validateUser(client);
+    await this.validateSocket(client);
     if (client.data?.where !== UserWhere.DM) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '유저가 DM에 있지 않습니다.',
       });
     }
@@ -133,10 +139,10 @@ export class ChatRoomValidation {
   }
 
   async validateUserInChatRoom(client: Socket): Promise<any> {
-    await this.validateUser(client);
+    await this.validateSocket(client);
     if (client.data?.where !== UserWhere.CHATROOM) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '유저가 채팅방에 있지 않습니다.',
       });
     }
@@ -146,7 +152,7 @@ export class ChatRoomValidation {
     );
     if (!chatRoom) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '채팅방을 찾을 수 없습니다.',
       });
     }
@@ -157,7 +163,7 @@ export class ChatRoomValidation {
     );
     if (!chatRoomUser) {
       throw new WsException({
-        status: ErrorStatus.FATAL,
+        status: ErrorStatus.ERROR,
         message: '채팅방에 속해있지 않습니다.',
       });
     }
@@ -170,7 +176,7 @@ export class ChatRoomValidation {
     );
     if (chatRoomUser.role > chatRoomRole) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '유저의 권한이 없습니다.',
       });
     }
@@ -181,7 +187,7 @@ export class ChatRoomValidation {
     await this.validateUserInLobby(client);
     if (!chatRoomName || chatRoomName.length >= 20) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '유효하지 않은 채팅방 이름 입니다.',
       });
     }
@@ -190,14 +196,14 @@ export class ChatRoomValidation {
     );
     if (isDuplicatedName) {
       throw new WsException({
-        status: ErrorStatus.ERROR,
+        status: ErrorStatus.WARNING,
         message: '이미 존재하는 채팅방 이름입니다.',
       });
     }
   }
 
   async validateEnterDirectMessage(client: Socket, directMessageId: string) {
-    await this.validateUser(client);
+    await this.validateSocket(client);
     const directMessage = await this.directMessageService.getDirectMessageById(
       directMessageId,
     );
