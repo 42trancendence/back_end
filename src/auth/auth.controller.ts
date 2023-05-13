@@ -1,12 +1,10 @@
 import {
   Controller,
   Get,
+  Inject,
   Logger,
   Res,
   UseGuards,
-  UnauthorizedException,
-  Post,
-  Body,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -17,9 +15,9 @@ import { FortyTwoGuard } from './guard/forty-two.guard';
 import { getFtUser } from './decorator/get-ft-user.decorator';
 import { UserEntity } from 'src/users/entities/user.entity';
 import { getUser } from './decorator/get-user.decorator';
-import { UpdateUserDto } from 'src/users/dto/update-user.dto';
-import { AccessGuard } from './guard/access-token.guard';
 import { RefreshGuard } from './guard/refresh-token.guard';
+import authConfig from 'src/config/authConfig';
+import { ConfigType } from '@nestjs/config';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -27,26 +25,10 @@ export class AuthController {
   constructor(
     private usersService: UsersService,
     private authService: AuthService,
+    @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {}
 
   private readonly authLogger = new Logger(AuthController.name);
-
-  @Post('signup')
-  @UseGuards(AccessGuard)
-  @ApiOperation({
-    summary: '유저 회원가입 API',
-    description: '유저 회원가입 API',
-  })
-  async createUser(
-    @getUser() user: UserEntity,
-    @Body() updateUserDto: UpdateUserDto,
-  ) {
-    this.authLogger.verbose('[POST] /signup');
-    if (!user.isVerified) {
-      throw new UnauthorizedException('2차 인증이 되지 않았습니다.');
-    }
-    await this.usersService.updateUserInfo(updateUserDto, user);
-  }
 
   @Get('/login/callback')
   @ApiOperation({
@@ -68,7 +50,7 @@ export class AuthController {
     this.authLogger.debug(ftUser);
 
     const user = await this.usersService.getUserByEmail(ftUser.email);
-    const url = 'http://localhost:4000/auth/callback';
+    const url = this.config.frontCallbackUri;
     if (!user || user.isVerified === true) {
       if (!user) {
         this.authLogger.log('회원가입이 되어있지 않습니다.');
@@ -77,15 +59,7 @@ export class AuthController {
       const token = await this.authService.create2faToken(ftUser, res);
       return res.redirect(301, url + '?token=' + token);
     }
-    return this.authService.login(user, res);
-
-    // if (!user || !user.isVerified) {
-    // this.authLogger.log('회원가입이 되어있지 않습니다.');
-    // await this.usersService.createUser(ftUser);
-    // const url = 'http://localhost:4000/auth/callback';
-    // return res.redirect(301, url + '?token=' + token);
-    // }
-    // return this.authService.login(user, res, token);
+    return this.authService.login(user, res, url);
   }
 
   @Get('/logout')
@@ -97,7 +71,9 @@ export class AuthController {
   async logout(@Res() res: Response) {
     this.authLogger.verbose('[GET] /logout');
 
-    return await this.authService.logout(res);
+    const url = this.config.frontCallbackUri;
+
+    return await this.authService.logout(res, url);
   }
 
   @Get('/refresh')

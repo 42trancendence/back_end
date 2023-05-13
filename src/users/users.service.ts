@@ -1,14 +1,19 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { Status } from './enum/status.enum';
 import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
+import { ConfigType } from '@nestjs/config';
+import authConfig from 'src/config/authConfig';
 
 @Injectable()
 export class UsersService {
-  constructor(private userRepository: UserRepository) {}
+  constructor(
+    private userRepository: UserRepository,
+    @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
+  ) {}
 
   async setTwoFactorAuthSecret(user: UserEntity, secret: string) {
     this.userRepository.saveTwoFactorAuthCode(user, secret);
@@ -42,8 +47,16 @@ export class UsersService {
     return await this.userRepository.findUserExceptMeAndFriend(me);
   }
 
-  async updateUserInfo(updateUserDto: UpdateUserDto, user: UserEntity) {
-    return await this.userRepository.updateUserInfo(updateUserDto, user);
+  async updateUserInfo(
+    updateUserDto: UpdateUserDto,
+    user: UserEntity,
+    newAvatarImageUrl: string,
+  ) {
+    return await this.userRepository.updateUserInfo(
+      updateUserDto,
+      user,
+      newAvatarImageUrl,
+    );
   }
 
   async update2FA(user: UserEntity) {
@@ -99,5 +112,12 @@ export class UsersService {
       this.userRepository.updateUserRating(player1),
       this.userRepository.updateUserRating(player2),
     ]);
+  }
+
+  async uploadAvatarImage(file: Express.Multer.File): Promise<string> {
+    const serverAddr = this.config.serverAddress;
+    const generatedFile = `${serverAddr}${file.filename}`;
+
+    return generatedFile;
   }
 }

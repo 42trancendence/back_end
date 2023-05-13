@@ -31,7 +31,7 @@ import { FriendService } from '../friend.service';
 @WebSocketGateway({
   namespace: '/friend',
   cors: {
-    origin: 'http://localhost:4000',
+    origin: '*',
     methods: ['GET', 'POST'],
     credentials: true,
   },
