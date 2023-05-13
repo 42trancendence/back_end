@@ -296,7 +296,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       game.cancelReady(data.user.id);
       this.WsLogger.log(`User ${data.user.name} cancel ready`);
     } else {
-      game.setReady(data.user.id);
+      game.pushReady(data.user.id);
       this.WsLogger.log(`User ${data.user.name} is ready`);
     }
     if (game.isReady()) {
@@ -324,14 +324,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const ball = game.getBall();
 
     if (difficulty == 'hard') {
-      game.setDifficulty(data.user.id);
+      game.pushDifficulty(data.user.id);
     } else if (difficulty == 'normal') {
       game.cancelDifficulty(data.user.id);
     }
     if (game.isDifficulty()) {
       ball.setSpeed(GameVariable.hardBallSpeed);
+      game.setDifficulty(GameVariable.hardDifficulty);
     } else if (!game.isDifficulty()) {
       ball.setSpeed(GameVariable.normalBallSpeed);
+      game.setDifficulty(GameVariable.normalDifficulty);
+    }
+  }
+
+  @SubscribeMessage('postChangeScore')
+  async postChangeScore(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() changeScore: string,
+  ) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('setStartGame', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+
+    const data = client.data;
+    const roomId = data.roomId;
+    const game = this.gameManager.getGameByRoomId(roomId);
+
+    if (changeScore == 'hard') {
+      game.pushChangeScore(data.user.id);
+    } else if (changeScore == 'normal') {
+      game.cancelDifficulty(data.user.id);
+    }
+    if (game.isChangeScore()) {
+      game.setFinalScore(GameVariable.hardFinalScore);
+    } else if (!game.isChangeScore()) {
+      game.setFinalScore(GameVariable.normalFinalScore);
     }
   }
 
