@@ -336,7 +336,8 @@ export class ChatRoomGateway
       this.ChatRoomLogger.debug(
         `[enterChatRoom] roomName: ${enterChatRoomDto.roomName}, password: ${enterChatRoomDto.password}`,
       );
-      await this.chatRoomValidation.validateUserInLobby(client);
+      // await this.chatRoomValidation.validateUserInLobby(client);
+      await this.chatRoomValidation.validateUser(client);
       const chatRoom = await this.chatRoomValidation.validateChatRoom(
         enterChatRoomDto,
       );

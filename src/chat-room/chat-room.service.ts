@@ -84,6 +84,10 @@ export class ChatRoomService {
     chatRoomRole: ChatRoomRole,
   ): Promise<void> {
     chatRoomUser.role = chatRoomRole;
+    if (chatRoomRole <= ChatRoomRole.ADMIN) {
+      chatRoomUser.isMuted = false;
+      chatRoomUser.mutedUntil = null;
+    }
     await this.chatRoomUserRepository.saveChatRoomUser(chatRoomUser);
   }
 
