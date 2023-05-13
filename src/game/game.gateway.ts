@@ -233,11 +233,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('postLeaveGame')
   async postLeaveGame(@ConnectedSocket() client: Socket) {
-    // TODO
-    // 1. 유저가 게임에 참여하고 있는지 확인한다.
-    // 2. 게임이 대기상태이면 게임방을 나간다.
-    // 3. 유저가 로비에 있는지 확인한다.
-
     if (!client.data?.user) {
       client.disconnect();
       client.emit('postLeaveGame', 'disconnected');
@@ -296,7 +291,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       game.cancelReady(data.user.id);
       this.WsLogger.log(`User ${data.user.name} cancel ready`);
     } else {
-      game.setReady(data.user.id);
+      game.pushReady(data.user.id);
       this.WsLogger.log(`User ${data.user.name} is ready`);
     }
     if (game.isReady()) {
@@ -324,14 +319,43 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const ball = game.getBall();
 
     if (difficulty == 'hard') {
-      game.setDifficulty(data.user.id);
+      game.pushDifficulty(data.user.id);
     } else if (difficulty == 'normal') {
       game.cancelDifficulty(data.user.id);
     }
     if (game.isDifficulty()) {
       ball.setSpeed(GameVariable.hardBallSpeed);
+      game.setDifficulty(GameVariable.hardDifficulty);
     } else if (!game.isDifficulty()) {
       ball.setSpeed(GameVariable.normalBallSpeed);
+      game.setDifficulty(GameVariable.normalDifficulty);
+    }
+  }
+
+  @SubscribeMessage('postChangeScore')
+  async postChangeScore(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() changeScore: string,
+  ) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('setStartGame', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+
+    const data = client.data;
+    const roomId = data.roomId;
+    const game = this.gameManager.getGameByRoomId(roomId);
+
+    if (changeScore == 'hard') {
+      game.pushChangeScore(data.user.id);
+    } else if (changeScore == 'normal') {
+      game.cancelDifficulty(data.user.id);
+    }
+    if (game.isChangeScore()) {
+      game.setFinalScore(GameVariable.hardFinalScore);
+    } else if (!game.isChangeScore()) {
+      game.setFinalScore(GameVariable.normalFinalScore);
     }
   }
 
@@ -373,6 +397,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `[inviteUserForGame] ${senderUser.name}:${senderUser.id} invite ${receiverUser.name}:${receiverUser.id}`,
       );
 
+      // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
+      const roomId = await this.gameService.getRoomIdByUserId(receiverUser.id);
+      if (roomId) {
+        client.emit('getMatching', 'already');
+        this.WsLogger.log(`User ${client.id}: already matching`);
+        throw new WsException('User in room id');
+      }
+
       const title = `${senderUser.name}-${receiverUser.name}`;
       const newRoomId = uuid.v4();
 
@@ -388,7 +420,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         receiverUser,
       );
       if (newGame) {
-        client.emit('getMatching', 'matching', newRoomId);
+        client.emit('getMatching', 'matching', 'invite', newRoomId);
         await this.emitEventToActiveUser(
           receiverUser,
           'requestMatching',
@@ -412,32 +444,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(roomId);
       client.data.roomId = roomId;
-      client.emit('getMatching', 'matching', roomId);
+      client.emit('getMatching', 'matching', 'matching', roomId);
+      client.to(roomId).emit('getMatching', 'matching', 'okInvite', roomId);
     } catch (error) {
       // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
       this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
     }
   }
-
-  // @SubscribeMessage('rejectMatchingRequest')
-  // async rejectMatchingRequest(@ConnectedSocket() client: Socket) {
-  //   try {
-  //     const roomId = await this.gameService.getRoomIdByUserId(
-  //       client.data.user.id,
-  //     );
-  //     if (!roomId) {
-  //       throw new WsException('Not found room id');
-  //     }
-  //     const senderUser = await this.server.in(roomId).fetchSockets();
-  //     if (!senderUser) {
-  //       throw new WsException('Not found sender user');
-  //     }
-  //     this.server.to(senderUser[0].id).emit('postLeaveGame');
-  //   } catch (error) {
-  //     // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
-  //     this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
-  //   }
-  // }
 
   private async emitEventToActiveUser(
     user: UserEntity,
@@ -453,9 +466,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         socket.data?.user.id === user.id,
       );
       if (socket.data?.user.id === user.id) {
-        // console.log(socket.data?.user.id, socket.id);
-        this.server.to(socket.id).emit(event, data);
-        // return;
+        socket.emit(event, data);
+        return;
       }
     }
   }

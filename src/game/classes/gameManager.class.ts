@@ -1,5 +1,5 @@
 import { UsersService } from 'src/users/users.service';
-import { GameStatus, GameVariable } from '../constants/gameVariable';
+import { GameStatus } from '../constants/gameVariable';
 import { GameService } from '../game.service';
 import { Game } from './game.class';
 import { Server } from 'socket.io';
@@ -14,9 +14,11 @@ export class GameManager {
   ) {
     this.gameList.forEach((game) => {
       const score = game.getScore();
+      const finalScore = game.getFinalScore();
+
       if (
         game.getGameStatus() === GameStatus.PLAY &&
-        (score[0] >= GameVariable.maxScore || score[1] >= GameVariable.maxScore)
+        (score[0] >= finalScore || score[1] >= finalScore)
       ) {
         // 게임 종료 뒤 결과 저장하고 방 폭파
         game.setGameStatus(GameStatus.END);
@@ -28,7 +30,6 @@ export class GameManager {
         );
         gameService.updateGameStats(game);
         this.deleteGameByRoomId(game.getRoomId());
-        // server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
         server.to(game.getRoomId()).emit(
           'setStartGame',
           JSON.stringify({

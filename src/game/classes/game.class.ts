@@ -13,10 +13,12 @@ export class Game {
     new Paddle(0),
     new Paddle(GameVariable.canvasWidth - GameVariable.paddleWidth),
   ];
+  private finalScore_: number = GameVariable.normalFinalScore;
+  private difficulty_: string = GameVariable.normalDifficulty;
   private score_: Array<number> = [0, 0];
   private setReady_: Array<string> = [];
   private setDifficulty_: Array<string> = [];
-  private watcher_: Array<any> = [];
+  private setChangeScore_: Array<string> = [];
 
   constructor(private roomId: string, private title: string) {
     this.roomId_ = roomId;
@@ -73,24 +75,32 @@ export class Game {
     return this.ball_;
   }
 
-  public getWatcherList(): Array<string> {
-    return this.watcher_;
+  public getFinalScore(): number {
+    return this.finalScore_;
   }
 
   public setGameStatus(gameStatus: string): void {
     this.gameStatus_ = gameStatus;
   }
 
-  public setReady(userId: string): void {
+  public pushReady(userId: string): void {
     this.setReady_.push(userId);
   }
 
-  public setDifficulty(userId: string): void {
+  public pushDifficulty(userId: string): void {
     this.setDifficulty_.push(userId);
   }
 
-  public addWatcher(user: string): void {
-    this.watcher_.push(user);
+  public pushChangeScore(userId: string): void {
+    this.setChangeScore_.push(userId);
+  }
+
+  public setFinalScore(score: number): void {
+    this.finalScore_ = score;
+  }
+
+  public setDifficulty(difficulty: string): void {
+    this.difficulty_ = difficulty;
   }
 
   public isReady(): boolean {
@@ -105,15 +115,8 @@ export class Game {
     return this.setDifficulty_.length == 2;
   }
 
-  public isWatcher(userId): boolean {
-    let flag = false;
-    this.watcher_.map((user) => {
-      if (user.id == userId) {
-        flag = true;
-        return;
-      }
-    });
-    return flag;
+  public isChangeScore(): boolean {
+    return this.setChangeScore_.length == 2;
   }
 
   public cancelReady(userId: string): void {
@@ -124,8 +127,8 @@ export class Game {
     this.setDifficulty_ = this.setDifficulty_.filter((id) => id != userId);
   }
 
-  public deleteWatcher(userId: string): void {
-    this.watcher_ = this.watcher_.filter((id) => id != userId);
+  public cancelChangeScore(userId: string): void {
+    this.setChangeScore_ = this.setChangeScore_.filter((id) => id != userId);
   }
 
   public reset(roomId: string): void {
