@@ -88,6 +88,7 @@ export class ChatRoomGateway
       );
 
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[sendMessage] ${errInfo.message}`);
@@ -137,6 +138,7 @@ export class ChatRoomGateway
           'getChatRoomUsers',
           await this.chatRoomService.getChatRoomUsers(chatRoom),
         );
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[setAdminUser] ${errInfo.message}`);
@@ -184,6 +186,7 @@ export class ChatRoomGateway
         userId,
         chatRoom,
       );
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleBanUser] ${errInfo.message}`);
@@ -232,6 +235,7 @@ export class ChatRoomGateway
         userId,
         chatRoom,
       );
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[kickUser] ${errInfo.message}`);
@@ -280,6 +284,7 @@ export class ChatRoomGateway
         userId,
         chatRoomUser.mutedUntil,
       );
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleMuteUser] ${errInfo.message}`);
@@ -314,6 +319,7 @@ export class ChatRoomGateway
       this.server
         .to('lobby')
         .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[updateChatRoom] ${errInfo.message}`);
@@ -350,7 +356,7 @@ export class ChatRoomGateway
         client.data.user,
         ChatRoomRole.OWNER,
       );
-      return { status: true, message: 'ok' };
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(
@@ -389,6 +395,7 @@ export class ChatRoomGateway
       );
 
       await this.clientJoinChatRoom(client, chatRoom, chatRoomUser);
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[enterChatRoom] ${errInfo.message}`);
@@ -409,7 +416,7 @@ export class ChatRoomGateway
       // NOTE: 현재 유저가 속해있던 곳에서 퇴장
       await this.leaveCurrentPosition(client);
       await this.clinetJoinLobby(client);
-      return { status: true, message: 'ok' };
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[enterChatLobby] ${errInfo.message}`);
@@ -429,7 +436,7 @@ export class ChatRoomGateway
       this.ChatRoomLogger.debug(`[leaveChatPage]`);
       await this.chatRoomValidation.validateSocket(client);
       await this.leaveCurrentPosition(client);
-      return { status: true, message: 'ok' };
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[leaveChatPage] ${errInfo.message}`);
@@ -444,7 +451,6 @@ export class ChatRoomGateway
   // 3. 대상 유저 id가 유효하지 않음
   // 4. 대상 유저를 찾을수 없음
   // -------- WARNING ---- -> 알림만 표시
-
   @SubscribeMessage('toggleBlockUser')
   async toggleBlockUser(
     @ConnectedSocket() client: Socket,
@@ -474,6 +480,7 @@ export class ChatRoomGateway
         directMessage,
         client.data.chatRoomId,
       );
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleBlockUser] ${errInfo.message}`);
@@ -506,7 +513,7 @@ export class ChatRoomGateway
       );
 
       await this.clientJoinDirectMessage(client, directMessage);
-      return { status: true, message: 'ok' };
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[enterDirectMessage] ${errInfo.message}`);
@@ -547,6 +554,7 @@ export class ChatRoomGateway
       client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
       await this.emitDirectMessageList(receiver);
       await this.emitNotification(receiver, message);
+      return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[sendDirectMessage] ${errInfo.message}`);
@@ -579,7 +587,11 @@ export class ChatRoomGateway
         receiver,
       );
 
-      return { status: true, directMessageId: directMessage.id };
+      return {
+        status: ErrorStatus.OK,
+        directMessageId: directMessage.id,
+        message: 'ok',
+      };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[createDirectMessage] ${errInfo.message}`);
