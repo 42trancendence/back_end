@@ -30,7 +30,6 @@ export class GameManager {
         );
         gameService.updateGameStats(game);
         this.deleteGameByRoomId(game.getRoomId());
-        // server.to(game.getRoomId()).emit('postLeaveGame', 'delete');
         server.to(game.getRoomId()).emit(
           'setStartGame',
           JSON.stringify({

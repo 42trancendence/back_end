@@ -42,8 +42,8 @@ export class GameService {
       gameManager.createGame(newRoomId, title);
       const newGame = this.saveGameState(newRoomId, title, player1, player2);
       if (newGame) {
-        client1.emit('getMatching', 'matching', newRoomId);
-        client2.emit('getMatching', 'matching', newRoomId);
+        client1.emit('getMatching', 'matching', 'matching', newRoomId);
+        client2.emit('getMatching', 'matching', 'matching', newRoomId);
       }
     }
   }

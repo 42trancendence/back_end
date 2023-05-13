@@ -233,11 +233,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('postLeaveGame')
   async postLeaveGame(@ConnectedSocket() client: Socket) {
-    // TODO
-    // 1. 유저가 게임에 참여하고 있는지 확인한다.
-    // 2. 게임이 대기상태이면 게임방을 나간다.
-    // 3. 유저가 로비에 있는지 확인한다.
-
     if (!client.data?.user) {
       client.disconnect();
       client.emit('postLeaveGame', 'disconnected');
@@ -425,7 +420,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         receiverUser,
       );
       if (newGame) {
-        client.emit('getMatching', 'matching', newRoomId);
+        client.emit('getMatching', 'matching', 'invite', newRoomId);
         await this.emitEventToActiveUser(
           receiverUser,
           'requestMatching',
@@ -449,32 +444,13 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.leave(GameStatus.LOBBY);
       client.join(roomId);
       client.data.roomId = roomId;
-      client.emit('getMatching', 'matching', roomId);
+      client.emit('getMatching', 'matching', 'matching', roomId);
+      client.to(roomId).emit('getMatching', 'matching', 'okInvite', roomId);
     } catch (error) {
       // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
       this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
     }
   }
-
-  // @SubscribeMessage('rejectMatchingRequest')
-  // async rejectMatchingRequest(@ConnectedSocket() client: Socket) {
-  //   try {
-  //     const roomId = await this.gameService.getRoomIdByUserId(
-  //       client.data.user.id,
-  //     );
-  //     if (!roomId) {
-  //       throw new WsException('Not found room id');
-  //     }
-  //     const senderUser = await this.server.in(roomId).fetchSockets();
-  //     if (!senderUser) {
-  //       throw new WsException('Not found sender user');
-  //     }
-  //     this.server.to(senderUser[0].id).emit('postLeaveGame');
-  //   } catch (error) {
-  //     // roomId가 없는 경우 대기중인 방이 없다는 메시지를 보낸다.
-  //     this.WsLogger.error(`[acceptMatchingRequest] ${error.message}`);
-  //   }
-  // }
 
   private async emitEventToActiveUser(
     user: UserEntity,
