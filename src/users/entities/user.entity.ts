@@ -20,7 +20,11 @@ export class UserEntity {
 
   @Exclude()
   @Column({ length: 60, nullable: true })
-  twoFactorAuthCode: string;
+  qrAuthCode: string;
+
+  @Exclude()
+  @Column({ length: 60, nullable: true })
+  emailAuthCode: string;
 
   @ApiProperty({ description: '유저 아바타 URL' })
   @Column({ name: 'avatar_image_url' })

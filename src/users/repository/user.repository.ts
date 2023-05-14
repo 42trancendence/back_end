@@ -49,7 +49,7 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
-    user.twoFactorAuthCode = secret;
+    user.qrAuthCode = secret;
     await this.save(user);
   }
 

@@ -53,7 +53,7 @@ export class TwoFactorAuthService {
   async isVerifyQRCode(user: UserEntity, code: string) {
     return authenticator.verify({
       token: code,
-      secret: user.twoFactorAuthCode,
+      secret: user.qrAuthCode,
     });
   }
 
@@ -82,6 +82,6 @@ export class TwoFactorAuthService {
   }
 
   async isVerifyEmailCode(code: string, user: UserEntity): Promise<boolean> {
-    return await bcrypt.compare(code, user.twoFactorAuthCode);
+    return await bcrypt.compare(code, user.qrAuthCode);
   }
 }
