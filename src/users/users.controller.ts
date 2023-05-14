@@ -67,9 +67,9 @@ export class UsersController {
   @ApiOkResponse({ description: '성공', type: [UserEntity] })
   async getMyGameHistory(
     @getUser() user: UserEntity,
-  ): Promise<GameStatsEntity[]> {
+  ): Promise<[GameStatsEntity[], Array<number>]> {
     this.logger.log('GET users/game-history');
-    return this.usersService.getGameHistory(user.id);
+    return this.usersService.getGameHistory(user.id, user.name);
   }
 
   @Get('name')
