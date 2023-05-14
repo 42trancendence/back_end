@@ -42,7 +42,7 @@ export class ChatRoomService {
     if (chatRoomUser) {
       if (chatRoomUser.isBanned) {
         throw new WsException({
-          status: ErrorStatus.ERROR,
+          status: ErrorStatus.WARNING,
           message: '해당 채팅방에서 차단당한 유저입니다.',
         });
       }

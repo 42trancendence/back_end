@@ -116,7 +116,7 @@ export class UsersService {
 
   async uploadAvatarImage(file: Express.Multer.File): Promise<string> {
     const serverAddr = this.config.serverAddress;
-    const generatedFile = `${serverAddr}${file.filename}`;
+    const generatedFile = `${serverAddr}/${file.filename}`;
 
     return generatedFile;
   }
