@@ -46,19 +46,33 @@ export class UsersService {
     return await this.userRepository.updateUserInfo(updateUserDto, user);
   }
 
-  async getGameHistory(userId: string): Promise<GameStatsEntity[]> {
+  async getGameHistory(
+    userId: string,
+    userName: string,
+  ): Promise<[GameStatsEntity[], Array<number>]> {
     const user = await this.userRepository.getGameHistory(userId);
 
     const combinedGameStats = [
       ...user.gameStatsAsPlayer1,
       ...user.gameStatsAsPlayer2,
-    ]
+    ];
+
+    const countWinLose = [0, 0];
+    combinedGameStats.forEach((gameStats) => {
+      if (gameStats.winnerName === userName) {
+        countWinLose[0] += 1;
+      } else {
+        countWinLose[1] += 1;
+      }
+    });
+
+    combinedGameStats
       .sort((a, b) => {
         // 날짜 순으로 정렬 (최근날짜부터)
         return b.createAt.getTime() - a.createAt.getTime();
       })
       .slice(0, 10);
-    return combinedGameStats;
+    return [combinedGameStats, countWinLose];
   }
 
   async updateUserRating(
