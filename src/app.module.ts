@@ -15,9 +15,14 @@ import { PostgreConfigProvider } from './config/postgre-config.provider';
 import { EventsModule } from './events/events.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
   imports: [
+    ThrottlerModule.forRoot({
+      ttl: 60,
+      limit: 10,
+    }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '/public'),
     }),
