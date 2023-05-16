@@ -63,33 +63,41 @@ export class UsersService {
     return await this.userRepository.update2FA(user);
   }
 
-  async getGameHistory(
-    userId: string,
-    userName: string,
-  ): Promise<[GameStatsEntity[], Array<number>]> {
-    const user = await this.userRepository.getGameHistory(userId);
+  async getUserHistory(userId: string): Promise<object> {
+    const user = await this.userRepository.getUserHistoryByUserId(userId);
+    const getUser = {};
+    getUser['user'] = {
+      name: user.name,
+      avatarImageUrl: user.avatarImageUrl,
+      rating: user.rating,
+    };
 
     const combinedGameStats = [
       ...user.gameStatsAsPlayer1,
       ...user.gameStatsAsPlayer2,
     ];
 
-    const countWinLose = [0, 0];
+    const countWinLose = {
+      win: 0,
+      lose: 0,
+    };
     combinedGameStats.forEach((gameStats) => {
-      if (gameStats.winnerName === userName) {
-        countWinLose[0] += 1;
+      if (gameStats.winnerName === user.name) {
+        countWinLose['win'] += 1;
       } else {
-        countWinLose[1] += 1;
+        countWinLose['lose'] += 1;
       }
     });
 
-    combinedGameStats
-      .sort((a, b) => {
-        // 날짜 순으로 정렬 (최근날짜부터)
-        return b.createAt.getTime() - a.createAt.getTime();
-      })
-      .slice(0, 10);
-    return [combinedGameStats, countWinLose];
+    combinedGameStats.sort((a, b) => {
+      // 날짜 순으로 정렬 (최근날짜부터)
+      return b.createAt.getTime() - a.createAt.getTime();
+    });
+
+    getUser['gameHistory'] = combinedGameStats.slice(0, 10);
+    getUser['countWinLose'] = countWinLose;
+
+    return getUser;
   }
 
   async updateUserRating(
