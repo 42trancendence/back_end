@@ -83,8 +83,8 @@ export class Game {
     this.gameStatus_ = gameStatus;
   }
 
-  public pushReady(userId: string): void {
-    this.setReady_.push(userId);
+  public pushReady(userName: string): void {
+    this.setReady_.push(userName);
   }
 
   public pushDifficulty(userId: string): void {
@@ -107,8 +107,8 @@ export class Game {
     return this.setReady_.length == 2;
   }
 
-  public isClientReady(userId: string): boolean {
-    return this.setReady_.includes(userId);
+  public isClientReady(userName: string): boolean {
+    return this.setReady_.includes(userName);
   }
 
   public isDifficulty(): boolean {
@@ -119,8 +119,8 @@ export class Game {
     return this.setChangeScore_.length == 2;
   }
 
-  public cancelReady(userId: string): void {
-    this.setReady_ = this.setReady_.filter((id) => id != userId);
+  public cancelReady(userName: string): void {
+    this.setReady_ = this.setReady_.filter((name) => name != userName);
   }
 
   public cancelDifficulty(userId: string): void {
@@ -129,6 +129,13 @@ export class Game {
 
   public cancelChangeScore(userId: string): void {
     this.setChangeScore_ = this.setChangeScore_.filter((id) => id != userId);
+  }
+
+  public getWhoReady(): Array<boolean> {
+    return [
+      this.setReady_.includes(this.player1Name_),
+      this.setReady_.includes(this.player2Name_),
+    ];
   }
 
   public reset(roomId: string): void {
