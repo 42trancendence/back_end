@@ -62,8 +62,8 @@ export class ChatRoomGateway
 
   // NOTE: error handling
   // 1. client.data.user가 없음
-  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // -------- FATAL ---- -> 소켓 재연결
+  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // 3. 유저가 채팅방에 없음
   // 4. 채팅방이 없음
   // 5. chatRoomUsers가 없음
@@ -98,8 +98,8 @@ export class ChatRoomGateway
 
   // NOTE: error handling
   // 1. client.data.user가 없음
-  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // -------- FATAL ---- -> 소켓 재연결
+  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // 3. 유저가 채팅방에 없음
   // 4. 채팅방이 없음
   // 5. chatRoomUsers가 없음
@@ -196,8 +196,8 @@ export class ChatRoomGateway
 
   // NOTE: error handling
   // 1. client.data.user가 없음
-  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // -------- FATAL ---- -> 소켓 재연결
+  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // 3. 유저가 채팅방에 없음
   // 4. 채팅방이 없음
   // 5. chatRoomUsers가 없음
@@ -245,8 +245,8 @@ export class ChatRoomGateway
 
   // NOTE: error handling
   // 1. client.data.user가 없음
-  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // -------- FATAL ---- -> 소켓 재연결
+  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // 3. 유저가 채팅방에 없음
   // 4. 채팅방이 없음
   // 5. chatRoomUsers가 없음
@@ -294,8 +294,8 @@ export class ChatRoomGateway
 
   // NOTE: error handling
   // 1. client.data.user가 없음
-  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // -------- FATAL ---- -> 소켓 재연결
+  // 2. client.data.chatRoomId가 없거나 소켓이 해당 room에 없음
   // 3. 유저가 채팅방에 없음
   // 4. 채팅방이 없음
   // 5. chatRoomUsers가 없음
@@ -439,7 +439,41 @@ export class ChatRoomGateway
       return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[leaveChatPage] ${errInfo.message}`);
+      this.ChatRoomLogger.error(
+        `[leaveChatPage] ${errInfo.message}, ${client.data.where}`,
+      );
+      return { status: errInfo.status, message: errInfo.message };
+    }
+  }
+
+  @SubscribeMessage('exitChatRoom')
+  async exitChatRoom(
+    @ConnectedSocket() client: Socket,
+    @MessageBody('chatRoomId') chatRoomId: string,
+  ) {
+    try {
+      this.ChatRoomLogger.debug(`[exitChatRoom]`);
+      await this.chatRoomValidation.validateSocket(client);
+      if (!chatRoomId) {
+        throw new WsException({
+          status: ErrorStatus.WARNING,
+          message: '채팅방 ID가 유효하지 않습니다.',
+        });
+      }
+      const chatRoom = await this.chatRoomService.getChatRoomById(chatRoomId);
+      if (!chatRoom) {
+        throw new WsException({
+          status: ErrorStatus.WARNING,
+          message: '채팅방이 존재하지 않습니다.',
+        });
+      }
+      await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+      return { status: ErrorStatus.OK, message: 'ok' };
+    } catch (error) {
+      const errInfo = error.getError();
+      this.ChatRoomLogger.error(
+        `[exitChatRoom] ${errInfo.message}, ${client.data.where}`,
+      );
       return { status: errInfo.status, message: errInfo.message };
     }
   }
@@ -676,7 +710,10 @@ export class ChatRoomGateway
     chatRoom: ChatRoomEntity,
     chatRoomUser: ChatRoomUserEntity,
   ) {
-    client.leave('lobby');
+    // 이전에 있던 방에서 나가기
+    await this.leaveCurrentPosition(client);
+
+    client.leave(client.data.chatRoomId);
     client.data.chatRoomId = chatRoom.id.toString();
     client.data.where = UserWhere.CHATROOM;
     client.emit(
@@ -696,6 +733,11 @@ export class ChatRoomGateway
       );
       return;
     }
+    await this.chatRoomService.saveChatRoomUserIsEntered(
+      chatRoom,
+      client.data.user,
+      true,
+    );
     this.server
       .to(client.data.chatRoomId)
       .emit(
@@ -716,6 +758,10 @@ export class ChatRoomGateway
     client.emit(
       'showChatRoomList',
       await this.chatRoomService.getAllChatRooms(),
+    );
+    client.emit(
+      'showMyChatRoomList',
+      await this.chatRoomService.getMyChatRooms(client.data.user),
     );
     client.emit(
       'showDirectMessageList',
@@ -839,10 +885,7 @@ export class ChatRoomGateway
     );
 
     if (!chatRoom) {
-      throw new WsException({
-        status: ErrorStatus.ERROR,
-        message: '존재하지 않는 채팅방입니다.',
-      });
+      return;
     }
     this.ChatRoomLogger.debug(
       `[leaveChatRoom] ${client.data.user.name} leave chat room`,
@@ -853,7 +896,11 @@ export class ChatRoomGateway
     // client.leave(client.data.chatRoomId);
     const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
     if (!isUserIn) {
-      await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+      await this.chatRoomService.saveChatRoomUserIsEntered(
+        chatRoom,
+        client.data.user,
+        false,
+      );
       this.server
         .to(client.data.chatRoomId)
         .emit(

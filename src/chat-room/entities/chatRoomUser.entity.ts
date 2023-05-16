@@ -29,4 +29,7 @@ export class ChatRoomUserEntity {
 
   @Column({ nullable: true })
   mutedUntil: Date;
+
+  @Column({ default: false })
+  isEntered: boolean;
 }

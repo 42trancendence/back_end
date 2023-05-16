@@ -30,12 +30,12 @@ export class ChatRoomValidation {
       });
     }
 
-    if (!client.data?.chatRoomId || !client.rooms.has(client.data.chatRoomId)) {
-      throw new WsException({
-        status: ErrorStatus.FATAL,
-        message: '소켓이 room에 속해있지 않습니다.',
-      });
-    }
+    // if (!client.data?.chatRoomId || !client.rooms.has(client.data.chatRoomId)) {
+    //   throw new WsException({
+    //     status: ErrorStatus.FATAL,
+    //     message: '소켓이 room에 속해있지 않습니다.',
+    //   });
+    // }
   }
 
   async validateChatRoom(enterChatRoomDto: EnterChatRoomDto) {
@@ -140,10 +140,18 @@ export class ChatRoomValidation {
 
   async validateUserInChatRoom(client: Socket): Promise<any> {
     await this.validateSocket(client);
+
     if (client.data?.where !== UserWhere.CHATROOM) {
       throw new WsException({
         status: ErrorStatus.ERROR,
         message: '유저가 채팅방에 있지 않습니다.',
+      });
+    }
+
+    if (!client.data?.chatRoomId || !client.rooms.has(client.data.chatRoomId)) {
+      throw new WsException({
+        status: ErrorStatus.ERROR,
+        message: '소켓이 room에 속해있지 않습니다.',
       });
     }
 
@@ -184,7 +192,8 @@ export class ChatRoomValidation {
   }
 
   async validateCreateChatRoom(client: Socket, chatRoomName: string) {
-    await this.validateUserInLobby(client);
+    // await this.validateUserInLobby(client);
+    await this.validateSocket(client);
     if (!chatRoomName || chatRoomName.length >= 20) {
       throw new WsException({
         status: ErrorStatus.WARNING,

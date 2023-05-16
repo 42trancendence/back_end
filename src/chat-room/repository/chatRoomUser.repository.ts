@@ -24,6 +24,21 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
     return chatRoomUser;
   }
 
+  async getMyChatRooms(user: UserEntity): Promise<ChatRoomUserEntity[]> {
+    return await this.find({
+      where: { user: { id: user.id }, isBanned: false },
+      select: {
+        chatRoom: {
+          id: true,
+          name: true,
+          type: true,
+        },
+        role: true,
+      },
+      relations: ['chatRoom'],
+    });
+  }
+
   async getChatRoomUser(
     chatRoom: ChatRoomEntity,
     user: UserEntity,
@@ -42,6 +57,7 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
       select: {
         role: true,
         isBanned: true,
+        isEntered: true,
         user: {
           id: true,
           name: true,
