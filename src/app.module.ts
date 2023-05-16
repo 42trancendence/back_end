@@ -1,4 +1,11 @@
-import { Module } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  MiddlewareConsumer,
+  Module,
+  NestMiddleware,
+  NestModule,
+} from '@nestjs/common';
 import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import emailConfig from './config/emailConfig';
@@ -16,6 +23,23 @@ import { EventsModule } from './events/events.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { NextFunction, Request, Response } from 'express';
+
+@Injectable()
+export class LoggerMiddleware implements NestMiddleware {
+  private logger = new Logger('HTTP');
+  use(req: Request, res: Response, next: NextFunction) {
+    const { ip, method, originalUrl } = req;
+    const userAgent = req.get('user-agent') || '';
+    res.on('finish', () => {
+      const { statusCode } = res;
+      this.logger.log(
+        `${method} ${originalUrl} ${statusCode} ${userAgent} ${ip},`,
+      );
+    });
+    next();
+  }
+}
 
 @Module({
   imports: [
@@ -47,4 +71,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
