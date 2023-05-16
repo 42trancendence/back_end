@@ -61,6 +61,7 @@ export class ChatRoomUserRepository extends Repository<ChatRoomUserEntity> {
         user: {
           id: true,
           name: true,
+          avatarImageUrl: true,
         },
       },
       relations: ['user'],

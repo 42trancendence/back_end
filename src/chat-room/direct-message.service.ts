@@ -128,10 +128,12 @@ export class DirectMessageService {
       user1: {
         id: directMessage.user1.id,
         name: directMessage.user1.name,
+        avatarImageUrl: directMessage.user1.avatarImageUrl,
       },
       user2: {
         id: directMessage.user2.id,
         name: directMessage.user2.name,
+        avatarImageUrl: directMessage.user2.avatarImageUrl,
       },
       isBlocked,
     };

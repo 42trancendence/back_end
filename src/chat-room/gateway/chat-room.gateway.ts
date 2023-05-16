@@ -468,11 +468,30 @@ export class ChatRoomGateway
         });
       }
       await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+
+      this.server
+        .to(chatRoomId.toString())
+        .emit(
+          'getChatRoomUsers',
+          await this.chatRoomService.getChatRoomUsers(chatRoom),
+        );
+      this.server
+        .to('lobby')
+        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+      client.emit(
+        'showMyChatRoomList',
+        await this.chatRoomService.getMyChatRooms(client.data.user),
+      );
+      client.emit(
+        'showChatRoomList',
+        await this.chatRoomService.getAllChatRooms(),
+      );
+
       return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(
-        `[exitChatRoom] ${errInfo.message}, ${client.data.where}`,
+        `[exitChatRoom] ${errInfo.message} ${client.data.where}`,
       );
       return { status: errInfo.status, message: errInfo.message };
     }
@@ -650,36 +669,7 @@ export class ChatRoomGateway
 
   async handleDisconnect(client: Socket) {
     this.ChatRoomLogger.log(`chat-room disconnected`);
-    if (!client.data?.user) {
-      return;
-    }
-    if (client.data.where === UserWhere.CHATROOM) {
-      const chatRoom = await this.chatRoomService.getChatRoomById(
-        client.data.chatRoomId,
-      );
-      if (!chatRoom) {
-        return;
-      }
-      const isUserIn = await this.chatRoomService.isUserInChatRoom(client);
-      if (!isUserIn) {
-        await this.chatRoomService.deleteChatRoomUser(
-          chatRoom,
-          client.data.user,
-        );
-        this.server
-          .to(client.data.chatRoomId)
-          .emit(
-            'getChatRoomUsers',
-            await this.chatRoomService.getChatRoomUsers(chatRoom),
-          );
-        this.server
-          .to('lobby')
-          .emit(
-            'showChatRoomList',
-            await this.chatRoomService.getAllChatRooms(),
-          );
-      }
-    }
+    await this.leaveCurrentPosition(client);
   }
 
   async clientJoinDirectMessage(
@@ -778,8 +768,6 @@ export class ChatRoomGateway
     for (const socket of sockets) {
       if (socket.data?.user?.id === userId) {
         socket.emit('kickUser');
-        // socket.leave(chatRoomId);
-        // await this.clinetJoinLobby(socket);
       }
     }
     this.server
@@ -807,6 +795,7 @@ export class ChatRoomGateway
           id: message.directMessage.id,
           name: message.user.name,
           message: message.message,
+          avatarImageUrl: message.user.avatarImageUrl,
         });
       }
     }
@@ -817,6 +806,7 @@ export class ChatRoomGateway
           id: message.directMessage.id,
           name: message.user.name,
           message: message.message,
+          avatarImageUrl: message.user.avatarImageUrl,
         });
       }
     }
