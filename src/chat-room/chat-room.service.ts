@@ -72,11 +72,8 @@ export class ChatRoomService {
   }
 
   async toggleBanUser(chatRoomUser: ChatRoomUserEntity): Promise<void> {
-    if (chatRoomUser.isBanned === false) {
-      chatRoomUser.isBanned = true;
-      return await this.chatRoomUserRepository.saveChatRoomUser(chatRoomUser);
-    }
-    return await this.chatRoomUserRepository.deleteChatRoomUser(chatRoomUser);
+    chatRoomUser.isBanned = !chatRoomUser.isBanned;
+    return await this.chatRoomUserRepository.saveChatRoomUser(chatRoomUser);
   }
 
   async setUserRole(
@@ -96,6 +93,12 @@ export class ChatRoomService {
     isMuted: boolean,
   ): Promise<void> {
     const now = new Date();
+    if (chatRoomUser.isMuted && isMuted) {
+      throw new WsException({
+        status: ErrorStatus.WARNING,
+        message: '이미 MUTE된 유저입니다.',
+      });
+    }
     chatRoomUser.isMuted = isMuted;
     chatRoomUser.mutedUntil = null;
     if (isMuted) {
@@ -110,6 +113,10 @@ export class ChatRoomService {
 
   async getAllChatRooms(): Promise<ChatRoomEntity[]> {
     return await this.chatRoomRepository.getAllChatRooms();
+  }
+
+  async getMyChatRooms(user: UserEntity): Promise<any[]> {
+    return await this.chatRoomUserRepository.getMyChatRooms(user);
   }
 
   async getChatRoomById(chatRoomId: string): Promise<ChatRoomEntity> {
@@ -158,6 +165,22 @@ export class ChatRoomService {
 
   async deleteChatRoom(chatRoom: ChatRoomEntity) {
     await this.chatRoomRepository.deleteChatRoom(chatRoom);
+  }
+
+  async saveChatRoomUserIsEntered(
+    chatRoom: ChatRoomEntity,
+    user: UserEntity,
+    isEntered: boolean,
+  ) {
+    const chatRoomUser = await this.chatRoomUserRepository.getChatRoomUser(
+      chatRoom,
+      user,
+    );
+    if (!chatRoomUser) {
+      return;
+    }
+    chatRoomUser.isEntered = isEntered;
+    await this.chatRoomUserRepository.saveChatRoomUser(chatRoomUser);
   }
 
   async deleteChatRoomUser(chatRoom: ChatRoomEntity, user: UserEntity) {
