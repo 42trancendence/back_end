@@ -35,7 +35,7 @@ export class UserEntity {
   registrationDate: Date;
 
   @Column({ default: true })
-  isVerified: boolean;
+  isTwoFactorEnable: boolean;
 
   @ApiProperty({ description: '유저 상태' })
   @Column({ default: Status.OFFLINE })

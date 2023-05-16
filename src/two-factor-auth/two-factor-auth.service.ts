@@ -42,7 +42,7 @@ export class TwoFactorAuthService {
       'ft_transcendence',
       secret,
     );
-    await this.usersService.setTwoFactorAuthSecret(user, secret);
+    await this.usersService.setTwoFactorAuthSecret(user, secret, 'QRCODE');
     return { otpAuthUrl };
   }
 
@@ -76,12 +76,12 @@ export class TwoFactorAuthService {
     };
 
     const token = await bcrypt.hash(code, 10);
-    await this.usersService.setTwoFactorAuthSecret(user, token);
+    await this.usersService.setTwoFactorAuthSecret(user, token, 'EMAIL');
 
     await this.transporter.sendMail(mailOptions);
   }
 
   async isVerifyEmailCode(code: string, user: UserEntity): Promise<boolean> {
-    return await bcrypt.compare(code, user.qrAuthCode);
+    return await bcrypt.compare(code, user.emailAuthCode);
   }
 }

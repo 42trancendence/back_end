@@ -15,8 +15,8 @@ export class UsersService {
     @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {}
 
-  async setTwoFactorAuthSecret(user: UserEntity, secret: string) {
-    this.userRepository.saveTwoFactorAuthCode(user, secret);
+  async setTwoFactorAuthSecret(user: UserEntity, secret: string, type: string) {
+    this.userRepository.saveTwoFactorAuthCode(user, secret, type);
   }
 
   async updateUserStatus(user: UserEntity, status: Status) {
