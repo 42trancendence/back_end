@@ -51,7 +51,7 @@ export class AuthController {
 
     const user = await this.usersService.getUserByEmail(ftUser.email);
     const url = this.config.frontCallbackUri;
-    if (!user || user.isVerified === true) {
+    if (!user || user.isTwoFactorEnable === true) {
       if (!user) {
         this.authLogger.log('회원가입이 되어있지 않습니다.');
         await this.usersService.createUser(ftUser);

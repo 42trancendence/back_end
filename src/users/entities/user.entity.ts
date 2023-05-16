@@ -20,7 +20,11 @@ export class UserEntity {
 
   @Exclude()
   @Column({ length: 60, nullable: true })
-  twoFactorAuthCode: string;
+  qrAuthCode: string;
+
+  @Exclude()
+  @Column({ length: 60, nullable: true })
+  emailAuthCode: string;
 
   @ApiProperty({ description: '유저 아바타 URL' })
   @Column({ name: 'avatar_image_url' })
@@ -31,7 +35,7 @@ export class UserEntity {
   registrationDate: Date;
 
   @Column({ default: true })
-  isVerified: boolean;
+  isTwoFactorEnable: boolean;
 
   @ApiProperty({ description: '유저 상태' })
   @Column({ default: Status.OFFLINE })

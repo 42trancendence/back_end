@@ -736,12 +736,12 @@ export class ChatRoomGateway
         // await this.clinetJoinLobby(socket);
       }
     }
-    // this.server
-    //   .to(chatRoomId)
-    //   .emit(
-    //     'getChatRoomUsers',
-    //     await this.chatRoomService.getChatRoomUsers(chatRoom),
-    //   );
+    this.server
+      .to(chatRoomId)
+      .emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
+      );
   }
 
   async emitMuteUserInChatRoom(chatRoomId: string, userId: string, date: Date) {

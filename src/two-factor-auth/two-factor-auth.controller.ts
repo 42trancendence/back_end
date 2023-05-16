@@ -36,7 +36,7 @@ export class TwoFactorAuthController {
   })
   async checkIs2faEnabled(@getUser() user: UserEntity, @Res() res: Response) {
     this.twoFactorLogger.verbose('[GET] /2fa');
-    if (user.isVerified) {
+    if (user.isTwoFactorEnable) {
       return res.status(200).json({ token: '' });
     }
     await this.authService.createRefreshToken(user, res);

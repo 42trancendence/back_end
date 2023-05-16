@@ -48,13 +48,21 @@ export class UserRepository extends Repository<UserEntity> {
     return user;
   }
 
-  async saveTwoFactorAuthCode(user: UserEntity, secret: string): Promise<void> {
-    user.twoFactorAuthCode = secret;
+  async saveTwoFactorAuthCode(
+    user: UserEntity,
+    secret: string,
+    type: string,
+  ): Promise<void> {
+    if (type === 'EMAIL') {
+      user.emailAuthCode = secret;
+    } else {
+      user.qrAuthCode = secret;
+    }
     await this.save(user);
   }
 
   async turnOnTwoFactorAuth(user: UserEntity): Promise<void> {
-    user.isVerified = true;
+    user.isTwoFactorEnable = true;
     await this.save(user);
   }
 
@@ -76,7 +84,7 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async update2FA(user: UserEntity) {
-    user.isVerified = !user.isVerified;
+    user.isTwoFactorEnable = !user.isTwoFactorEnable;
     await this.save(user);
   }
 
