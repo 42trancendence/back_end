@@ -124,7 +124,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
-    client.emit('getGameHistory');
+    client.emit('finishGame');
 
     this.WsLogger.log(`User [${user.name}] connected`);
   }
@@ -133,11 +133,24 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.WsLogger.debug(`[hadleDisconnect] ${client.id}`);
   }
 
+  @SubscribeMessage('isMatching')
+  async isMatching(@ConnectedSocket() client: Socket) {
+    if (!client.data?.user) {
+      client.disconnect();
+      client.emit('getMatching', 'disconnected');
+      throw new WsException('Unauthorized');
+    }
+
+    if (client.data.roomId == GameStatus.MATCHING) {
+      client.emit('isMatching');
+    }
+  }
+
   @SubscribeMessage('postMatching')
   async postMatching(@ConnectedSocket() client: Socket) {
     if (!client.data?.user) {
       client.disconnect();
-      client.emit('getMatching', 'disconnected');
+      client.emit('failedMatching');
       throw new WsException('Unauthorized');
     }
 
@@ -146,14 +159,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       client.data.user.id,
     );
     if (roomId) {
-      client.emit('getMatching', 'already');
+      client.emit('failedMatching');
       this.WsLogger.log(`User ${client.id}: already matching`);
       throw new WsException('User in room id');
     }
 
     const allSockets = await this.server.in(GameStatus.MATCHING).fetchSockets();
     if (allSockets.length >= MAX_QUEUE_SIZE) {
-      client.emit('getMatching', 'full');
+      client.emit('failedMatching');
       return;
     }
 
@@ -166,7 +179,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     });
     if (flag != false) {
-      client.emit('getMatching', 'already');
+      client.emit('failedMatching');
       return;
     }
 
@@ -180,7 +193,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async leaveWait(@ConnectedSocket() client: Socket) {
     if (!client.data?.user) {
       client.disconnect();
-      client.emit('getMatching', 'disconnected');
+      client.emit('failedMatching');
       throw new WsException('Unauthorized');
     }
 
@@ -222,6 +235,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.WsLogger.debug(`[postLeaveGame] ${client.id}`);
 
     const data = client.data;
+    client.leave(GameStatus.MATCHING);
 
     if (client.data.roomId == GameStatus.LOBBY) {
       this.WsLogger.log(`[postLeaveGame] User ${client.id} not in game`);
@@ -381,6 +395,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       const newRoomId = uuid.v4();
 
       client.leave(GameStatus.LOBBY);
+      client.leave(GameStatus.MATCHING);
       client.join(newRoomId);
       client.data.roomId = newRoomId;
 
@@ -417,6 +432,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
         `[acceptMatchingRequest] ${client.data.user.name} -> ${roomId}`,
       );
       client.leave(GameStatus.LOBBY);
+      client.leave(GameStatus.MATCHING);
       client.join(roomId);
       client.data.roomId = roomId;
       client.emit('getMatching', 'matching', 'matching', roomId);
@@ -433,7 +449,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: any,
   ) {
     this.WsLogger.debug(`emitEventToActiveUser: ${user.id}`);
-    const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
+    // const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
+    const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       this.WsLogger.debug(
         `event: ${socket.data?.user.id}, ${user.id}`,

@@ -83,13 +83,12 @@ export class UsersService {
       }
     });
 
-    combinedGameStats
-      .sort((a, b) => {
-        // 날짜 순으로 정렬 (최근날짜부터)
-        return b.createAt.getTime() - a.createAt.getTime();
-      })
-      .slice(0, 10);
-    return [combinedGameStats, countWinLose];
+    combinedGameStats.sort((a, b) => {
+      // 날짜 순으로 정렬 (최근날짜부터)
+      return b.createAt.getTime() - a.createAt.getTime();
+    });
+
+    return [combinedGameStats.slice(0, 10), countWinLose];
   }
 
   async updateUserRating(
