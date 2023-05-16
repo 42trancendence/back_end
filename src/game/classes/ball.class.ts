@@ -39,7 +39,6 @@ export class Ball {
     this.x_ = GameVariable.canvasWidth / 2;
     this.y_ = GameVariable.canvasHeight / 2;
     this.speed_ = this.originSpeed_;
-    // TODO
     // 1. 공의 방향을 랜덤으로 설정
     // 2. 공의 속도를 랜덤으로 설정
     this.velocityX_ = (Math.random() * 2 - 1) * this.speed_;

@@ -86,13 +86,13 @@ export class UserRepository extends Repository<UserEntity> {
       relations: ['gameStatsAsPlayer1', 'gameStatsAsPlayer2'],
     });
 
-    user.gameStatsAsPlayer1 = user.gameStatsAsPlayer1.filter(
-      (game) => game.status === 'end',
-    );
+    // user.gameStatsAsPlayer1 = user.gameStatsAsPlayer1.filter(
+    //   (game) => game.status === 'end',
+    // );
 
-    user.gameStatsAsPlayer2 = user.gameStatsAsPlayer2.filter(
-      (game) => game.status === 'end',
-    );
+    // user.gameStatsAsPlayer2 = user.gameStatsAsPlayer2.filter(
+    //   (game) => game.status === 'end',
+    // );
 
     return user;
   }

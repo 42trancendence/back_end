@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsNumber, IsString } from 'class-validator';
-import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 
 export class GameStateDto {

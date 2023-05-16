@@ -1,4 +1,4 @@
-import { Logger, UseFilters, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Logger, UseFilters } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -92,16 +92,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     this.WsLogger.debug(`handleConnection: ${client.id}, ${client.data}`);
-    // console.log(`복구: ${client.recovered}`);
-
-    // TODO
-    // // 1. 이전에 로그인한 유저인지 확인한다.
-    // if (client.data?.user) {
-    //   this.WsLogger.debug(
-    //     `User ${client.data.user.id}: [${client.data.user.name}] is already in game`,
-    //   );
-    //   return;
-    // }
 
     const user = await this.authService.getUserBySocket(client);
     if (!user) {
@@ -112,33 +102,18 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     // 이미 접속한 유저라면
     const roomId = await this.gameService.getRoomIdByUserId(user.id);
     if (roomId) {
-      // TODO
-      // 1. 이미 접속한 유저라면, overview로 보낸다.
-
       client.join(roomId);
-      // REFACTOR
-      // 1. user 로 바로 받는다 (@exclude 사용)
+
       client.data.user = {
         id: user.id,
         name: user.name,
         email: user.email,
         avatarImageUrl: user.avatarImageUrl,
       };
-      // client.data.user = user;
-      // console.log('User', client.data.user);
       client.data.roomId = roomId;
-      // TODO
-      // 1. 프론트로 현재 진행중인 게임 방 접속해야 한다.
-      // client.emit('startGame', roomId);
+
       return this.WsLogger.debug(`[${user.name}] is already in [${roomId}]`);
     }
-    // socketio 에서 재접속 설정을 했을 경우. (설정하고 확인해보기)
-    // if (client.data?.user) {
-    //   this.WsLogger.debug(
-    //     `User ${client.data.user.id}: ${client.data.user.name} is already in lobby`,
-    //   );
-    //   return;
-    // }
 
     client.data.user = {
       id: user.id,
@@ -147,25 +122,14 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       avatarImageUrl: user.avatarImageUrl,
     };
 
-    // client.leave(client.id);
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
     client.emit('getGameHistory');
-    // 로비에 있는 유저들에게 새로운 유저가 입장했다고 알린다. (로비에서 로비뷰에 있는 유저들 표시가 필요, 없으면 삭제)
-    // this.server.to(GameStatus.LOBBY).emit('connectUser', client.data.user.name);
+
     this.WsLogger.log(`User [${user.name}] connected`);
   }
 
   async handleDisconnect(client: Socket) {
-    //TODO
-    // 1. 자동 매칭 신청한 유저 처리
-    // client.leave(GameStatus.MATCHING);
-    // client.emit('getCancelMatching');
-    // 2. 게임 방에서 대기중인 유저 처리
-    // client.leave(client.data.roomId);
-    // client.emit('getLeaveGame', 'delete');
-    // client.emit('getLeaveGame', 'leave');
-
     this.WsLogger.debug(`[hadleDisconnect] ${client.id}`);
   }
 
@@ -295,8 +259,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     const game = this.gameManager.getGameByRoomId(roomId);
-    // TODO
-    // 1. 게임에 참여한 유저인지 확인한다.
+
     if (game.isClientReady(data.user.name)) {
       game.cancelReady(data.user.name);
       this.WsLogger.log(`User ${data.user.name} cancel ready`);
@@ -391,7 +354,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('inviteUserForGame')
-  // @UsePipes(ValidationPipe) // 이거 왜함?
   async inviteUserForGame(
     @ConnectedSocket() client: Socket,
     @MessageBody() inviteUserNameDto: InviteUserNameDto,
@@ -399,7 +361,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     try {
       const senderUser = await this.validateClient(client);
 
-      // userName -> userId 로 변경하기
       const receiverUser = await this.validateInvitedUser(
         inviteUserNameDto.userName,
       );
@@ -472,9 +433,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     data: any,
   ) {
     this.WsLogger.debug(`emitEventToActiveUser: ${user.id}`);
-    // 해당 유저가 접속되어 있는 모든 소켓에게 이벤트 전송
     const allSockets = await this.server.in(GameStatus.LOBBY).fetchSockets();
-    // const allSockets = await this.server.fetchSockets();
     for (const socket of allSockets) {
       this.WsLogger.debug(
         `event: ${socket.data?.user.id}, ${user.id}`,
@@ -482,7 +441,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       if (socket.data?.user.id === user.id) {
         socket.emit(event, data);
-        // this.server.to(socket.id).emit(event, data);
         return;
       }
     }
