@@ -25,9 +25,11 @@ export class UserRepository extends Repository<UserEntity> {
   }
 
   async findUserById(userId: string): Promise<UserEntity> {
-    return await this.findOne({
+    const user = await this.findOne({
       where: { id: userId },
     });
+
+    return user;
   }
 
   async findUserByName(name: string): Promise<UserEntity> {
@@ -80,7 +82,7 @@ export class UserRepository extends Repository<UserEntity> {
     await this.save(user);
   }
 
-  async getGameHistory(userId: string): Promise<UserEntity> {
+  async getUserHistoryByUserId(userId: string): Promise<UserEntity> {
     const user = await this.findOne({
       where: { id: userId },
       relations: ['gameStatsAsPlayer1', 'gameStatsAsPlayer2'],
