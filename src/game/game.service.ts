@@ -6,6 +6,7 @@ import { Logger } from '@nestjs/common';
 import * as uuid from 'uuid';
 import { GameStatus } from './constants/gameVariable';
 import { Game } from './classes/game.class';
+import { match } from 'assert';
 
 @Injectable()
 export class GameService {
@@ -14,9 +15,19 @@ export class GameService {
 
   async createGame(server: Server, gameManager: GameManager) {
     const allSockets = await server.in(GameStatus.MATCHING).fetchSockets();
+    let client1;
+    let client2;
+
     if (allSockets.length >= 2) {
-      const client1 = allSockets.shift();
-      const client2 = allSockets.shift();
+      const matchPlayers = gameManager.waitQueue.getMatchPlayers();
+      for (const socket of allSockets) {
+        if (socket.data.user.id == matchPlayers[0]) {
+          client1 = socket;
+        }
+        if (socket.data.user.id == matchPlayers[1]) {
+          client2 = socket;
+        }
+      }
       const player1 = client1.data.user;
       const player2 = client2.data.user;
       const title = `${player1.name}-${player2.name}`;

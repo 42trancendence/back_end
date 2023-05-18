@@ -3,9 +3,11 @@ import { GameStatus } from '../constants/gameVariable';
 import { GameService } from '../game.service';
 import { Game } from './game.class';
 import { Server } from 'socket.io';
+import { WaitQueue } from './waitQueue.class';
 
 export class GameManager {
   gameList: Map<string, Game> = new Map<string, Game>();
+  waitQueue: WaitQueue = new WaitQueue();
 
   sendGame(
     server: Server,
