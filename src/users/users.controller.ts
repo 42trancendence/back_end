@@ -12,7 +12,6 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   Logger,
-  Bind,
   UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -33,7 +32,6 @@ import {
 import { UserEntity } from './entities/user.entity';
 import { getUser } from 'src/auth/decorator/get-user.decorator';
 import { CheckUserNameDto } from './dto/check-user-name.dto';
-import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/util/multer/multerOptions';
 
@@ -56,10 +54,8 @@ export class UsersController {
   @ApiOperation({ summary: '내 정보 조회' })
   @ApiOkResponse({ description: '성공', type: UserEntity })
   async getMyInfo(@getUser() user: UserEntity): Promise<UserEntity> {
-    // async getMyInfo(): Promise<UserEntity> {
     this.logger.log('GET users/me');
     return user;
-    // return this.usersService.getGameHistory(user.id);
   }
 
   @Get('/history/me')
@@ -134,7 +130,6 @@ export class UsersController {
     @UploadedFile() avatar: Express.Multer.File,
   ) {
     this.logger.log('PUT users/me');
-    console.log(avatar);
     const newAvatarImageUrl = avatar
       ? await this.usersService.uploadAvatarImage(avatar)
       : null;

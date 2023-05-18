@@ -41,7 +41,7 @@ import { ChatRoomUserEntity } from '../entities/chatRoomUser.entity';
 @UseGuards(WsAuthGuard)
 @WebSocketGateway({
   namespace: '/chat-room',
-  cors: { origin: 'http://localhost:4000', credentials: true },
+  cors: { origin: '*', credentials: true },
 })
 export class ChatRoomGateway
   implements OnGatewayConnection, OnGatewayDisconnect
@@ -319,6 +319,13 @@ export class ChatRoomGateway
       this.server
         .to('lobby')
         .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+      const lobbySockets = await this.server.in('lobby').fetchSockets();
+      for (const socket of lobbySockets) {
+        socket.emit(
+          'showMyChatRoomList',
+          await this.chatRoomService.getMyChatRooms(socket.data.user),
+        );
+      }
       return { status: ErrorStatus.OK, message: 'ok' };
     } catch (error) {
       const errInfo = error.getError();

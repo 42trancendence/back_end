@@ -49,7 +49,7 @@ export class AuthService {
       expiresIn: '7d',
     });
     res.cookie('refreshToken', token, {
-      domain: 'localhost',
+      domain: this.config.tokenDomain,
       path: '/',
       httpOnly: true,
     });

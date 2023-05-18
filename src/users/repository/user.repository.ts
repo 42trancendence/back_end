@@ -5,7 +5,6 @@ import { UserEntity } from '../entities/user.entity';
 import { Status } from '../enum/status.enum';
 import { Not } from 'typeorm';
 import { UpdateUserDto } from '../dto/update-user.dto';
-import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Injectable()
 export class UserRepository extends Repository<UserEntity> {
@@ -95,15 +94,6 @@ export class UserRepository extends Repository<UserEntity> {
       where: { id: userId },
       relations: ['gameStatsAsPlayer1', 'gameStatsAsPlayer2'],
     });
-
-    // user.gameStatsAsPlayer1 = user.gameStatsAsPlayer1.filter(
-    //   (game) => game.status === 'end',
-    // );
-
-    // user.gameStatsAsPlayer2 = user.gameStatsAsPlayer2.filter(
-    //   (game) => game.status === 'end',
-    // );
-
     return user;
   }
 

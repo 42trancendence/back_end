@@ -55,10 +55,4 @@ export class UserEntity {
   get gameStats(): GameStatsEntity[] {
     return [...this.gameStatsAsPlayer1, ...this.gameStatsAsPlayer2];
   }
-
-  // @OneToMany(() => FriendShipEntity, (friendship) => friendship.user)
-  // friendships: FriendShipEntity[];
-  //
-  // @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
-  // friendOf: FriendShipEntity[];
 }

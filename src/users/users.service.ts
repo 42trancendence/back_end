@@ -4,7 +4,6 @@ import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
 import { FtUserDto } from 'src/auth/dto/ft-user.dto';
 import { Status } from './enum/status.enum';
-import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 import { ConfigType } from '@nestjs/config';
 import authConfig from 'src/config/authConfig';
 
