@@ -1,23 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { GameRepository } from './repository/game.repository';
-import { Server, Socket } from 'socket.io';
-import { AuthService } from 'src/auth/auth.service';
+import { Server } from 'socket.io';
 import { GameManager } from './classes/gameManager.class';
 import { Logger } from '@nestjs/common';
-import { PlayerList } from './classes/playerList.class';
-import { WsException } from '@nestjs/websockets';
 import * as uuid from 'uuid';
 import { GameStatus } from './constants/gameVariable';
-import { UserRepository } from 'src/users/repository/user.repository';
 import { Game } from './classes/game.class';
 
 @Injectable()
 export class GameService {
-  constructor(
-    private gameRepository: GameRepository,
-    private userRepository: UserRepository,
-    private authService: AuthService,
-  ) {}
+  constructor(private gameRepository: GameRepository) {}
   private readonly WsLogger = new Logger('GameWsLogger');
 
   async createGame(server: Server, gameManager: GameManager) {
@@ -33,11 +25,9 @@ export class GameService {
       client1.leave(GameStatus.MATCHING);
       client1.join(newRoomId);
       client1.data.roomId = newRoomId;
-      // client1.emit('startGame'); // 이거 필요 없어서 삭제해도 될 듯
       client2.leave(GameStatus.MATCHING);
       client2.join(newRoomId);
       client2.data.roomId = newRoomId;
-      // client2.emit('startGame');
 
       gameManager.createGame(newRoomId, title);
       const newGame = this.saveGameState(newRoomId, title, player1, player2);
@@ -55,21 +45,6 @@ export class GameService {
       player1,
       player2,
     );
-  }
-
-  async getPlayerBySocket(client: Socket, players: PlayerList) {
-    const user = await this.authService.getUserBySocket(client);
-    if (!user) {
-      client.disconnect();
-      throw new WsException('Unauthorized');
-    }
-    const player = players.getPlayerByUserId(user.id);
-    if (!player) {
-      client.disconnect();
-      throw new WsException('User is not in game');
-    }
-
-    return player;
   }
 
   async getRoomIdByUserId(userId: string) {

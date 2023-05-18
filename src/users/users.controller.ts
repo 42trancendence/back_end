@@ -62,14 +62,20 @@ export class UsersController {
     // return this.usersService.getGameHistory(user.id);
   }
 
-  @Get('game-history')
+  @Get('/history/me')
   @ApiOperation({ summary: '내 게임 기록 조회' })
   @ApiOkResponse({ description: '성공', type: [UserEntity] })
-  async getMyGameHistory(
-    @getUser() user: UserEntity,
-  ): Promise<[GameStatsEntity[], Array<number>]> {
-    this.logger.log('GET users/game-history');
-    return this.usersService.getGameHistory(user.id, user.name);
+  async getMyHistory(@getUser() user: UserEntity): Promise<object> {
+    this.logger.log('GET users/histroy/me');
+    return this.usersService.getUserHistory(user.id);
+  }
+
+  @Get('/history/:id')
+  @ApiOperation({ summary: ':id 기록 조회' })
+  @ApiOkResponse({ description: '성공', type: [UserEntity] })
+  async getIdHistory(@Param('id') userId: string): Promise<object> {
+    this.logger.log('GET users/histroy/:id');
+    return this.usersService.getUserHistory(userId);
   }
 
   @Get('name')
