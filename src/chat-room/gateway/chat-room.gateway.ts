@@ -36,6 +36,7 @@ import { EnterChatRoomDto } from '../dto/enter-chat-room.dto';
 import { DirectMessageService } from '../direct-message.service';
 import { ErrorStatus } from '../enum/error-status.enum';
 import { ChatRoomUserEntity } from '../entities/chatRoomUser.entity';
+import { getUserBySocket } from 'src/util/decorator/get-user-socket.decorator';
 
 @UseFilters(new WsExceptionFilter())
 @UseGuards(WsAuthGuard)
@@ -75,25 +76,21 @@ export class ChatRoomGateway
   async handleMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom, chatRoomUser } =
-        await this.chatRoomValidation.validateUserInChatRoom(client);
+    client.data.user = user;
+    const { chatRoom, chatRoomUser } =
+      await this.chatRoomValidation.validateUserInChatRoom(client);
 
-      const message = await this.chatRoomService.saveMessage(
-        client.data.user,
-        chatRoom,
-        chatRoomUser,
-        payload,
-      );
+    const message = await this.chatRoomService.saveMessage(
+      client.data.user,
+      chatRoom,
+      chatRoomUser,
+      payload,
+    );
 
-      client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[sendMessage] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -114,36 +111,32 @@ export class ChatRoomGateway
   async setAdminUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom } =
-        await this.chatRoomValidation.validateUserInChatRoomRole(
-          client,
-          ChatRoomRole.OWNER,
-        );
-      const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
-        userId,
-        chatRoom,
+    client.data.user = user;
+    const { chatRoom } =
+      await this.chatRoomValidation.validateUserInChatRoomRole(
+        client,
+        ChatRoomRole.OWNER,
       );
+    const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
+      userId,
+      chatRoom,
+    );
 
-      this.ChatRoomLogger.debug(
-        `[setAdminUser] ${chatRoomUser.user.name} setted admin by ${client.data.user.name}`,
+    this.ChatRoomLogger.debug(
+      `[setAdminUser] ${chatRoomUser.user.name} setted admin by ${client.data.user.name}`,
+    );
+
+    await this.chatRoomService.setUserRole(chatRoomUser, ChatRoomRole.ADMIN);
+
+    this.server
+      .to(client.data.chatRoomId)
+      .emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
       );
-
-      await this.chatRoomService.setUserRole(chatRoomUser, ChatRoomRole.ADMIN);
-
-      this.server
-        .to(client.data.chatRoomId)
-        .emit(
-          'getChatRoomUsers',
-          await this.chatRoomService.getChatRoomUsers(chatRoom),
-        );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[setAdminUser] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -164,34 +157,26 @@ export class ChatRoomGateway
   async toggleBanUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom } =
-        await this.chatRoomValidation.validateUserInChatRoomRole(
-          client,
-          ChatRoomRole.ADMIN,
-        );
-
-      const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
-        userId,
-        chatRoom,
-      );
-      this.ChatRoomLogger.debug(
-        `[toggleBanUser] ${chatRoomUser.user.name} banned from ${chatRoom.name} by ${client.data.user.name}`,
+    client.data.user = user;
+    const { chatRoom } =
+      await this.chatRoomValidation.validateUserInChatRoomRole(
+        client,
+        ChatRoomRole.ADMIN,
       );
 
-      await this.chatRoomService.toggleBanUser(chatRoomUser);
-      await this.emitKickUserInChatRoom(
-        client.data.chatRoomId,
-        userId,
-        chatRoom,
-      );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[toggleBanUser] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
+      userId,
+      chatRoom,
+    );
+    this.ChatRoomLogger.debug(
+      `[toggleBanUser] ${chatRoomUser.user.name} banned from ${chatRoom.name} by ${client.data.user.name}`,
+    );
+
+    await this.chatRoomService.toggleBanUser(chatRoomUser);
+    await this.emitKickUserInChatRoom(client.data.chatRoomId, userId, chatRoom);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -212,35 +197,26 @@ export class ChatRoomGateway
   async kickUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom } =
-        await this.chatRoomValidation.validateUserInChatRoomRole(
-          client,
-          ChatRoomRole.ADMIN,
-        );
-
-      const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
-        userId,
-        chatRoom,
+    client.data.user = user;
+    const { chatRoom } =
+      await this.chatRoomValidation.validateUserInChatRoomRole(
+        client,
+        ChatRoomRole.ADMIN,
       );
 
-      this.ChatRoomLogger.debug(
-        `[kickUser] ${chatRoomUser.user.name} kicked from ${chatRoom.name} by ${client.data.user.name}`,
-      );
+    const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
+      userId,
+      chatRoom,
+    );
 
-      // await this.chatRoomService.setKickUser(chatRoomUser);
-      await this.emitKickUserInChatRoom(
-        client.data.chatRoomId,
-        userId,
-        chatRoom,
-      );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[kickUser] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    this.ChatRoomLogger.debug(
+      `[kickUser] ${chatRoomUser.user.name} kicked from ${chatRoom.name} by ${client.data.user.name}`,
+    );
+
+    await this.emitKickUserInChatRoom(client.data.chatRoomId, userId, chatRoom);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -261,35 +237,31 @@ export class ChatRoomGateway
   async muteUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom } =
-        await this.chatRoomValidation.validateUserInChatRoomRole(
-          client,
-          ChatRoomRole.ADMIN,
-        );
-      const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
-        userId,
-        chatRoom,
+    client.data.user = user;
+    const { chatRoom } =
+      await this.chatRoomValidation.validateUserInChatRoomRole(
+        client,
+        ChatRoomRole.ADMIN,
       );
+    const chatRoomUser = await this.chatRoomValidation.validateUserIsNormal(
+      userId,
+      chatRoom,
+    );
 
-      this.ChatRoomLogger.debug(
-        `[setMuteUser] ${chatRoomUser.user.name} muted from ${chatRoom.name} by ${client.data.user.name}`,
-      );
+    this.ChatRoomLogger.debug(
+      `[setMuteUser] ${chatRoomUser.user.name} muted from ${chatRoom.name} by ${client.data.user.name}`,
+    );
 
-      await this.chatRoomService.setMuteUser(chatRoomUser, true);
-      // TODO: mute 당한 유저에게 event emit
-      await this.emitMuteUserInChatRoom(
-        client.data.chatRoomId,
-        userId,
-        chatRoomUser.mutedUntil,
-      );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[toggleMuteUser] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    await this.chatRoomService.setMuteUser(chatRoomUser, true);
+    // TODO: mute 당한 유저에게 event emit
+    await this.emitMuteUserInChatRoom(
+      client.data.chatRoomId,
+      userId,
+      chatRoomUser.mutedUntil,
+    );
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -306,32 +278,28 @@ export class ChatRoomGateway
   async updateChatRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody(ChatRoomValidationPipe) updateChatRoomDto: UpdateChatRoomDto,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { chatRoom } =
-        await this.chatRoomValidation.validateUserInChatRoomRole(
-          client,
-          ChatRoomRole.OWNER,
-        );
+    client.data.user = user;
+    const { chatRoom } =
+      await this.chatRoomValidation.validateUserInChatRoomRole(
+        client,
+        ChatRoomRole.OWNER,
+      );
 
-      await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
+    await this.chatRoomService.updateChatRoom(chatRoom, updateChatRoomDto);
 
-      this.server
-        .to('lobby')
-        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
-      const lobbySockets = await this.server.in('lobby').fetchSockets();
-      for (const socket of lobbySockets) {
-        socket.emit(
-          'showMyChatRoomList',
-          await this.chatRoomService.getMyChatRooms(socket.data.user),
-        );
-      }
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[updateChatRoom] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
+    this.server
+      .to('lobby')
+      .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+    const lobbySockets = await this.server.in('lobby').fetchSockets();
+    for (const socket of lobbySockets) {
+      socket.emit(
+        'showMyChatRoomList',
+        await this.chatRoomService.getMyChatRooms(socket.data.user),
+      );
     }
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -347,30 +315,24 @@ export class ChatRoomGateway
   async createChatRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody(ChatRoomValidationPipe) createChatRoomDto: CreateChatRoomDto,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      this.ChatRoomLogger.debug(`[createChatRoom]`);
-      await this.chatRoomValidation.validateCreateChatRoom(
-        client,
-        createChatRoomDto.name,
-      );
+    client.data.user = user;
+    this.ChatRoomLogger.debug(`[createChatRoom]`);
+    await this.chatRoomValidation.validateCreateChatRoom(
+      client,
+      createChatRoomDto.name,
+    );
 
-      const chatRoom = await this.chatRoomService.createChatRoom(
-        createChatRoomDto,
-      );
-      await this.chatRoomService.createChatRoomUser(
-        chatRoom,
-        client.data.user,
-        ChatRoomRole.OWNER,
-      );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(
-        `[createChatRoom] ${errInfo.message} ${client.data.where}`,
-      );
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    const chatRoom = await this.chatRoomService.createChatRoom(
+      createChatRoomDto,
+    );
+    await this.chatRoomService.createChatRoomUser(
+      chatRoom,
+      client.data.user,
+      ChatRoomRole.OWNER,
+    );
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -386,28 +348,24 @@ export class ChatRoomGateway
   async enterChatRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody() enterChatRoomDto: EnterChatRoomDto,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      this.ChatRoomLogger.debug(
-        `[enterChatRoom] roomName: ${enterChatRoomDto.roomName}, password: ${enterChatRoomDto.password}`,
-      );
-      await this.chatRoomValidation.validateSocket(client);
-      const chatRoom = await this.chatRoomValidation.validateChatRoom(
-        enterChatRoomDto,
-      );
-      const chatRoomUser = await this.chatRoomService.createChatRoomUser(
-        chatRoom,
-        client.data.user,
-        ChatRoomRole.NORMAL,
-      );
+    client.data.user = user;
+    this.ChatRoomLogger.debug(
+      `[enterChatRoom] roomName: ${enterChatRoomDto.roomName}, password: ${enterChatRoomDto.password}`,
+    );
+    await this.chatRoomValidation.validateSocket(client);
+    const chatRoom = await this.chatRoomValidation.validateChatRoom(
+      enterChatRoomDto,
+    );
+    const chatRoomUser = await this.chatRoomService.createChatRoomUser(
+      chatRoom,
+      client.data.user,
+      ChatRoomRole.NORMAL,
+    );
 
-      await this.clientJoinChatRoom(client, chatRoom, chatRoomUser);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[enterChatRoom] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    await this.clientJoinChatRoom(client, chatRoom, chatRoomUser);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -417,18 +375,16 @@ export class ChatRoomGateway
   // 3. 유저가 나가야하는 채팅방이 존재하지 않음
   // -------- ERROR ---- -> chat lobby로 이동
   @SubscribeMessage('enterChatLobby')
-  async enterChatLobby(@ConnectedSocket() client: Socket) {
-    try {
-      await this.chatRoomValidation.validateSocket(client);
-      // NOTE: 현재 유저가 속해있던 곳에서 퇴장
-      await this.leaveCurrentPosition(client);
-      await this.clinetJoinLobby(client);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[enterChatLobby] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+  async enterChatLobby(
+    @ConnectedSocket() client: Socket,
+    @getUserBySocket() user: UserEntity,
+  ) {
+    client.data.user = user;
+    await this.chatRoomValidation.validateSocket(client);
+    // NOTE: 현재 유저가 속해있던 곳에서 퇴장
+    await this.leaveCurrentPosition(client);
+    await this.clinetJoinLobby(client);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -438,70 +394,60 @@ export class ChatRoomGateway
   // 3. 유저가 나가야하는 채팅방이 존재하지 않음
   // -------- ERROR ---- -> chat lobby로 이동
   @SubscribeMessage('leaveChatPage')
-  async leaveChatPage(@ConnectedSocket() client: Socket) {
-    try {
-      this.ChatRoomLogger.debug(`[leaveChatPage]`);
-      await this.chatRoomValidation.validateSocket(client);
-      await this.leaveCurrentPosition(client);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(
-        `[leaveChatPage] ${errInfo.message}, ${client.data.where}`,
-      );
-      return { status: errInfo.status, message: errInfo.message };
-    }
+  async leaveChatPage(
+    @ConnectedSocket() client: Socket,
+    @getUserBySocket() user: UserEntity,
+  ) {
+    client.data.user = user;
+    this.ChatRoomLogger.debug(`[leaveChatPage]`);
+    await this.chatRoomValidation.validateSocket(client);
+    await this.leaveCurrentPosition(client);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   @SubscribeMessage('exitChatRoom')
   async exitChatRoom(
     @ConnectedSocket() client: Socket,
     @MessageBody('chatRoomId') chatRoomId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      this.ChatRoomLogger.debug(`[exitChatRoom]`);
-      await this.chatRoomValidation.validateSocket(client);
-      if (!chatRoomId) {
-        throw new WsException({
-          status: ErrorStatus.WARNING,
-          message: '채팅방 ID가 유효하지 않습니다.',
-        });
-      }
-      const chatRoom = await this.chatRoomService.getChatRoomById(chatRoomId);
-      if (!chatRoom) {
-        throw new WsException({
-          status: ErrorStatus.WARNING,
-          message: '채팅방이 존재하지 않습니다.',
-        });
-      }
-      await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
-
-      this.server
-        .to(chatRoomId.toString())
-        .emit(
-          'getChatRoomUsers',
-          await this.chatRoomService.getChatRoomUsers(chatRoom),
-        );
-      this.server
-        .to('lobby')
-        .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
-      client.emit(
-        'showMyChatRoomList',
-        await this.chatRoomService.getMyChatRooms(client.data.user),
-      );
-      client.emit(
-        'showChatRoomList',
-        await this.chatRoomService.getAllChatRooms(),
-      );
-
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(
-        `[exitChatRoom] ${errInfo.message} ${client.data.where}`,
-      );
-      return { status: errInfo.status, message: errInfo.message };
+    client.data.user = user;
+    this.ChatRoomLogger.debug(`[exitChatRoom]`);
+    await this.chatRoomValidation.validateSocket(client);
+    if (!chatRoomId) {
+      throw new WsException({
+        status: ErrorStatus.WARNING,
+        message: '채팅방 ID가 유효하지 않습니다.',
+      });
     }
+    const chatRoom = await this.chatRoomService.getChatRoomById(chatRoomId);
+    if (!chatRoom) {
+      throw new WsException({
+        status: ErrorStatus.WARNING,
+        message: '채팅방이 존재하지 않습니다.',
+      });
+    }
+    await this.chatRoomService.deleteChatRoomUser(chatRoom, client.data.user);
+
+    this.server
+      .to(chatRoomId.toString())
+      .emit(
+        'getChatRoomUsers',
+        await this.chatRoomService.getChatRoomUsers(chatRoom),
+      );
+    this.server
+      .to('lobby')
+      .emit('showChatRoomList', await this.chatRoomService.getAllChatRooms());
+    client.emit(
+      'showMyChatRoomList',
+      await this.chatRoomService.getMyChatRooms(client.data.user),
+    );
+    client.emit(
+      'showChatRoomList',
+      await this.chatRoomService.getAllChatRooms(),
+    );
+
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -515,37 +461,33 @@ export class ChatRoomGateway
   async toggleBlockUser(
     @ConnectedSocket() client: Socket,
     @MessageBody('userId') userId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      await this.chatRoomValidation.validateSocket(client);
+    client.data.user = user;
+    await this.chatRoomValidation.validateSocket(client);
 
-      const receiver = await this.chatRoomValidation.validateUser(userId);
+    const receiver = await this.chatRoomValidation.validateUser(userId);
 
-      const directMessage = await this.directMessageService.createDirectMessage(
-        client.data.user,
-        receiver,
-      );
+    const directMessage = await this.directMessageService.createDirectMessage(
+      client.data.user,
+      receiver,
+    );
 
-      this.ChatRoomLogger.debug(
-        `[toggleBlockUser] ${receiver.name} blocked by ${client.data.user.name}`,
-      );
+    this.ChatRoomLogger.debug(
+      `[toggleBlockUser] ${receiver.name} blocked by ${client.data.user.name}`,
+    );
 
-      await this.directMessageService.toggleBlockUser(
-        directMessage,
-        client.data.user,
-      );
-      await this.emitDirectMessageList(client.data.user);
-      await this.emitDirectMessageUsers(
-        client.data.user,
-        directMessage,
-        client.data.chatRoomId,
-      );
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[toggleBlockUser] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    await this.directMessageService.toggleBlockUser(
+      directMessage,
+      client.data.user,
+    );
+    await this.emitDirectMessageList(client.data.user);
+    await this.emitDirectMessageUsers(
+      client.data.user,
+      directMessage,
+      client.data.chatRoomId,
+    );
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -560,25 +502,21 @@ export class ChatRoomGateway
   async enterDirectMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody('directMessageId') directMessageId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const directMessage =
-        await this.chatRoomValidation.validateEnterDirectMessage(
-          client,
-          'DM' + directMessageId,
-        );
-
-      this.ChatRoomLogger.debug(
-        `[enterDirectMessage] ${client.data.user.name} enter direct message`,
+    client.data.user = user;
+    const directMessage =
+      await this.chatRoomValidation.validateEnterDirectMessage(
+        client,
+        'DM' + directMessageId,
       );
 
-      await this.clientJoinDirectMessage(client, directMessage);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[enterDirectMessage] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    this.ChatRoomLogger.debug(
+      `[enterDirectMessage] ${client.data.user.name} enter direct message`,
+    );
+
+    await this.clientJoinDirectMessage(client, directMessage);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -596,30 +534,26 @@ export class ChatRoomGateway
   async handleDirectMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody() payload: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      const { directMessage, receiver } =
-        await this.chatRoomValidation.validateUserInDirectMessage(client);
+    client.data.user = user;
+    const { directMessage, receiver } =
+      await this.chatRoomValidation.validateUserInDirectMessage(client);
 
-      this.ChatRoomLogger.debug(
-        `[sendDirectMessage] ${client.data.user.name} send direct message`,
-      );
+    this.ChatRoomLogger.debug(
+      `[sendDirectMessage] ${client.data.user.name} send direct message`,
+    );
 
-      const message = await this.directMessageService.saveMessage(
-        client.data.user,
-        directMessage,
-        payload,
-      );
+    const message = await this.directMessageService.saveMessage(
+      client.data.user,
+      directMessage,
+      payload,
+    );
 
-      client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
-      await this.emitDirectMessageList(receiver);
-      await this.emitNotification(receiver, message);
-      return { status: ErrorStatus.OK, message: 'ok' };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[sendDirectMessage] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    client.broadcast.to(client.data.chatRoomId).emit('getMessage', message);
+    await this.emitDirectMessageList(receiver);
+    await this.emitNotification(receiver, message);
+    return { status: ErrorStatus.OK, message: 'ok' };
   }
 
   // NOTE: error handling
@@ -633,30 +567,26 @@ export class ChatRoomGateway
   async createDirectMessage(
     @ConnectedSocket() client: Socket,
     @MessageBody('receiverId') receiverId: string,
+    @getUserBySocket() user: UserEntity,
   ) {
-    try {
-      await this.chatRoomValidation.validateSocket(client);
-      const receiver = await this.chatRoomValidation.validateUser(receiverId);
+    client.data.user = user;
+    await this.chatRoomValidation.validateSocket(client);
+    const receiver = await this.chatRoomValidation.validateUser(receiverId);
 
-      this.ChatRoomLogger.debug(
-        `[createDirectMessage] ${client.data.user.name} create direct message`,
-      );
+    this.ChatRoomLogger.debug(
+      `[createDirectMessage] ${client.data.user.name} create direct message`,
+    );
 
-      const directMessage = await this.directMessageService.createDirectMessage(
-        client.data.user,
-        receiver,
-      );
+    const directMessage = await this.directMessageService.createDirectMessage(
+      client.data.user,
+      receiver,
+    );
 
-      return {
-        status: ErrorStatus.OK,
-        directMessageId: directMessage.id,
-        message: 'ok',
-      };
-    } catch (error) {
-      const errInfo = error.getError();
-      this.ChatRoomLogger.error(`[createDirectMessage] ${errInfo.message}`);
-      return { status: errInfo.status, message: errInfo.message };
-    }
+    return {
+      status: ErrorStatus.OK,
+      directMessageId: directMessage.id,
+      message: 'ok',
+    };
   }
 
   async handleConnection(client: Socket) {
