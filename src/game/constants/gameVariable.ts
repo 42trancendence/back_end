@@ -30,6 +30,6 @@ export class GameVariable {
   public static readonly boundedPaddleHeight = 20;
 
   public static readonly ballRadius = 10;
-  public static readonly normalBallSpeed = 5;
-  public static readonly hardBallSpeed = 15;
+  public static readonly normalBallSpeed = 8;
+  public static readonly hardBallSpeed = 13;
 }
