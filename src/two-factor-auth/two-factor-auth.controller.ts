@@ -97,7 +97,6 @@ export class TwoFactorAuthController {
     await this.authService.createRefreshToken(user, res);
     const token = await this.authService.createAccessToken(user, res);
     return res.status(201).json({ token });
-    // await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
 
   @Post('email')
@@ -133,7 +132,5 @@ export class TwoFactorAuthController {
     await this.authService.createRefreshToken(user, res);
     const token = await this.authService.createAccessToken(user, res);
     return res.status(201).json({ token });
-
-    // await this.twoFactorAuthService.turnOnTwoFactorAuth(user);
   }
 }

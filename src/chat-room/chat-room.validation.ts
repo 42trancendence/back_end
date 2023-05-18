@@ -29,13 +29,6 @@ export class ChatRoomValidation {
         message: '소켓에 유저 데이터가 존재하지 않습니다.',
       });
     }
-
-    // if (!client.data?.chatRoomId || !client.rooms.has(client.data.chatRoomId)) {
-    //   throw new WsException({
-    //     status: ErrorStatus.FATAL,
-    //     message: '소켓이 room에 속해있지 않습니다.',
-    //   });
-    // }
   }
 
   async validateChatRoom(enterChatRoomDto: EnterChatRoomDto) {

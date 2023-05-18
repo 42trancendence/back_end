@@ -5,4 +5,3 @@ import { EventsGateway } from './events.gateway';
   providers: [EventsGateway],
 })
 export class EventsModule {}
-
