@@ -18,7 +18,6 @@ import { getUser } from './decorator/get-user.decorator';
 import { RefreshGuard } from './guard/refresh-token.guard';
 import authConfig from 'src/config/authConfig';
 import { ConfigType } from '@nestjs/config';
-import { ThrottlerBehindProxyGuard } from './guard/throttler-behind-proxy.guard';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -31,7 +30,6 @@ export class AuthController {
 
   private readonly authLogger = new Logger(AuthController.name);
 
-  @UseGuards(ThrottlerBehindProxyGuard)
   @UseGuards(FortyTwoGuard)
   @Get('/login/callback')
   @ApiOperation({
