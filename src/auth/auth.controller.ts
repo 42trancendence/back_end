@@ -18,6 +18,7 @@ import { getUser } from './decorator/get-user.decorator';
 import { RefreshGuard } from './guard/refresh-token.guard';
 import authConfig from 'src/config/authConfig';
 import { ConfigType } from '@nestjs/config';
+import { ThrottlerBehindProxyGuard } from './guard/throttler-behind-proxy.guard';
 
 @ApiTags('Auth API')
 @Controller('auth')
@@ -30,6 +31,8 @@ export class AuthController {
 
   private readonly authLogger = new Logger(AuthController.name);
 
+  @UseGuards(ThrottlerBehindProxyGuard)
+  @UseGuards(FortyTwoGuard)
   @Get('/login/callback')
   @ApiOperation({
     summary: '유저 로그인 callback API',
@@ -44,7 +47,6 @@ export class AuthController {
     status: 200,
     description: '로그인 성공시 lobby으로 리다이렉트',
   })
-  @UseGuards(FortyTwoGuard)
   async login(@getFtUser() ftUser: FtUserDto, @Res() res: Response) {
     this.authLogger.verbose('[GET] /login/callback');
     this.authLogger.debug(ftUser);
