@@ -125,6 +125,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
     client.emit('finishGame');
+    this.gameManager.waitQueue.removeUser(user.id);
 
     this.WsLogger.log(`User [${user.name}] connected`);
   }
@@ -186,6 +187,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(GameStatus.LOBBY);
     client.join(GameStatus.MATCHING);
     client.data.roomId = GameStatus.MATCHING;
+    this.gameManager.waitQueue.addUser(client.data.user.id);
     this.WsLogger.log(`User ${client.id}: matching`);
   }
 
@@ -200,8 +202,8 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(GameStatus.MATCHING);
     client.join(GameStatus.LOBBY);
     client.data.roomId = GameStatus.LOBBY;
-    const playerName = client.data.user.name;
-    this.WsLogger.log(`${playerName} is leave match`);
+    this.gameManager.waitQueue.removeUser(client.data.user.id);
+    this.WsLogger.log(`${client.data.user.name} is leave match`);
   }
 
   @SubscribeMessage('postDeleteGame')
@@ -396,6 +398,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
       client.leave(GameStatus.LOBBY);
       client.leave(GameStatus.MATCHING);
+      this.gameManager.waitQueue.removeUser(senderUser.id);
       client.join(newRoomId);
       client.data.roomId = newRoomId;
 
@@ -433,6 +436,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       );
       client.leave(GameStatus.LOBBY);
       client.leave(GameStatus.MATCHING);
+      this.gameManager.waitQueue.removeUser(client.data.user.id);
       client.join(roomId);
       client.data.roomId = roomId;
       client.emit('getMatching', 'matching', 'matching', roomId);
