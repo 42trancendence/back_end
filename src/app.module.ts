@@ -1,11 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  MiddlewareConsumer,
-  Module,
-  NestMiddleware,
-  NestModule,
-} from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { UsersModule } from './users/users.module';
 import { ConfigModule } from '@nestjs/config';
 import emailConfig from './config/emailConfig';
@@ -22,31 +15,9 @@ import { PostgreConfigProvider } from './config/postgre-config.provider';
 import { EventsModule } from './events/events.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { NextFunction, Request, Response } from 'express';
-
-@Injectable()
-export class LoggerMiddleware implements NestMiddleware {
-  private logger = new Logger('HTTP');
-  use(req: Request, res: Response, next: NextFunction) {
-    const { ip, method, originalUrl } = req;
-    const userAgent = req.get('user-agent') || '';
-    res.on('finish', () => {
-      const { statusCode } = res;
-      this.logger.log(
-        `${method} ${originalUrl} ${statusCode} ${userAgent} ${ip},`,
-      );
-    });
-    next();
-  }
-}
 
 @Module({
   imports: [
-    ThrottlerModule.forRoot({
-      ttl: 60,
-      limit: 10,
-    }),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, '..', '/public'),
     }),
@@ -71,8 +42,4 @@ export class LoggerMiddleware implements NestMiddleware {
   controllers: [],
   providers: [],
 })
-export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(LoggerMiddleware).forRoutes('*');
-  }
-}
+export class AppModule {}
