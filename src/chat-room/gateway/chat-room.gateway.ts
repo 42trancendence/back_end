@@ -190,7 +190,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleBanUser] ${errInfo.message}`);
-      return { status: errInfo.status, error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
@@ -288,7 +288,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleMuteUser] ${errInfo.message}`);
-      return { status: errInfo.status, error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
@@ -330,7 +330,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[updateChatRoom] ${errInfo.message}`);
-      return { status: errInfo.status, error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
@@ -544,7 +544,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[toggleBlockUser] ${errInfo.message}`);
-      return { status: errInfo.status, error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
@@ -618,7 +618,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[sendDirectMessage] ${errInfo.message}`);
-      return { error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
@@ -655,7 +655,7 @@ export class ChatRoomGateway
     } catch (error) {
       const errInfo = error.getError();
       this.ChatRoomLogger.error(`[createDirectMessage] ${errInfo.message}`);
-      return { status: errInfo.status, error: errInfo.message };
+      return { status: errInfo.status, message: errInfo.message };
     }
   }
 
