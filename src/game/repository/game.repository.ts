@@ -37,17 +37,23 @@ export class GameRepository extends Repository<GameStatsEntity> {
 
     let winnerName = '';
     let loserName = '';
+    let winerScore = 0;
+    let loserScore = 0;
     if (score[0] > score[1]) {
       winnerName = game.getPlayer1Name();
       loserName = game.getPlayer2Name();
+      winerScore = score[0];
+      loserScore = score[1];
     } else {
       winnerName = game.getPlayer2Name();
       loserName = game.getPlayer1Name();
+      winerScore = score[1];
+      loserScore = score[0];
     }
 
     return await this.update(game.getRoomId(), {
-      player1Score: score[0],
-      player2Score: score[1],
+      player1Score: winerScore,
+      player2Score: loserScore,
       status: game.getGameStatus(),
       winnerName: winnerName,
       loserName: loserName,
