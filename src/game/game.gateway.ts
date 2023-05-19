@@ -398,8 +398,20 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
 
     // 이미 매칭중이라면, 다른 웹 브라우저를 열어서 접속 했을 경우
-    const roomId = await this.gameService.getRoomIdByUserId(receiverUser.id);
-    if (roomId) {
+    const receiveRoomId = await this.gameService.getRoomIdByUserId(
+      receiverUser.id,
+    );
+    if (receiveRoomId) {
+      throw new WsException({
+        status: ErrorStatus.WARNING,
+        message: '이미 매칭중입니다.',
+      });
+    }
+
+    const senderRoomId = await this.gameService.getRoomIdByUserId(
+      senderUser.id,
+    );
+    if (senderRoomId) {
       throw new WsException({
         status: ErrorStatus.WARNING,
         message: '이미 매칭중입니다.',
