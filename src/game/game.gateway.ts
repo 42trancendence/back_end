@@ -1,4 +1,4 @@
-import { Logger, UseFilters } from '@nestjs/common';
+import { Logger, UseFilters, UseGuards } from '@nestjs/common';
 import {
   SubscribeMessage,
   WebSocketGateway,
@@ -24,9 +24,11 @@ import { InviteUserNameDto } from './dto/invite-user-name.dto';
 import { UserEntity } from 'src/users/entities/user.entity';
 import * as uuid from 'uuid';
 import { WsExceptionFilter } from 'src/util/filter/ws-exception.filter';
+import { WsAuthGuard } from 'src/auth/guard/ws-auth.guard';
 import { ErrorStatus } from './enum/error-status.enum';
 
 @UseFilters(new WsExceptionFilter())
+@UseGuards(WsAuthGuard)
 @WebSocketGateway({
   namespace: 'game',
   cors: {
