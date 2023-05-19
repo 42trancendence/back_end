@@ -39,7 +39,6 @@ export class AuthService {
       expiresIn: '2h',
     });
     res.header('Authorization', 'Bearer ' + token);
-    console.log(token);
     return token;
   }
   async createRefreshToken(user: UserEntity, res: Response) {
