@@ -17,7 +17,7 @@ import { WsJwtStrategy } from './strategy/ws-jwt.strategy';
       defaultStrategy: 'jwt',
     }),
     JwtModule.register({
-      secret: 'secret',
+      secret: process.env.JWT_SECRET,
     }),
   ],
   controllers: [AuthController],

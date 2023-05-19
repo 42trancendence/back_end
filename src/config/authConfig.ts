@@ -9,7 +9,7 @@ export default registerAs('auth', () => ({
   frontCallbackUri: process.env.FRONT_CALLBACK_URI,
   serverAddress: process.env.SERVER_ADDRESS,
   tokenDomain: process.env.TOKEN_DOMAIN,
-  twoFactorTokenExpire: process.env.TWO_FACTOR_EXPIRATION,
+  twoFactorTokenExpire: process.env.TWO_FACTOR_TOKEN_EXPIRATION,
   accessTokenExpire: process.env.ACCESS_TOKEN_EXPIRATION,
   refreshTokenExpire: process.env.REFRESH_TOKEN_EXPIRATION,
 }));
