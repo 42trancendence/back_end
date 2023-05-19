@@ -45,6 +45,7 @@ export class UserRepository extends Repository<UserEntity> {
     user.email = ftUser.email;
     user.avatarImageUrl = ftUser.avatarImageUrl;
     user.registrationDate = new Date();
+    user.rating = 1000;
     await this.save(user);
     return user;
   }
