@@ -71,7 +71,7 @@ export class AuthService {
       throw new UnauthorizedException('Unauthorized jwt');
     }
     const token = auth.split(' ')[1];
-    return this.jwtService.verify(token);
+    return this.jwtService.verify(token, { secret: this.config.jwtSecret });
   }
 
   async getUserBySocket(socket: Socket) {
