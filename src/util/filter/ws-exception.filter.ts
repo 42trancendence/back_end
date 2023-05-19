@@ -14,7 +14,6 @@ export class WsExceptionFilter implements ExceptionFilter<WsException> {
   catch(exception: unknown, host: ArgumentsHost) {
     if (exception instanceof WsException) {
       const errInfo = exception.getError().valueOf();
-      const client: Socket = host.switchToWs().getClient();
       this.logger.error(errInfo['message']);
       const callback = host.getArgByIndex(2);
       if (callback && typeof callback === 'function') {
