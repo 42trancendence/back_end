@@ -71,10 +71,10 @@ export class Ball {
 
     // Score update
     if (this.x_ - this.radius_ < 0) {
-      score[0]++;
+      score[1]++;
       this.reset();
     } else if (this.x_ + this.radius_ > GameVariable.canvasWidth) {
-      score[1]++;
+      score[0]++;
       this.reset();
     }
   }
