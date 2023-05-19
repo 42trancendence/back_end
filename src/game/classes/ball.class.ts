@@ -29,7 +29,7 @@ export class Ball {
     this.x_ = x;
     this.y_ = y;
     this.radius_ = radius;
-    this.velocityX_ = (Math.random() * 2 - 1) * velocityX;
+    this.velocityX_ = (Math.random() < 0.5 ? -1 : 1) * velocityX;
     this.velocityY_ = (Math.random() * 2 - 1) * velocityY;
     this.speed_ = speed;
     this.originSpeed_ = speed;
@@ -41,7 +41,7 @@ export class Ball {
     this.speed_ = this.originSpeed_;
     // 1. 공의 방향을 랜덤으로 설정
     // 2. 공의 속도를 랜덤으로 설정
-    this.velocityX_ = (Math.random() * 2 - 1) * this.speed_;
+    this.velocityX_ = (Math.random() < 0.5 ? -1 : 1) * this.speed_;
     this.velocityY_ = (Math.random() * 2 - 1) * this.speed_;
   }
 
