@@ -246,9 +246,6 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.leave(GameStatus.MATCHING);
 
     if (client.data.roomId == GameStatus.LOBBY) {
-      this.WsLogger.debug(
-        '[postLeaveGame] ㅔ께게게게게게게임에 입장해 있지 않음',
-      );
       return new WsException({
         status: ErrorStatus.WARNING,
         message: '게임방에 입장해 있지 않습니다.',
