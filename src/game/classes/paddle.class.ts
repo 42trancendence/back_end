@@ -28,7 +28,7 @@ export class Paddle {
         GameVariable.canvasHeight -
         GameVariable.paddleHeight -
         GameVariable.boundedPaddleHeight +
-        5;
+        8;
     }
   }
 
