@@ -1,29 +1,40 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ChatRoomController } from './chat-room.controller';
-import { ChatRoomRepository } from './chat-room.repository';
+import { ChatRoomRepository } from './repository/chat-room.repository';
 import { ChatRoomService } from './chat-room.service';
 import { ChatRoomEntity } from './entities/chatRoom.entity';
-import { ChatRoomGateway } from './chat-room.gateway';
-import { MessageRepository } from './message.repository';
-import { UsersService } from 'src/users/users.service';
-import { UsersModule } from 'src/users/users.module';
-import { EmailModule } from 'src/email/email.module';
+import { ChatRoomGateway } from './gateway/chat-room.gateway';
+import { MessageRepository } from './repository/message.repository';
 import { AuthModule } from 'src/auth/auth.module';
+import { UsersModule } from 'src/users/users.module';
+import { MessageEntity } from './entities/message.entity';
+import { ChatRoomValidation } from './chat-room.validation';
+import { DirectMessageEntity } from './entities/directMessage.entity';
+import { DirectMessageRepository } from './repository/directMessage.repository';
+import { ChatRoomUserEntity } from './entities/chatRoomUser.entity';
+import { ChatRoomUserRepository } from './repository/chatRoomUser.repository';
+import { DirectMessageService } from './direct-message.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatRoomEntity]),
-    UsersModule,
-    EmailModule,
+    TypeOrmModule.forFeature([
+      ChatRoomEntity,
+      MessageEntity,
+      DirectMessageEntity,
+      ChatRoomUserEntity,
+    ]),
     AuthModule,
+    UsersModule,
   ],
-  controllers: [ChatRoomController],
+  controllers: [],
   providers: [
-    UsersService,
     ChatRoomService,
+    ChatRoomValidation,
     ChatRoomRepository,
+    DirectMessageService,
+    DirectMessageRepository,
     MessageRepository,
+    ChatRoomUserRepository,
     ChatRoomGateway,
   ],
 })

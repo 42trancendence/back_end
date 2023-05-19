@@ -1,11 +1,7 @@
-import { UserEntity } from 'src/users/entities/user.entity';
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  OneToMany,
-  ManyToOne,
-} from 'typeorm';
+import { Exclude } from 'class-transformer';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
+import { ChatRoomType } from '../enum/chat-room-type.enum';
+import { ChatRoomUserEntity } from './chatRoomUser.entity';
 import { MessageEntity } from './message.entity';
 
 @Entity({ name: 'chat_rooms' })
@@ -17,19 +13,15 @@ export class ChatRoomEntity {
   name: string;
 
   @Column()
-  description: string;
+  type: ChatRoomType;
 
-  @Column({ name: 'is_private' })
-  isPrivate: boolean;
-
+  @Exclude()
   @Column({ nullable: true })
   password: string;
 
-  @ManyToOne(() => UserEntity, (user) => user.chatRooms, { eager: true })
-  owner: UserEntity;
-
-  @OneToMany(() => MessageEntity, (message) => message.chatRoom, {
-    eager: true,
-  })
+  @OneToMany(() => MessageEntity, (message) => message.chatRoom)
   messages: MessageEntity[];
+
+  @OneToMany(() => ChatRoomUserEntity, (chatRoomUser) => chatRoomUser.chatRoom)
+  users: ChatRoomUserEntity[];
 }

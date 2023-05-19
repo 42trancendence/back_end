@@ -1,126 +1,144 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import * as uuid from 'uuid';
-import { UserInfo } from './UserInfo';
-import { NotFoundError } from 'rxjs';
+import { Inject, Injectable } from '@nestjs/common';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { UserRepository } from './user.repository';
-import { CreateUserDto } from './dto/create-user.dto';
+import { UserRepository } from './repository/user.repository';
 import { UserEntity } from './entities/user.entity';
+import { FtUserDto } from 'src/auth/dto/ft-user.dto';
+import { Status } from './enum/status.enum';
+import { ConfigType } from '@nestjs/config';
+import authConfig from 'src/config/authConfig';
 
 @Injectable()
 export class UsersService {
-  constructor(private userRepository: UserRepository) {}
+  constructor(
+    private userRepository: UserRepository,
+    @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
+  ) {}
 
-  async createUser(id: string, name: string, avatar: string) {
-    // const { id, email, name, image } = createUserDto;
-    await this.checkUserExists(id);
-
-    const signupVerifyToken = uuid.v1();
-
-    return await this.userRepository.saveUser(
-      id,
-      name,
-      signupVerifyToken,
-      avatar,
-    );
-    // await this.sendMemberJoinEmail(email, signupVerifyToken);
+  async setTwoFactorAuthSecret(user: UserEntity, secret: string, type: string) {
+    this.userRepository.saveTwoFactorAuthCode(user, secret, type);
   }
 
-  private async checkUserExists(id: string): Promise<void> {
-    const user = await this.userRepository.findUserById(id);
-    if (user) throw new Error('이미 동일한 소셜 로그인을 사용중입니다.');
+  async updateUserStatus(user: UserEntity, status: Status) {
+    await this.userRepository.saveUserStatus(user, status);
   }
 
-  // private async sendMemberJoinEmail(email: string, signupVerifyToken: string) {
-  //   await this.emailService.sendMemberJoinVerification(
-  //     email,
-  //     signupVerifyToken,
-  //   );
-  // }
+  async turnOnTwoFactorAuth(user: UserEntity) {
+    await this.userRepository.turnOnTwoFactorAuth(user);
+  }
 
-  // async verifyEmail(signupVerifyToken: string): Promise<string> {
-  //   const user = await this.userRepository.findUserByToken(signupVerifyToken);
-  //
-  //   if (!user) throw new NotFoundError('유저가 존재하지 않습니다.');
-  //
-  //   user.isVerified = true;
-  //   this.userRepository.save(user);
-  //   return this.authService.login({
-  //     id: user.id,
-  //     name: user.name,
-  //     email: user.email,
-  //   });
-  // }
-  //
-  // async login(email: string, password: string): Promise<string> {
-  //   const user = await this.userRepository.findUserByEmail(email);
-  //
-  //   if (!user) {
-  //     throw new NotFoundException('유저가 존재하지 않습니다.');
-  //   }
-  //
-  //   if (user.isVerified === false) {
-  //     throw new UnauthorizedException('email 인증이 필요합니다.');
-  //   }
-  //
-  //   if (await bcrypt.compare(password, user.password)) {
-  //     return this.authService.login({
-  //       id: user.id,
-  //       name: user.name,
-  //       email: user.email,
-  //     });
-  //   } else {
-  //     throw new UnauthorizedException('비밀번호가 틀렸습니다.');
-  //   }
-  // }
+  async createUser(ftUser: FtUserDto) {
+    return await this.userRepository.saveUser(ftUser);
+  }
 
-  // async getUserBySocket(socket: Socket): Promise<UserEntity> {
-  //   const payload = this.authService.isVerifiedToken(socket);
-  //   if (!payload) {
-  //     throw new UnauthorizedException('jwt error');
-  //   }
-  //
-  //   const user = this.userRepository.findUserById(payload.id);
-  //   if (!user) {
-  //     throw new NotFoundException('유저를 찾을 수 없습니다.');
-  //   }
-  //   return user;
-  // }
+  async getUserByName(name: string): Promise<UserEntity> {
+    return await this.userRepository.findUserByName(name);
+  }
 
   async getUserById(userId: string): Promise<UserEntity> {
     return await this.userRepository.findUserById(userId);
   }
-  async getUserByEmail(email: string): Promise<UserEntity> {
-    return await this.userRepository.findUserByEmail(email);
+
+  async getUserByEmail(emailAddress: string): Promise<UserEntity> {
+    return await this.userRepository.findUserByEmail(emailAddress);
   }
 
-  async getUserInfo(userId: string): Promise<UserInfo> {
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) {
-      throw new NotFoundError('유저가 존재하지 않습니다.');
-    }
-
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-    };
+  async getAllUserExceptMeAndFriend(me: UserEntity): Promise<UserEntity[]> {
+    return await this.userRepository.findUserExceptMeAndFriend(me);
   }
 
   async updateUserInfo(
-    userId: string,
     updateUserDto: UpdateUserDto,
-    userInfo: UserEntity,
-  ): Promise<UserInfo> {
-    if (userId !== userInfo.id) throw new UnauthorizedException('권한 없음');
-    const { avatarImageUrl } = updateUserDto;
-    const user = await this.userRepository.findUserById(userId);
-    if (!user) {
-      throw new NotFoundError('유저가 존재하지 않습니다.');
-    }
-    user.avatarImageUrl = avatarImageUrl;
-    await this.userRepository.save(user);
+    user: UserEntity,
+    newAvatarImageUrl: string,
+  ) {
+    return await this.userRepository.updateUserInfo(
+      updateUserDto,
+      user,
+      newAvatarImageUrl,
+    );
+  }
 
-    return await this.getUserInfo(userId);
+  async update2FA(user: UserEntity) {
+    return await this.userRepository.update2FA(user);
+  }
+
+  async getUserHistory(userId: string): Promise<object> {
+    const user = await this.userRepository.getUserHistoryByUserId(userId);
+    const getUser = {};
+    getUser['user'] = {
+      name: user.name,
+      avatarImageUrl: user.avatarImageUrl,
+      rating: user.rating,
+    };
+
+    const combinedGameStats = [
+      ...user.gameStatsAsPlayer1,
+      ...user.gameStatsAsPlayer2,
+    ];
+
+    const countWinLose = {
+      win: 0,
+      lose: 0,
+    };
+    combinedGameStats.forEach((gameStats) => {
+      if (gameStats.winnerName === user.name) {
+        countWinLose['win'] += 1;
+      } else {
+        countWinLose['lose'] += 1;
+      }
+    });
+
+    combinedGameStats.sort((a, b) => {
+      // 날짜 순으로 정렬 (최근날짜부터)
+      return b.createAt.getTime() - a.createAt.getTime();
+    });
+
+    getUser['gameHistory'] = combinedGameStats.slice(0, 10);
+    getUser['countWinLose'] = countWinLose;
+
+    return getUser;
+  }
+
+  async updateUserRating(
+    player1Name: string,
+    player2Name: string,
+    score: number[],
+  ) {
+    const [player1, player2] = await Promise.all([
+      this.getUserByName(player1Name),
+      this.getUserByName(player2Name),
+    ]);
+
+    if (score[0] === score[1]) return;
+
+    const isPlayer1Winner = score[0] > score[1];
+    const ratingChange = 10;
+
+    player1.rating = Math.max(
+      0,
+      Math.min(
+        10000,
+        player1.rating + (isPlayer1Winner ? ratingChange : -ratingChange),
+      ),
+    );
+    player2.rating = Math.max(
+      0,
+      Math.min(
+        10000,
+        player2.rating + (isPlayer1Winner ? -ratingChange : ratingChange),
+      ),
+    );
+
+    await Promise.all([
+      this.userRepository.updateUserRating(player1),
+      this.userRepository.updateUserRating(player2),
+    ]);
+  }
+
+  async uploadAvatarImage(file: Express.Multer.File): Promise<string> {
+    const serverAddr = this.config.serverAddress;
+    const generatedFile = `${serverAddr}/${file.filename}`;
+
+    return generatedFile;
   }
 }

@@ -1,50 +1,90 @@
 import {
+  Inject,
   Injectable,
-  NotFoundException,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ConfigType } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Response } from 'express';
 import { Socket } from 'socket.io';
-import { UsersService } from 'src/users/users.service';
+import authConfig from 'src/config/authConfig';
+import { UserEntity } from 'src/users/entities/user.entity';
+import { UserRepository } from 'src/users/repository/user.repository';
+import { FtUserDto } from './dto/ft-user.dto';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
-    private usersService: UsersService,
+    private userRepository: UserRepository,
+    @Inject(authConfig.KEY) private config: ConfigType<typeof authConfig>,
   ) {}
 
-  async createAccessToken(id: string) {
-    const payload = { id };
+  private AuthServiceLogger = new Logger('AuthService');
 
-    return await this.jwtService.signAsync(payload, { expiresIn: '2h' });
+  async create2faToken(ftUser: FtUserDto, res: Response) {
+    const payload = { id: ftUser.id };
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.twoFactorSecret,
+      expiresIn: '3m',
+    });
+    res.header('Authorization', 'Bearer ' + token);
+    return token;
   }
-  async createRefreshToken(id: string) {
-    const payload = { id };
-
-    return await this.jwtService.signAsync(payload, { expiresIn: '7d' });
+  async createAccessToken(user: UserEntity, res: Response) {
+    const payload = { id: user.id };
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.jwtSecret,
+      expiresIn: '2h',
+    });
+    res.header('Authorization', 'Bearer ' + token);
+    console.log(token);
+    return token;
+  }
+  async createRefreshToken(user: UserEntity, res: Response) {
+    const payload = { id: user.id };
+    const token = await this.jwtService.signAsync(payload, {
+      secret: this.config.jwtSecret,
+      expiresIn: '7d',
+    });
+    res.cookie('refreshToken', token, {
+      domain: this.config.tokenDomain,
+      path: '/',
+      httpOnly: true,
+    });
   }
 
-  // async login(email: string, password: string): Promise<string> {
-  //   const user = await this.usersService.getUserByEmail(email);
-  //   if (!user) {
-  //     throw new NotFoundException('유저가 존재하지 않습니다.');
-  //   }
+  async logout(res: Response, url: string) {
+    res.cookie('refreshToken', '');
+    return res.redirect(url);
+  }
 
-  //   if (await bcrypt.compare(password, user.password)) {
-  //     return this.createJwt({
-  //       name: user.name,
-  //       email: user.email,
-  //     });
-  //   } else {
-  //     throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
-  //   }
-  // }
+  async login(user: UserEntity, res: Response, url: string) {
+    const token = await this.createAccessToken(user, res);
+    await this.createRefreshToken(user, res);
+    return res.redirect(301, url + '?token=' + token);
+  }
 
   isVerifiedToken(socket: Socket) {
-    const auth = socket.handshake.headers.authorization;
+    const auth = socket.handshake.headers?.authorization;
+    if (!auth) {
+      throw new UnauthorizedException('Unauthorized jwt');
+    }
     const token = auth.split(' ')[1];
-    const payload = this.jwtService.verify(token);
-    return payload;
+    return this.jwtService.verify(token);
+  }
+
+  async getUserBySocket(socket: Socket) {
+    try {
+      const payload = this.isVerifiedToken(socket);
+
+      if (!payload) {
+        throw new UnauthorizedException('Unauthorized jwt');
+      }
+      return await this.userRepository.findUserById(payload.id);
+    } catch (e) {
+      this.AuthServiceLogger.error('Unauthorized jwt');
+    }
   }
 }

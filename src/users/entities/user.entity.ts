@@ -1,43 +1,58 @@
-import { ChatRoomEntity } from 'src/chat-room/entities/chatRoom.entity';
-import { GameSessionEntity } from 'src/game/entities/game-session.entity';
+import { ApiProperty } from '@nestjs/swagger';
+import { Exclude } from 'class-transformer';
 import { Column, Entity, OneToMany, PrimaryColumn } from 'typeorm';
-import { FriendShipEntity } from './friendship.entity';
+import { Status } from '../enum/status.enum';
+import { GameStatsEntity } from 'src/game/entities/gameStats.entity';
 
 @Entity('User')
 export class UserEntity {
+  @ApiProperty({ description: '유저 ID' })
   @PrimaryColumn()
   id: string;
 
+  @ApiProperty({ description: '유저 이름' })
   @Column({ length: 30 })
   name: string;
 
+  @ApiProperty({ description: '유저 이메일' })
   @Column({ length: 60, nullable: true })
   email: string;
 
-  @Column({ nullable: true })
-  refreshToken: string;
+  @Exclude()
+  @Column({ length: 60, nullable: true })
+  qrAuthCode: string;
 
-  @Column({ length: 60 })
-  signupVerifyToken: string;
+  @Exclude()
+  @Column({ length: 60, nullable: true })
+  emailAuthCode: string;
 
+  @ApiProperty({ description: '유저 아바타 URL' })
   @Column({ name: 'avatar_image_url' })
   avatarImageUrl: string;
 
+  @ApiProperty({ description: '유저 가입 날짜' })
   @Column({ name: 'registration_date' })
   registrationDate: Date;
 
-  @Column()
-  isVerified: boolean;
+  @Column({ default: true })
+  isTwoFactorEnable: boolean;
 
-  @OneToMany(() => GameSessionEntity, (gameSession) => gameSession.winner)
-  wonGames: GameSessionEntity[];
+  @ApiProperty({ description: '유저 상태' })
+  @Column({ default: Status.OFFLINE })
+  status: Status;
 
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.user)
-  friendships: FriendShipEntity[];
+  @ApiProperty({ description: '유저 랭킹 점수' })
+  @Exclude()
+  @Column({ default: 1000 })
+  rating: number;
 
-  @OneToMany(() => FriendShipEntity, (friendship) => friendship.friend)
-  friendOf: FriendShipEntity[];
+  @OneToMany(() => GameStatsEntity, (game) => game.player1)
+  gameStatsAsPlayer1: GameStatsEntity[];
 
-  @OneToMany(() => ChatRoomEntity, (chatRoom) => chatRoom.owner)
-  chatRooms: ChatRoomEntity[];
+  @OneToMany(() => GameStatsEntity, (game) => game.player2)
+  gameStatsAsPlayer2: GameStatsEntity[];
+
+  get gameStats(): GameStatsEntity[] {
+    return [...this.gameStatsAsPlayer1, ...this.gameStatsAsPlayer2];
+  }
 }

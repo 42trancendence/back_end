@@ -1,95 +1,149 @@
 import {
   Controller,
   Get,
-  Post,
   Body,
   Param,
   UsePipes,
   ValidationPipe,
   UseGuards,
-  Patch,
-  Header,
+  Put,
+  Query,
+  NotFoundException,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+  Logger,
+  UploadedFile,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UserInfo } from './UserInfo';
 import { AuthGuard } from '@nestjs/passport';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
-import { getUserId } from 'src/auth/get-user.decorator';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiUnauthorizedResponse,
+  ApiQuery,
+  ApiNotFoundResponse,
+  ApiParam,
+  ApiBody,
+  ApiBadRequestResponse,
+} from '@nestjs/swagger';
 import { UserEntity } from './entities/user.entity';
+import { getUser } from 'src/auth/decorator/get-user.decorator';
+import { CheckUserNameDto } from './dto/check-user-name.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { multerOptions } from 'src/util/multer/multerOptions';
 
 @Controller('users')
+@UseGuards(AuthGuard('access-jwt'))
 @ApiTags('User API')
+@ApiBearerAuth('access-token')
+@ApiUnauthorizedResponse({ description: 'Invalid access token' })
 export class UsersController {
   constructor(private usersService: UsersService) {}
 
-  // @Post()
-  // @ApiOperation({ summary: '유저 생성 API', description: '유저를 생성한다.' })
-  // @Header('Access-Control-Allow-Origin', '*')
-  // @ApiBody({
-  //   type: CreateUserDto,
-  // })
-  // @UsePipes(ValidationPipe)
-  // async createUser(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
-  //   return this.usersService.createUser(createUserDto);
-  // }
-  //
-  // @Post('/email-verify')
-  // @ApiOperation({
-  //   summary: '유저 email 인증 API',
-  //   description: '회원가입한 유저의 email 주소로 인증 메일을 발송한다.',
-  // })
-  // @ApiBody({ type: VerifyEmailDto })
-  // async verifyEmail(@Query() dto: VerifyEmailDto): Promise<string> {
-  //   const { signupVerifyToken } = dto;
-  //
-  //   return await this.usersService.verifyEmail(signupVerifyToken);
-  // }
-  //
-  // @Post('/login')
-  // @ApiOperation({
-  //   summary: '유저 로그인 API',
-  //   description: '유저 email, password로 로그인한다.',
-  // })
-  // async login(@Body() dto: UserLoginDto, @Res() res: Response) {
-  //   const { email, password } = dto;
-  //   const token: string = await this.usersService.login(email, password);
-  //   console.log(token);
-  //   res.setHeader('Authorization', token);
-  //   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  //   res.cookie('jwt', token, {
-  //     httpOnly: true,
-  //     maxAge: 24 * 60 * 60 * 1000, // 1 day
-  //   });
-  //   console.log(res);
-  //   return res.send({
-  //     message: 'success',
-  //   });
-  // }
+  private readonly logger = new Logger(UsersController.name);
 
-  @UseGuards(AuthGuard('jwt'))
-  @Get(':id')
-  @ApiOperation({
-    summary: '유저 정보 API',
-    description: '유저의 정보를 얻는다.',
-  })
-  async getUserInfo(@Param('id') userId: string): Promise<UserInfo> {
-    return this.usersService.getUserInfo(userId);
+  //
+  // NOTE: GET METHOD
+  //
+
+  @Get('me')
+  @UseInterceptors(ClassSerializerInterceptor)
+  @ApiOperation({ summary: '내 정보 조회' })
+  @ApiOkResponse({ description: '성공', type: UserEntity })
+  async getMyInfo(@getUser() user: UserEntity): Promise<UserEntity> {
+    this.logger.log('GET users/me');
+    return user;
   }
 
-  @UseGuards(AuthGuard('jwt'))
+  @Get('/history/me')
+  @ApiOperation({ summary: '내 게임 기록 조회' })
+  @ApiOkResponse({ description: '성공', type: [UserEntity] })
+  async getMyHistory(@getUser() user: UserEntity): Promise<object> {
+    this.logger.log('GET users/histroy/me');
+    return this.usersService.getUserHistory(user.id);
+  }
+
+  @Get('/history/:id')
+  @ApiOperation({ summary: ':id 기록 조회' })
+  @ApiOkResponse({ description: '성공', type: [UserEntity] })
+  async getIdHistory(@Param('id') userId: string): Promise<object> {
+    this.logger.log('GET users/histroy/:id');
+    return this.usersService.getUserHistory(userId);
+  }
+
+  @Get('name')
+  @ApiOperation({ summary: '이름 중복 확인' })
+  @ApiQuery({ name: 'userName', description: '중복 확인할 이름' })
+  @ApiOkResponse({ description: '성공' })
+  @ApiNotFoundResponse({ description: '이미 존재하는 이름입니다.' })
   @UsePipes(ValidationPipe)
-  @Patch(':id/status')
-  @ApiOperation({
-    summary: '유저 정보 업데이트 API',
-    description: '유저의 정보(password, img...)를 업데이트한다.',
+  async checkName(
+    @getUser() user: UserEntity,
+    @Query() checkUserNameDto: CheckUserNameDto,
+  ) {
+    this.logger.log('GET users/name');
+    const foundUser = await this.usersService.getUserByName(
+      checkUserNameDto.userName,
+    );
+    if (foundUser && foundUser.id !== user.id) {
+      throw new NotFoundException('이미 존재하는 이름입니다.');
+    }
+    return { message: '사용 가능한 이름입니다.' };
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'ID로 유저 조회' })
+  @ApiParam({ name: 'id', description: '조회할 유저 ID' })
+  @ApiOkResponse({ description: '성공', type: UserEntity })
+  @ApiNotFoundResponse({ description: '존재하지 않는 유저입니다.' })
+  async getUserInfo(@Param('id') userId: string): Promise<UserEntity> {
+    this.logger.log('GET users/:id');
+    return await this.usersService.getUserById(userId);
+  }
+
+  @Get('/')
+  @ApiOperation({ summary: '나와 나의 친구를 제외한 모든 유저 정보 조회' })
+  @ApiOkResponse({ description: '성공', type: Array<UserEntity> })
+  async getAllUserInfo(@getUser() user: UserEntity): Promise<UserEntity[]> {
+    this.logger.log('GET users/');
+    return await this.usersService.getAllUserExceptMeAndFriend(user);
+  }
+
+  //
+  // NOTE: PUT METHOD
+  //
+
+  @Put('me')
+  @UsePipes(ValidationPipe)
+  @UseInterceptors(FileInterceptor('avatarImageUrl', multerOptions))
+  @ApiOperation({ summary: '유저 정보 수정' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiBadRequestResponse({
+    description: '잘못된 유저이름 또는 아바타 이미지입니다.',
   })
   async updateUserInfo(
-    @Param('id') userId: string,
+    @getUser() user: UserEntity,
     @Body() updateUserDto: UpdateUserDto,
-    @getUserId() userInfo: UserEntity,
-  ): Promise<UserInfo> {
-    return this.usersService.updateUserInfo(userId, updateUserDto, userInfo);
+    @UploadedFile() avatar: Express.Multer.File,
+  ) {
+    this.logger.log('PUT users/me');
+    const newAvatarImageUrl = avatar
+      ? await this.usersService.uploadAvatarImage(avatar)
+      : null;
+    await this.usersService.updateUserInfo(
+      updateUserDto,
+      user,
+      newAvatarImageUrl,
+    );
+  }
+
+  @Put('me/2fa')
+  async update2FA(@getUser() user: UserEntity) {
+    this.logger.log('PUT users/me/2fa');
+    await this.usersService.update2FA(user);
+    return { is2FAEnabled: user.isTwoFactorEnable };
   }
 }
