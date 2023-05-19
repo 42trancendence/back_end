@@ -27,7 +27,7 @@ export class AuthService {
     const payload = { id: ftUser.id };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.config.twoFactorSecret,
-      expiresIn: '3m',
+      expiresIn: this.config.twoFactorTokenExpire,
     });
     res.header('Authorization', 'Bearer ' + token);
     return token;
@@ -36,7 +36,7 @@ export class AuthService {
     const payload = { id: user.id };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.config.jwtSecret,
-      expiresIn: '2h',
+      expiresIn: this.config.accessTokenExpire,
     });
     res.header('Authorization', 'Bearer ' + token);
     console.log(token);
@@ -46,7 +46,7 @@ export class AuthService {
     const payload = { id: user.id };
     const token = await this.jwtService.signAsync(payload, {
       secret: this.config.jwtSecret,
-      expiresIn: '7d',
+      expiresIn: this.config.refreshTokenExpire,
     });
     res.cookie('refreshToken', token, {
       domain: this.config.tokenDomain,

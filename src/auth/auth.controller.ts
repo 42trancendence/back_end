@@ -63,7 +63,6 @@ export class AuthController {
   }
 
   @Get('/logout')
-  // @UseGuards(AccessGuard)
   @ApiOperation({
     summary: '유저 로그아웃 API',
     description: '쿠키와 db의 refresh token 파기 API.',
