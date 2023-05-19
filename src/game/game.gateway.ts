@@ -439,7 +439,7 @@ export class GameGateway implements OnGatewayConnection, OnGatewayDisconnect {
       await this.emitEventToActiveUser(
         receiverUser,
         'requestMatching',
-        receiverUser,
+        senderUser,
       );
     }
   }
